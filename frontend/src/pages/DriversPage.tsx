@@ -289,7 +289,7 @@ function getDocHeaderInfo(docType: string, docs: Doc[]): { meta: string; warnTex
     const noFile = !d.original_filename
     return {
       meta: d.hire_date ? 'Hire date ' + fmtDate(d.hire_date) : '',
-      warnText: noFile ? 'Application incomplete. No files attached' : '',
+      warnText: noFile ? 'Application incomplete; No files attached' : '',
       hasExpiry: false,
     }
   }
@@ -358,6 +358,42 @@ function FileUploadLabel({ label, onFile }: { label: string; onFile: (f: File) =
   )
 }
 
+// ── DriverActionMenu ──────────────────────────────────────────────────────────
+function DriverActionMenu({ onEdit, onDelete }: { onEdit: ()=>void; onDelete: ()=>void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+  return (
+    <div ref={ref} className="relative flex items-center">
+      <button onClick={(e)=>{e.stopPropagation();onEdit()}}
+        className="inline-flex items-center justify-center w-7 h-7 rounded bg-[#58c777] text-white hover:bg-[#4ab668] transition-colors"
+        title="Edit Driver">
+        <IcoEdit />
+      </button>
+      <button onClick={(e)=>{e.stopPropagation();setOpen(v=>!v)}}
+        className="inline-flex items-center justify-center w-5 h-7 text-gray-400 hover:text-gray-700">
+        <IcoDown />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+          <button onClick={(e)=>{e.stopPropagation();setOpen(false);onEdit()}}
+            className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+            <IcoEdit /> Edit Driver
+          </button>
+          <button onClick={(e)=>{e.stopPropagation();setOpen(false);onDelete()}}
+            className="w-full text-left px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-100">
+            <IcoTrash /> Delete Driver
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -417,145 +453,132 @@ export default function DriversPage() {
           <h1 className="text-lg font-bold text-gray-900">Drivers</h1>
           <div className="flex items-center gap-1 text-sm">
             <button onClick={() => window.open(API_BASE + '/api/v1/drivers/export/pdf', '_blank')}
-              className="inline-flex items-center gap-1 px-2 py-1 text-gray-600 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors text-xs font-medium">
-              <IcoPDF /> PDF
-            </button>
+              className="text-xs text-gray-500 hover:text-gray-800 hover:underline">Pdf</button>
             <span className="text-gray-300">|</span>
             <button onClick={() => window.open(API_BASE + '/api/v1/drivers/export/xlsx', '_blank')}
-              className="inline-flex items-center gap-1 px-2 py-1 text-gray-600 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors text-xs font-medium">
-              <IcoXLS /> Excel
-            </button>
+              className="text-xs text-gray-500 hover:text-gray-800 hover:underline">Excel</button>
             <span className="text-gray-300">|</span>
             <button onClick={() => setShowEmail(true)}
-              className="inline-flex items-center gap-1 px-2 py-1 text-gray-600 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors text-xs font-medium">
-              <IcoMail /> Email
-            </button>
+              className="text-xs text-gray-500 hover:text-gray-800 hover:underline">Email</button>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><IcoSearch /></span>
-            <input type="text" placeholder="Search drivers..." value={search}
+            <input type="text" placeholder="Search" value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
-              className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-brand-500 w-48 transition-colors" />
+              className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-brand-500 w-48 transition-colors" />
           </div>
-          <button onClick={() => setShowFilter(v => !v)}
-            className={'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ' +
-              (showFilter ? 'border-brand-500 text-brand-600 bg-brand-50' : 'border-gray-300 text-gray-700 hover:bg-gray-50')}>
-            <IcoFilter /> Filter
-          </button>
           <button onClick={() => setEditDriver('new')}
-            className="btn-primary rounded-lg shadow-sm">
-            <IcoPlus /> New Driver
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#58c777] text-white text-sm font-semibold rounded hover:bg-[#4ab668] transition-colors">
+            <IcoPlus /> New
           </button>
         </div>
       </div>
 
-      {/* Filter bar */}
-      {showFilter && (
-        <div className="flex items-end gap-4 px-5 py-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-          <div className="w-44">
-            <Label text="Driver Type" />
-            <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1) }} className="select-base text-sm rounded-lg">
-              <option value="">All Types</option>
-              <option value="Drv">Company Driver</option>
-              <option value="OO">Owner Operator</option>
-            </select>
-          </div>
-          <div className="w-44">
-            <Label text="Status" />
-            <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }} className="select-base text-sm rounded-lg">
-              <option value="">All Statuses</option>
-              {DRIVER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <button onClick={() => { setFilterType(''); setFilterStatus(''); setPage(1) }}
-            className="btn-secondary rounded-lg text-sm">Clear filters</button>
-        </div>
-      )}
+      {/* No separate filter bar — filters are in the table header gear dropdown */}
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm" style={{ tableLayout: 'fixed', minWidth: 1080 }}>
+        <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{width:'17%'}} /><col style={{width:'6%'}} /><col style={{width:'8%'}} />
-            <col style={{width:'7%'}} /><col style={{width:'7%'}} /><col style={{width:'9%'}} />
-            <col style={{width:'11%'}} /><col style={{width:'6%'}} /><col style={{width:'6%'}} />
-            <col style={{width:'9%'}} /><col style={{width:'10%'}} /><col style={{width:'4%'}} />
+            <col style={{width:'18%'}} /><col style={{width:'5%'}} /><col style={{width:'7%'}} />
+            <col style={{width:'7%'}} /><col style={{width:'7%'}} /><col style={{width:'8%'}} />
+            <col style={{width:'11%'}} /><col style={{width:'5%'}} /><col style={{width:'6%'}} />
+            <col style={{width:'10%'}} /><col style={{width:'8%'}} /><col style={{width:'5%'}} /><col style={{width:'3%'}} />
           </colgroup>
           <thead className="sticky top-0 z-10">
-            <tr className="bg-gray-50 border-b border-gray-200">
-              {['NAME','TYPE','STATUS','HIRE DATE','TERM DATE','PHONE','EMAIL','TRUCK','TRAILER','PAYABLE TO','WARNINGS',''].map((h,i) => (
-                <th key={i} className="table-th">{h}</th>
-              ))}
+            <tr className="bg-gray-50 border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-2.5">Name <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Type <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Status <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Hire Date <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Term Date <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Phone <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Email <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Truck <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Trailer <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Payable To <span className="text-gray-300">↕</span></th>
+              <th className="px-4 py-2.5">Warnings</th>
+              <th className="px-4 py-2.5">Driver App</th>
+              <th className="px-4 py-2.5">
+                <button onClick={() => setShowFilter(v => !v)}
+                  className={'p-1 rounded transition-colors ' + (showFilter ? 'text-brand-600 bg-brand-50' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100')}>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </th>
             </tr>
+            {showFilter && (
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <td colSpan={13} className="px-4 py-2">
+                  <div className="flex items-center gap-3">
+                    <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1) }}
+                      className="h-7 text-xs border border-gray-300 rounded px-2 bg-white text-gray-700">
+                      <option value="">All Types</option>
+                      <option value="Drv">Company Driver</option>
+                      <option value="OO">Owner Operator</option>
+                    </select>
+                    <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
+                      className="h-7 text-xs border border-gray-300 rounded px-2 bg-white text-gray-700">
+                      <option value="">All Statuses</option>
+                      <option value="Applicant">Applicant</option>
+                      <option value="Hired">Hired</option>
+                      <option value="Terminated">Terminated</option>
+                    </select>
+                    {(filterType || filterStatus) && (
+                      <button onClick={() => { setFilterType(''); setFilterStatus(''); setPage(1) }}
+                        className="text-xs text-gray-500 hover:text-red-600 underline">Clear</button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {loading ? (
-              <tr><td colSpan={12} className="py-20 text-center">
+              <tr><td colSpan={13} className="py-20 text-center">
                 <div className="flex flex-col items-center gap-2 text-gray-400">
                   <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-sm">Loading drivers...</span>
                 </div>
               </td></tr>
             ) : drivers.length === 0 ? (
-              <tr><td colSpan={12} className="py-20 text-center">
-                <div className="flex flex-col items-center gap-2 text-gray-400">
-                  <svg className="w-10 h-10 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
-                  <span className="text-sm font-medium">No drivers found</span>
-                  <span className="text-xs">Try adjusting your search or filters</span>
-                </div>
-              </td></tr>
+              <tr><td colSpan={13} className="py-20 text-center text-gray-400 text-sm">No drivers found</td></tr>
             ) : drivers.map(d => {
               const warns = getDriverWarnings(d.documents || [])
               const hasExpired = warns.some(w => w.type === 'expired')
-              const hasSoon    = warns.some(w => w.type === 'soon')
-              const hasMissing = warns.some(w => w.type === 'missing')
-              const rowWarn    = hasExpired || hasSoon || hasMissing
+              const rowWarn = warns.length > 0
               return (
                 <tr key={d.id}
                   onClick={() => setEditDriver(d)}
                   className={'cursor-pointer transition-colors ' + (rowWarn ? 'hover:bg-amber-50' : 'hover:bg-gray-50')}>
-                  <td className="table-td">
+                  <td className="px-4 py-2">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      {rowWarn && (
-                        <span className={hasExpired ? 'text-red-500' : 'text-amber-500'}>
-                          <IcoWarn />
-                        </span>
-                      )}
-                      <span className="font-medium text-blue-600 truncate hover:underline">
-                        {d.name}
+                      {rowWarn && <span className={hasExpired ? 'text-red-500 flex-shrink-0' : 'text-amber-500 flex-shrink-0'}><IcoWarn /></span>}
+                      <span className="font-medium text-blue-600 truncate hover:underline text-sm">
+                        {d.name} [{d.driver_type}]
                         {!d.is_active && <span className="ml-1 text-xs text-gray-400 font-normal">(inactive)</span>}
                       </span>
                     </div>
                   </td>
-                  <td className="table-td">
-                    <span className={'inline-flex px-1.5 py-0.5 rounded text-xs font-medium ' +
-                      (d.driver_type === 'OO' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700')}>
-                      {d.driver_type === 'OO' ? 'O/O' : 'Drv'}
-                    </span>
-                  </td>
-                  <td className="table-td">
+                  <td className="px-4 py-2 text-sm text-gray-600">{d.driver_type === 'OO' ? 'O/O' : 'Drv'}</td>
+                  <td className="px-4 py-2">
                     {d.profile?.driver_status === 'Hired' ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-100 text-brand-700 border border-brand-200">
-                        ● Hired
-                      </span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">● Hired</span>
                     ) : d.profile?.driver_status === 'Terminated' ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
-                        Terminated
-                      </span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">Terminated</span>
                     ) : (
                       <span className="text-xs text-gray-500">{d.profile?.driver_status || '—'}</span>
                     )}
                   </td>
-                  <td className="table-td text-xs text-gray-500">{fmtDate(d.profile?.hire_date) || '—'}</td>
-                  <td className="table-td text-xs text-gray-500">{fmtDate(d.profile?.termination_date) || '—'}</td>
-                  <td className="table-td text-xs text-gray-600 truncate">{d.phone || '—'}</td>
-                  <td className="table-td text-xs text-gray-600 truncate">{d.email || '—'}</td>
-                  <td className="table-td text-xs font-mono text-gray-600">{d.profile?.truck_unit || '—'}</td>
-                  <td className="table-td text-xs font-mono text-gray-600">{d.profile?.trailer_unit || '—'}</td>
-                  <td className="table-td text-xs text-gray-600 truncate">{d.profile?.payable_to || d.name}</td>
-                  <td className="table-td">
+                  <td className="px-4 py-2 text-xs text-gray-500">{fmtDate(d.profile?.hire_date) || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-gray-500">{fmtDate(d.profile?.termination_date) || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-gray-600 truncate">{d.phone || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-gray-600 truncate">{d.email || '—'}</td>
+                  <td className="px-4 py-2 text-xs font-mono text-gray-600">{d.profile?.truck_unit || '—'}</td>
+                  <td className="px-4 py-2 text-xs font-mono text-gray-600">{d.profile?.trailer_unit || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-gray-600 truncate">{d.profile?.payable_to || d.name}</td>
+                  <td className="px-4 py-2">
                     {warns.length === 0 ? (
                       <span className="text-brand-500"><IcoOK /></span>
                     ) : (
@@ -563,19 +586,26 @@ export default function DriversPage() {
                         {warns.slice(0,2).map((w,i) => (
                           <div key={i} className={'text-xs flex items-center gap-1 ' + (w.type==='expired'?'text-red-600':w.type==='soon'?'text-amber-600':'text-gray-500')}>
                             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 inline-block bg-current"></span>
-                            {w.label}
+                            <span className="truncate">{w.label}</span>
                           </div>
                         ))}
-                        {warns.length > 2 && <div className="text-xs text-gray-400">+{warns.length-2} more</div>}
+                        {warns.length > 2 && <div className="text-xs text-gray-400">+{warns.length-2}</div>}
                       </div>
                     )}
                   </td>
-                  <td className="table-td" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => setEditDriver(d)}
-                      className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
-                      title="Edit driver">
-                      <IcoEdit />
-                    </button>
+                  <td className="px-4 py-2 text-xs text-gray-400">—</td>
+                  <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
+                    <DriverActionMenu
+                      onEdit={() => setEditDriver(d)}
+                      onDelete={async () => {
+                        if (!confirm(`Deactivate driver "${d.name}"?`)) return
+                        try {
+                          await driversExtApi.update(d.id, { is_active: false } as any)
+                          toast.success('Driver deactivated')
+                          load()
+                        } catch(e: any) { toast.error(e.message) }
+                      }}
+                    />
                   </td>
                 </tr>
               )
@@ -662,7 +692,7 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
   const [photo, setPhoto]   = useState<string|null>(null)
   const [payTab, setPayTab] = useState<PayTab>('pay_rates')
   const [expanded, setExpanded] = useState<Record<string,boolean>>(
-    () => Object.fromEntries(DOC_TYPES.map(d => [d.key, true]))
+    () => Object.fromEntries(DOC_TYPES.map(d => [d.key, false]))
   )
   const [docs, setDocs]       = useState<Doc[]>(driver?.documents || [])
   const [addingType, setAddingType] = useState<string|null>(null)
@@ -675,6 +705,10 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
   const [showTxModal, setShowTxModal]   = useState(false)
   const [editTx, setEditTx]             = useState<ScheduledTransaction|null>(null)
   const [showVendorModal, setShowVendorModal] = useState(false)
+  const [showEditVendorModal, setShowEditVendorModal] = useState(false)
+  const [editingVendor, setEditingVendor] = useState<Vendor|null>(null)
+  const [showPayableDropdown, setShowPayableDropdown] = useState(false)
+  const [showTerminateDropdown, setShowTerminateDropdown] = useState(false)
   const photoRef = useRef<HTMLInputElement>(null)
 
   const sf = (k: keyof DForm, v: string|boolean) => setForm(f => ({...f,[k]:v}))
@@ -796,6 +830,36 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0 bg-white">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-bold text-gray-900">{isEdit ? 'Edit Driver' : 'New Driver'}</h2>
+            {isEdit && (
+              <div className="relative">
+                <div className="flex items-center gap-1">
+                  <span className={'inline-flex items-center px-2.5 py-1 rounded-l text-xs font-semibold ' +
+                    (form.driver_status === 'Hired' ? 'bg-brand-100 text-brand-700' :
+                     form.driver_status === 'Terminated' ? 'bg-red-100 text-red-700' :
+                     'bg-gray-100 text-gray-700')}>
+                    {form.driver_status || 'Hired'}
+                  </span>
+                  <button
+                    onClick={() => setShowTerminateDropdown(v => !v)}
+                    className={'inline-flex items-center px-1.5 py-1 rounded-r text-xs font-semibold border-l border-white/30 ' +
+                      (form.driver_status === 'Hired' ? 'bg-brand-100 text-brand-700 hover:bg-brand-200' :
+                       form.driver_status === 'Terminated' ? 'bg-red-100 text-red-700 hover:bg-red-200' :
+                       'bg-gray-100 text-gray-700 hover:bg-gray-200')}>
+                    <IcoDown />
+                  </button>
+                </div>
+                {showTerminateDropdown && (
+                  <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+                    {DRIVER_STATUSES.map(s => (
+                      <button key={s} onClick={() => { sf('driver_status', s); setShowTerminateDropdown(false) }}
+                        className={'w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ' + (form.driver_status === s ? 'font-semibold text-brand-600' : 'text-gray-700')}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {isEdit && warnSummary.length > 0 && (
               <span className={'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' +
                 (warnSummary.some(w=>w.type==='expired') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200')}>
@@ -860,15 +924,30 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                   </select>
                 </Field>
                 <Field label="Payable To">
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1.5 items-center">
                     <select value={form.payable_to} onChange={e=>sf('payable_to',e.target.value)} className="select-base text-sm rounded-lg flex-1">
                       <option value={form.first_name + ' ' + form.last_name}>{form.first_name} {form.last_name}</option>
                       {vendors.map(v => <option key={v.id} value={v.company_name}>{v.company_name}</option>)}
                     </select>
-                    <button type="button" onClick={() => setShowVendorModal(true)}
-                      className="px-2 py-1.5 text-xs text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 whitespace-nowrap">
-                      + New
-                    </button>
+                    <div className="relative flex-shrink-0">
+                      <button type="button" onClick={() => setShowPayableDropdown(v => !v)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 font-medium">
+                        Edit <IcoDown />
+                      </button>
+                      {showPayableDropdown && (
+                        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[120px]">
+                          <button onClick={() => { setShowPayableDropdown(false); setShowVendorModal(true) }}
+                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 text-gray-700">Add new</button>
+                          <button onClick={() => {
+                            setShowPayableDropdown(false)
+                            const sel = vendors.find(v => v.company_name === form.payable_to)
+                            if (sel) { setEditingVendor(sel); setShowEditVendorModal(true) }
+                            else toast.error('Select a vendor first')
+                          }}
+                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 text-gray-700 border-t border-gray-100">Edit</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </Field>
               </div>
@@ -995,17 +1074,17 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                               {docWarn && typeDocs.length > 0 ? <IcoWarn /> : <IcoOK />}
                             </span>
                             <span className="text-sm font-semibold text-gray-800">{dt.label}</span>
-                            {meta && <span className={'text-xs ' + (docHasExp?'text-red-500':docHasSoon?'text-amber-600':'text-gray-500')}>{meta}</span>}
-                            {warnText && <span className="text-xs text-amber-600 italic">{warnText}</span>}
+                            {meta && <span className={'text-xs text-amber-500'}>{meta}</span>}
+                            {warnText && <span className="text-xs text-amber-500">({warnText})</span>}
                             {typeDocs.length === 0 && !meta && (
-                              <span className="text-xs text-gray-400">No records</span>
+                              <span className="text-xs text-gray-400">- <span className="text-green-600">(No {dt.key === 'drug_test' ? 'drug tests' : 'documents'})</span></span>
                             )}
                             {typeDocs.length > 0 && (
                               <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{typeDocs.length}</span>
                             )}
                           </div>
-                          <div className={'transition-transform ' + (isOpen ? '' : '-rotate-90')}>
-                            <IcoDown />
+                          <div className={'transition-transform ' + (isOpen ? 'rotate-90' : '')}>
+                            <IcoChevR />
                           </div>
                         </button>
 
@@ -1222,9 +1301,22 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
             }}
           />
         )}
+        {showEditVendorModal && editingVendor && (
+          <EditVendorModal
+            vendor={editingVendor}
+            onClose={() => { setShowEditVendorModal(false); setEditingVendor(null) }}
+            onSaved={v => {
+              setVendors(p => p.map(x => x.id === v.id ? v : x))
+              sf('payable_to', v.company_name)
+              setShowEditVendorModal(false)
+              setEditingVendor(null)
+              toast.success('Vendor updated')
+            }}
+          />
+        )}
         {showTxModal && driver && (
           <TxModal
-            driverId={driver.id} tx={editTx}
+            driverId={driver.id} driverName={driver.name} tx={editTx}
             onClose={() => { setShowTxModal(false); setEditTx(null) }}
             onSaved={() => { setShowTxModal(false); setEditTx(null); reloadTxs() }}
           />
@@ -1236,90 +1328,224 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
 
 // ── PayRatesTab ───────────────────────────────────────────────────────────────
 function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string|boolean)=>void }) {
+  const isOO = form.driver_type === 'OO'
+
+  // Flatpay schedule preview — generates upcoming dates
+  const scheduleRows = (() => {
+    if (form.pay_type !== 'flatpay') return []
+    const rows = []
+    const start = form.hire_date ? new Date(form.hire_date) : new Date()
+    // next Friday
+    const d = new Date(start)
+    d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7))
+    for (let i = 0; i < 10; i++) {
+      const dt = new Date(d)
+      dt.setDate(d.getDate() + i * 7)
+      rows.push({
+        date: dt.toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'2-digit'}),
+        amount: form.flatpay ? `$${parseFloat(form.flatpay).toFixed(2)}` : '$0.00',
+        description: 'Weekly, every Friday',
+      })
+    }
+    return rows
+  })()
+
   return (
     <div className="space-y-4">
-      <div>
-        <Label text="Pay Type" />
-        <div className="flex gap-6 flex-wrap mt-1">
-          {PAY_TYPES.map(o => (
+      {/* Row 1: Driver type */}
+      <div className="flex items-center gap-6">
+        {[{v:'Drv',l:'Company driver'},{v:'OO',l:'Owner operator'}].map(o => (
+          <label key={o.v} className="flex items-center gap-2 cursor-pointer">
+            <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' +
+              (form.driver_type === o.v ? 'border-[#58c777]' : 'border-gray-300')}>
+              {form.driver_type === o.v && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+            </div>
+            <input type="radio" className="hidden" checked={form.driver_type===o.v} onChange={()=>sf('driver_type',o.v)} />
+            <span className="text-sm text-gray-700">{o.l}</span>
+          </label>
+        ))}
+      </div>
+
+      {/* Row 2: Pay type — only for company driver */}
+      {!isOO && (
+        <div className="flex items-center gap-6">
+          {[
+            {v:'per_mile',l:'Per mile'},
+            {v:'freight_percentage',l:'Freight percentage'},
+            {v:'flatpay',l:'Flatpay'},
+            {v:'hourly',l:'Hourly'},
+          ].map(o => (
             <label key={o.v} className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="pay_type" value={o.v} checked={form.pay_type===o.v}
-                onChange={() => sf('pay_type', o.v)} className="accent-brand-600 w-4 h-4"/>
+              <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' +
+                (form.pay_type === o.v ? 'border-[#58c777]' : 'border-gray-300')}>
+                {form.pay_type === o.v && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+              </div>
+              <input type="radio" className="hidden" checked={form.pay_type===o.v} onChange={()=>sf('pay_type',o.v)} />
               <span className="text-sm text-gray-700">{o.l}</span>
             </label>
           ))}
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-3 gap-4">
-        {form.pay_type === 'per_mile' && (
-          <>
-            <Field label="Loaded rate ($/mile)">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
-                <input type="number" step="0.01" value={form.per_mile} onChange={e=>sf('per_mile',e.target.value)}
-                  className="input-base text-sm pl-7 rounded-lg"/>
-              </div>
-            </Field>
-            <Field label="Empty rate ($/mile)">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
-                <input type="number" step="0.01" value={form.empty_mile} onChange={e=>sf('empty_mile',e.target.value)}
-                  className="input-base text-sm pl-7 rounded-lg"/>
-              </div>
-            </Field>
-            <Field label="Extra stop ($/stop)">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
-                <input type="number" step="0.01" value={form.extra_stop} onChange={e=>sf('extra_stop',e.target.value)}
-                  className="input-base text-sm pl-7 rounded-lg"/>
-              </div>
-            </Field>
-          </>
-        )}
-        {form.pay_type === 'freight_percentage' && (
-          <>
-            <Field label="Freight percentage">
-              <div className="relative">
-                <input type="number" step="0.1" value={form.freight_pct} onChange={e=>sf('freight_pct',e.target.value)}
-                  className="input-base text-sm pr-7 rounded-lg"/>
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">%</span>
-              </div>
-            </Field>
-            <Field label="Extra stop ($/stop)">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
-                <input type="number" step="0.01" value={form.extra_stop} onChange={e=>sf('extra_stop',e.target.value)}
-                  className="input-base text-sm pl-7 rounded-lg"/>
-              </div>
-            </Field>
-          </>
-        )}
-        {form.pay_type === 'flatpay' && (
-          <Field label="Flat pay amount">
+      {/* Per mile */}
+      {!isOO && form.pay_type === 'per_mile' && (
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Per mile</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
-              <input type="number" step="0.01" value={form.flatpay} onChange={e=>sf('flatpay',e.target.value)}
-                className="input-base text-sm pl-7 rounded-lg"/>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input type="number" step="0.01" value={form.per_mile} onChange={e=>sf('per_mile',e.target.value)}
+                className="input-base text-sm pl-7 w-full" />
             </div>
-          </Field>
-        )}
-        {form.pay_type === 'hourly' && (
-          <Field label="Hourly rate">
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Per extra stop</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input type="number" step="0.01" value={form.extra_stop} onChange={e=>sf('extra_stop',e.target.value)}
+                className="input-base text-sm pl-7 w-full" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Per empty mile</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input type="number" step="0.01" value={form.empty_mile} onChange={e=>sf('empty_mile',e.target.value)}
+                className="input-base text-sm pl-7 w-full" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Freight percentage */}
+      {!isOO && form.pay_type === 'freight_percentage' && (
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Percentage (e.g. 80%)</label>
+            <div className="relative">
+              <input type="number" step="0.1" value={form.freight_pct} onChange={e=>sf('freight_pct',e.target.value)}
+                placeholder="%" className="input-base text-sm w-full pr-7" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Per extra stop</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input type="number" step="0.01" value={form.extra_stop} onChange={e=>sf('extra_stop',e.target.value)}
+                className="input-base text-sm pl-7 w-full" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flatpay — with schedule panel */}
+      {!isOO && form.pay_type === 'flatpay' && (
+        <div className="grid grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <button className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#58c777] text-white text-sm font-medium rounded hover:bg-[#4ab668]">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              Run now
+            </button>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Period <span className="text-red-500">*</span></label>
+              <select value={form.extra_stop || 'weekly'} onChange={e=>sf('extra_stop',e.target.value)}
+                className="input-base text-sm w-full">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Every other week</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Amount <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input type="number" step="0.01" value={form.flatpay} onChange={e=>sf('flatpay',e.target.value)}
+                  className="input-base text-sm pl-7 w-full" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Starting from <span className="text-red-500">*</span></label>
+              <div className="relative flex items-center">
+                <input type="date" value={form.hire_date} onChange={e=>sf('hire_date',e.target.value)}
+                  className="input-base text-sm w-full pr-8" />
+                <button className="absolute right-2 text-gray-400 hover:text-gray-600">✕</button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Per extra stop</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input type="number" step="0.01" value={form.extra_stop} onChange={e=>sf('extra_stop',e.target.value)}
+                  className="input-base text-sm pl-7 w-full" />
+              </div>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <h4 className="text-base font-bold text-gray-900">Payments Schedule</h4>
+              <button className="text-sm text-blue-600 hover:underline flex items-center gap-1">show all <IcoDown /></button>
+            </div>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200">
+                  <th className="py-1.5">Date</th>
+                  <th className="py-1.5">Amount</th>
+                  <th className="py-1.5">Period</th>
+                  <th className="py-1.5">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scheduleRows.length === 0 ? (
+                  <tr><td colSpan={4} className="py-4 text-center text-gray-400">No records</td></tr>
+                ) : scheduleRows.map((r,i) => (
+                  <tr key={i} className={i%2===1?'bg-gray-50':''}>
+                    <td className="py-1.5 text-gray-700">{r.date}</td>
+                    <td className="py-1.5 text-gray-700">{r.amount}</td>
+                    <td className="py-1.5 text-gray-500"></td>
+                    <td className="py-1.5 text-gray-500">{r.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Hourly */}
+      {!isOO && form.pay_type === 'hourly' && (
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Per hour</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <input type="number" step="0.01" value={form.hourly} onChange={e=>sf('hourly',e.target.value)}
-                className="input-base text-sm pl-7 rounded-lg"/>
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">/hr</span>
+                className="input-base text-sm pl-7 w-full" />
             </div>
-          </Field>
-        )}
-      </div>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Per extra stop</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input type="number" step="0.01" value={form.extra_stop} onChange={e=>sf('extra_stop',e.target.value)}
+                className="input-base text-sm pl-7 w-full" />
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-        <IcoWarn />
-        <span>Rate changes only affect future loads. Historical loads keep their snapshot values.</span>
-      </div>
+      {/* Owner Operator — percentage only */}
+      {isOO && (
+        <div>
+          <label className="block text-sm text-gray-700 mb-1">Percentage (e.g. 80%)</label>
+          <div className="relative w-64">
+            <input type="number" step="0.1" value={form.freight_pct} onChange={e=>sf('freight_pct',e.target.value)}
+              placeholder="%" className="input-base text-sm w-full pr-7" />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1332,6 +1558,9 @@ function ScheduledTabView({ isEdit, txs, onAdd, onEdit, onDelete }: {
   onEdit: (tx: ScheduledTransaction) => void
   onDelete: (tx: ScheduledTransaction) => void
 }) {
+  const [showInactive, setShowInactive] = useState(false)
+  const visible = showInactive ? txs : txs.filter(t => t.is_active)
+
   if (!isEdit) {
     return (
       <div className="py-8 text-center text-sm text-gray-400">
@@ -1341,63 +1570,76 @@ function ScheduledTabView({ isEdit, txs, onAdd, onEdit, onDelete }: {
   }
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h4 className="text-sm font-semibold text-gray-700">Scheduled Payments & Deductions</h4>
-        <button onClick={onAdd} className="btn-primary text-xs py-1.5 px-3 rounded-lg"><IcoPlus /> Add</button>
+      {/* Purple info banner — screenshot 7 */}
+      <div className="flex items-start gap-3 px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg mb-4 text-sm text-gray-700">
+        <svg className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/></svg>
+        <span>Watch our video tutorials on <span className="text-brand-600 font-medium cursor-pointer hover:underline">Scheduled Deductions</span> and <span className="text-brand-600 font-medium cursor-pointer hover:underline">Escrow and Driver Loan Schedules</span> to learn how to manage recurring driver deductions effectively.</span>
       </div>
-      {txs.length === 0 ? (
-        <div className="py-10 text-center border-2 border-dashed border-gray-200 rounded-xl">
-          <svg className="w-8 h-8 text-gray-200 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-          <p className="text-sm text-gray-400">No scheduled transactions yet</p>
-        </div>
-      ) : (
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-gray-50 rounded-lg">
-              {['Category','Amount','Schedule','Last Applied','Next Due','Status','Notes',''].map((h,i) => (
-                <th key={i} className="px-3 py-2 text-left text-gray-500 font-semibold uppercase text-[10px] tracking-wider">{h}</th>
-              ))}
+
+      <div className="flex justify-end mb-3">
+        <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#58c777] text-white text-sm font-semibold rounded hover:bg-[#4ab668]">
+          <IcoPlus /> Add
+        </button>
+      </div>
+
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr className="border-b border-gray-200 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+            <th className="py-2">Category</th>
+            <th className="py-2">Amount</th>
+            <th className="py-2">Schedule</th>
+            <th className="py-2">Last</th>
+            <th className="py-2">Next</th>
+            <th className="py-2">Active</th>
+            <th className="py-2">Notes</th>
+            <th className="py-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.length === 0 ? (
+            <tr><td colSpan={8} className="py-6 text-center text-sm text-gray-400">No records</td></tr>
+          ) : visible.map(tx => (
+            <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <td className="py-2.5">
+                <span className={'inline-flex px-2 py-0.5 rounded-full text-xs font-medium ' +
+                  (tx.trans_type==='deduction' ? 'bg-red-50 text-red-700' :
+                   tx.trans_type==='loan' ? 'bg-purple-50 text-purple-700' :
+                   'bg-brand-50 text-brand-700')}>
+                  {tx.category || tx.trans_type}
+                </span>
+              </td>
+              <td className="py-2.5 font-semibold">
+                <span className={tx.trans_type==='deduction'?'text-red-600':'text-brand-600'}>
+                  {tx.trans_type==='deduction'?'−':'+'}${tx.amount.toFixed(2)}
+                </span>
+              </td>
+              <td className="py-2.5 text-gray-500 capitalize">{tx.schedule || '—'}</td>
+              <td className="py-2.5 text-gray-500">{tx.last_applied ? formatDate(tx.last_applied) : '—'}</td>
+              <td className="py-2.5 text-gray-500">{tx.next_due ? formatDate(tx.next_due) : '—'}</td>
+              <td className="py-2.5">
+                <span className={'flex items-center gap-1 text-xs ' + (tx.is_active?'text-brand-600':'text-gray-400')}>
+                  <span className={'w-1.5 h-1.5 rounded-full ' + (tx.is_active?'bg-brand-500':'bg-gray-300')}></span>
+                  {tx.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </td>
+              <td className="py-2.5 text-gray-400 truncate max-w-[100px]">{tx.notes || '—'}</td>
+              <td className="py-2.5">
+                <div className="flex gap-1">
+                  <button onClick={() => onEdit(tx)} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"><IcoEdit /></button>
+                  <button onClick={() => onDelete(tx)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><IcoTrash /></button>
+                </div>
+              </td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {txs.map(tx => (
-              <tr key={tx.id} className="hover:bg-gray-50">
-                <td className="px-3 py-2.5">
-                  <span className={'inline-flex px-2 py-0.5 rounded-full text-xs font-medium ' +
-                    (tx.trans_type==='deduction' ? 'bg-red-50 text-red-700' :
-                     tx.trans_type==='loan'      ? 'bg-purple-50 text-purple-700' :
-                     'bg-brand-50 text-brand-700')}>
-                    {tx.category || tx.trans_type}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 font-semibold text-gray-800">
-                  <span className={tx.trans_type==='deduction'?'text-red-600':'text-brand-600'}>
-                    {tx.trans_type==='deduction'?'−':'+'}${tx.amount.toFixed(2)}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 text-gray-500 capitalize">{tx.schedule || '—'}</td>
-                <td className="px-3 py-2.5 text-gray-500">{tx.last_applied ? formatDate(tx.last_applied) : '—'}</td>
-                <td className="px-3 py-2.5 text-gray-500">{tx.next_due ? formatDate(tx.next_due) : '—'}</td>
-                <td className="px-3 py-2.5">
-                  <span className={'inline-flex items-center gap-1 text-xs ' + (tx.is_active?'text-brand-600':'text-gray-400')}>
-                    <span className={'w-1.5 h-1.5 rounded-full ' + (tx.is_active?'bg-brand-500':'bg-gray-300')}></span>
-                    {tx.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 text-gray-400 truncate max-w-[100px]">{tx.notes || '—'}</td>
-                <td className="px-3 py-2.5">
-                  <div className="flex gap-1">
-                    <button onClick={() => onEdit(tx)}
-                      className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"><IcoEdit /></button>
-                    <button onClick={() => onDelete(tx)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><IcoTrash /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+          ))}
+        </tbody>
+      </table>
+
+      <div className="flex justify-center mt-3">
+        <button onClick={() => setShowInactive(v => !v)}
+          className="text-sm text-gray-600 underline hover:text-gray-900">
+          {showInactive ? 'Hide inactive' : 'Show inactive'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -1496,170 +1738,650 @@ function EmailModal({ drivers, onClose }: { drivers: ExtDriver[]; onClose: () =>
   )
 }
 
-// ── VendorModal ───────────────────────────────────────────────────────────────
+// ── VendorModal (New Vendor — screenshot 2) ───────────────────────────────────
 function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Vendor)=>void }) {
-  const [name, setName]   = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
+  const [form, setForm] = useState({
+    company_name: '', address: '', address2: '', phone: '', email: '',
+    city: '', state: '', zip_code: '', fid_ein: '', mc_number: '', notes: '',
+    is_equipment_owner: false, is_additional_payee: false,
+    additional_payee_rate_pct: '', settlement_template_type: '',
+    vendor_type: '',
+  })
   const [saving, setSaving] = useState(false)
+  const [showTypeModal, setShowTypeModal] = useState(false)
+  const sf = (k: string, v: string|boolean) => setForm(p => ({...p, [k]: v}))
 
   const save = () => {
-    if (!name.trim()) { toast.error('Company name is required'); return }
+    if (!form.company_name.trim()) { toast.error('Company name is required'); return }
     setSaving(true)
-    vendorsApi.create({ company_name: name, phone, email, vendor_type: 'individual', is_active: true })
+    vendorsApi.create({
+      ...form,
+      additional_payee_rate_pct: form.additional_payee_rate_pct ? parseFloat(form.additional_payee_rate_pct) : undefined,
+      is_active: true,
+    })
       .then(v => onSaved(v))
       .catch(e => toast.error(e.message))
       .finally(() => setSaving(false))
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose}/>
-      <div className="relative bg-white rounded-2xl shadow-2xl w-[420px]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="font-bold text-gray-900">New Vendor</h3>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"><IcoX /></button>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-[1100px] max-h-[95vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-[#f8f9fb]">
+          <h3 className="text-[16px] font-bold text-gray-800">New Vendor</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><IcoX /></button>
         </div>
-        <div className="px-6 py-4 space-y-3">
-          <Field label="Company Name" required>
-            <input value={name} onChange={e=>setName(e.target.value)} className="input-base text-sm rounded-lg" placeholder="Company name" autoFocus/>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Phone"><input value={phone} onChange={e=>setPhone(e.target.value)} className="input-base text-sm rounded-lg"/></Field>
-            <Field label="Email"><input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="input-base text-sm rounded-lg"/></Field>
+        <div className="flex-1 overflow-auto px-8 py-6">
+          <div className="flex flex-col gap-10 md:flex-row">
+            {/* Left */}
+            <div className="flex flex-1 flex-col gap-4">
+              <Field label="Company Name" required>
+                <input value={form.company_name} onChange={e=>sf('company_name',e.target.value)}
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777] focus:ring-1 focus:ring-[#58c777]" />
+              </Field>
+              <Field label="Address">
+                <input value={form.address} onChange={e=>sf('address',e.target.value)}
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+              </Field>
+              <Field label="Address line 2">
+                <input value={form.address2} onChange={e=>sf('address2',e.target.value)}
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Phone">
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">📞</span>
+                    <input value={form.phone} onChange={e=>sf('phone',e.target.value)}
+                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#58c777]" />
+                  </div>
+                </Field>
+                <Field label="Email">
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">@</span>
+                    <input value={form.email} onChange={e=>sf('email',e.target.value)}
+                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#58c777]" />
+                  </div>
+                </Field>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <Field label="City">
+                  <input value={form.city} onChange={e=>sf('city',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                </Field>
+                <Field label="State">
+                  <select value={form.state} onChange={e=>sf('state',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#58c777]">
+                    <option value=""></option>
+                    {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </Field>
+                <Field label="Zip">
+                  <input value={form.zip_code} onChange={e=>sf('zip_code',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="FID/EIN">
+                  <input value={form.fid_ein} onChange={e=>sf('fid_ein',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                </Field>
+                <Field label="MC">
+                  <input value={form.mc_number} onChange={e=>sf('mc_number',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                </Field>
+              </div>
+              <Field label="Notes">
+                <textarea value={form.notes} onChange={e=>sf('notes',e.target.value)} rows={2}
+                  className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#58c777]" />
+              </Field>
+            </div>
+            {/* Right */}
+            <div className="w-full md:w-[420px] flex flex-col pt-1">
+              <div className="mb-10">
+                <h3 className="mb-3 text-[16px] font-bold text-gray-800">Vendor type</h3>
+                {form.vendor_type && (
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+                      {form.vendor_type}
+                      <button onClick={() => sf('vendor_type', '')} className="text-gray-400 hover:text-red-500"><IcoX /></button>
+                    </span>
+                  </div>
+                )}
+                <button onClick={() => setShowTypeModal(true)}
+                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#58c777] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]">
+                  <IcoPlus /> Vendor type
+                </button>
+              </div>
+              <div>
+                <h3 className="mb-4 text-[16px] font-bold text-gray-800">Billing</h3>
+                <div className="flex items-center gap-6 mb-6">
+                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_additional_payee ? 'border-[#58c777] bg-[#58c777]' : 'border-gray-300 bg-gray-50')}>
+                      {form.is_additional_payee && <IcoCheck />}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={form.is_additional_payee} onChange={e=>sf('is_additional_payee',e.target.checked)} />
+                    Additional payee
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_equipment_owner ? 'border-[#58c777] bg-[#58c777]' : 'border-gray-300 bg-gray-50')}>
+                      {form.is_equipment_owner && <IcoCheck />}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={form.is_equipment_owner} onChange={e=>sf('is_equipment_owner',e.target.checked)} />
+                    Equipment owner
+                  </label>
+                </div>
+                <div className="mb-6">
+                  <Label text="Additional payee rate, % (e.g. 90)" required />
+                  <input value={form.additional_payee_rate_pct}
+                    onChange={e=>sf('additional_payee_rate_pct',e.target.value)}
+                    disabled={!form.is_additional_payee}
+                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#58c777] disabled:opacity-80" />
+                </div>
+                <div>
+                  <Label text="Settlement template type" />
+                  <select value={form.settlement_template_type} onChange={e=>sf('settlement_template_type',e.target.value)}
+                    className="h-[36px] w-full rounded border border-[#6ea8fe] bg-white px-2 text-sm text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]">
+                    <option value="">Select template type</option>
+                    <option value="Additional Payee">Additional Payee</option>
+                    <option value="Equipment Owner">Equipment Owner</option>
+                    <option value="Flat Pay Driver">Flat Pay Driver</option>
+                    <option value="Hourly Pay Driver">Hourly Pay Driver</option>
+                    <option value="Owner Operator">Owner Operator</option>
+                    <option value="Rate Per Mile Driver">Rate Per Mile Driver</option>
+                    <option value="Rate Percent Driver">Rate Percent Driver</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 bg-gray-50">
-          <button onClick={onClose} className="btn-secondary rounded-lg">Cancel</button>
-          <button onClick={save} disabled={saving} className="btn-primary rounded-lg px-5">
-            <IcoCheck /> {saving ? 'Creating...' : 'Create Vendor'}
+        <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-[#f8f9fb] px-6 py-4">
+          <button onClick={onClose}
+            className="inline-flex h-9 items-center gap-2 rounded bg-[#1e293b] px-4 text-sm font-medium text-white transition hover:bg-black">
+            <IcoX /> Close
+          </button>
+          <button onClick={save} disabled={saving}
+            className="inline-flex h-9 items-center gap-2 rounded bg-[#58c777] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70">
+            <IcoCheck /> {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
+        {showTypeModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+            <div className="w-full max-w-[480px] overflow-hidden rounded bg-white shadow-2xl">
+              <div className="flex items-center justify-between p-6 pb-2">
+                <h2 className="text-2xl font-bold text-[#1f2937]">Add Vendor Type</h2>
+                <button onClick={() => setShowTypeModal(false)} className="text-gray-400 hover:text-gray-700"><IcoX /></button>
+              </div>
+              <div className="p-6 pt-4">
+                <Label text="Add New Vendor Type" />
+                <select value={form.vendor_type} onChange={e=>{ sf('vendor_type',e.target.value); setShowTypeModal(false) }}
+                  className="h-[42px] w-full rounded border border-[#6ea8fe] bg-white px-3 text-[15px] text-gray-800 outline-none ring-1 ring-[#6ea8fe]">
+                  <option value=""></option>
+                  <option value="Dispatcher">Dispatcher</option>
+                  <option value="Driver">Driver</option>
+                  <option value="Repair shop">Repair shop</option>
+                  <option value="Add new">Add new</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── EditVendorModal (Edit Vendor — screenshot 3) ──────────────────────────────
+function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose: ()=>void; onSaved: (v: Vendor)=>void }) {
+  const [form, setForm] = useState({
+    company_name: vendor.company_name || '',
+    address: vendor.address || '', address2: vendor.address2 || '',
+    phone: vendor.phone || '', email: vendor.email || '',
+    city: vendor.city || '', state: vendor.state || '', zip_code: vendor.zip_code || '',
+    fid_ein: vendor.fid_ein || '', mc_number: vendor.mc_number || '', notes: vendor.notes || '',
+    is_equipment_owner: vendor.is_equipment_owner,
+    is_additional_payee: vendor.is_additional_payee,
+    additional_payee_rate_pct: vendor.additional_payee_rate_pct ? String(vendor.additional_payee_rate_pct) : '',
+    settlement_template_type: vendor.settlement_template_type || '',
+    vendor_type: vendor.vendor_type || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<'contacts'|'documents'>('contacts')
+  const [showTypeModal, setShowTypeModal] = useState(false)
+  const sf = (k: string, v: string|boolean) => setForm(p => ({...p, [k]: v}))
+
+  const save = () => {
+    if (!form.company_name.trim()) { toast.error('Company name is required'); return }
+    setSaving(true)
+    vendorsApi.update(vendor.id, {
+      ...form,
+      additional_payee_rate_pct: form.additional_payee_rate_pct ? parseFloat(form.additional_payee_rate_pct) : undefined,
+      is_active: true,
+    })
+      .then(v => onSaved(v))
+      .catch(e => toast.error(e.message))
+      .finally(() => setSaving(false))
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-[1100px] max-h-[95vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-[#f8f9fb]">
+          <h3 className="text-[16px] font-bold text-gray-800">Edit Vendor</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><IcoX /></button>
+        </div>
+        <div className="flex-1 overflow-auto px-8 py-6">
+          <div className="flex flex-col gap-10 md:flex-row">
+            {/* Left */}
+            <div className="flex flex-1 flex-col gap-4">
+              <Field label="Company Name" required>
+                <input value={form.company_name} onChange={e=>sf('company_name',e.target.value)}
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777] focus:ring-1 focus:ring-[#58c777]" />
+              </Field>
+              <Field label="Address">
+                <input value={form.address} onChange={e=>sf('address',e.target.value)}
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+              </Field>
+              <Field label="Address line 2">
+                <input value={form.address2} onChange={e=>sf('address2',e.target.value)}
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+              </Field>
+              <div className="grid grid-cols-3 gap-4">
+                <Field label="City">
+                  <input value={form.city} onChange={e=>sf('city',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                </Field>
+                <Field label="State">
+                  <select value={form.state} onChange={e=>sf('state',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#58c777]">
+                    <option value=""></option>
+                    {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </Field>
+                <Field label="Zip">
+                  <input value={form.zip_code} onChange={e=>sf('zip_code',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="FID/EIN">
+                  <input value={form.fid_ein} onChange={e=>sf('fid_ein',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                </Field>
+                <Field label="MC">
+                  <input value={form.mc_number} onChange={e=>sf('mc_number',e.target.value)}
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                </Field>
+              </div>
+              <Field label="Notes">
+                <textarea value={form.notes} onChange={e=>sf('notes',e.target.value)} rows={2}
+                  className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#58c777]" />
+              </Field>
+              {/* Contacts / Documents tabs */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="flex border-b border-gray-200">
+                  {(['contacts','documents'] as const).map(tab => (
+                    <button key={tab} onClick={() => setActiveTab(tab)}
+                      className={'px-5 py-2.5 text-sm font-semibold capitalize transition-colors ' +
+                        (activeTab === tab ? 'border-b-2 border-[#58c777] text-[#58c777] bg-white' : 'text-gray-500 hover:text-gray-700 bg-gray-50')}>
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <div className="p-4">
+                  {activeTab === 'contacts' && (
+                    <div>
+                      <div className="flex justify-end mb-3">
+                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#58c777] text-white text-xs font-semibold rounded hover:bg-[#4ab668]">
+                          <IcoPlus /> New Contact
+                        </button>
+                      </div>
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                            {['Contact','Default','Default Billing','Phones','Email','Notes',''].map((h,i) => (
+                              <th key={i} className="px-3 py-2">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-gray-100">
+                            <td className="px-3 py-2.5 text-gray-700">default contact</td>
+                            <td className="px-3 py-2.5 text-center">
+                              <span className="text-[#58c777]"><IcoOK /></span>
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              <span className="text-[#58c777]"><IcoOK /></span>
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-500">{vendor.phone || '—'}</td>
+                            <td className="px-3 py-2.5 text-gray-500">{vendor.email || '—'}</td>
+                            <td className="px-3 py-2.5 text-gray-400">—</td>
+                            <td className="px-3 py-2.5">
+                              <div className="flex gap-1">
+                                <button className="p-1 text-green-500 hover:text-green-700"><IcoEdit /></button>
+                                <button className="p-1 text-red-400 hover:text-red-600"><IcoTrash /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {activeTab === 'documents' && (
+                    <div className="py-6 text-center text-sm text-gray-400">No documents attached.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* Right */}
+            <div className="w-full md:w-[420px] flex flex-col pt-1">
+              <div className="mb-10">
+                <h3 className="mb-3 text-[16px] font-bold text-gray-800">Vendor type</h3>
+                {form.vendor_type && (
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+                      {form.vendor_type}
+                      <button onClick={() => sf('vendor_type', '')} className="text-gray-400 hover:text-red-500"><IcoX /></button>
+                    </span>
+                  </div>
+                )}
+                <button onClick={() => setShowTypeModal(true)}
+                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#58c777] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]">
+                  <IcoPlus /> Vendor type
+                </button>
+              </div>
+              <div>
+                <h3 className="mb-4 text-[16px] font-bold text-gray-800">Billing</h3>
+                <div className="flex items-center gap-6 mb-6">
+                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_additional_payee ? 'border-[#58c777] bg-[#58c777]' : 'border-gray-300 bg-gray-50')}>
+                      {form.is_additional_payee && <IcoCheck />}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={form.is_additional_payee} onChange={e=>sf('is_additional_payee',e.target.checked)} />
+                    Additional payee
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_equipment_owner ? 'border-[#58c777] bg-[#58c777]' : 'border-gray-300 bg-gray-50')}>
+                      {form.is_equipment_owner && <IcoCheck />}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={form.is_equipment_owner} onChange={e=>sf('is_equipment_owner',e.target.checked)} />
+                    Equipment owner
+                  </label>
+                </div>
+                <div className="mb-6">
+                  <Label text="Additional payee rate, % (e.g. 90)" required />
+                  <input value={form.additional_payee_rate_pct}
+                    onChange={e=>sf('additional_payee_rate_pct',e.target.value)}
+                    disabled={!form.is_additional_payee}
+                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#58c777] disabled:opacity-80" />
+                </div>
+                <div>
+                  <Label text="Settlement template type" />
+                  <select value={form.settlement_template_type} onChange={e=>sf('settlement_template_type',e.target.value)}
+                    className="h-[36px] w-full rounded border border-[#6ea8fe] bg-white px-2 text-sm text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]">
+                    <option value="">Select template type</option>
+                    <option value="Additional Payee">Additional Payee</option>
+                    <option value="Equipment Owner">Equipment Owner</option>
+                    <option value="Flat Pay Driver">Flat Pay Driver</option>
+                    <option value="Hourly Pay Driver">Hourly Pay Driver</option>
+                    <option value="Owner Operator">Owner Operator</option>
+                    <option value="Rate Per Mile Driver">Rate Per Mile Driver</option>
+                    <option value="Rate Percent Driver">Rate Percent Driver</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-[#f8f9fb] px-6 py-4">
+          <button onClick={onClose}
+            className="inline-flex h-9 items-center gap-2 rounded bg-[#1e293b] px-4 text-sm font-medium text-white transition hover:bg-black">
+            <IcoX /> Close
+          </button>
+          <button onClick={save} disabled={saving}
+            className="inline-flex h-9 items-center gap-2 rounded bg-[#58c777] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70">
+            <IcoCheck /> {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+        {showTypeModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+            <div className="w-full max-w-[480px] overflow-hidden rounded bg-white shadow-2xl">
+              <div className="flex items-center justify-between p-6 pb-2">
+                <h2 className="text-2xl font-bold text-[#1f2937]">Add Vendor Type</h2>
+                <button onClick={() => setShowTypeModal(false)} className="text-gray-400 hover:text-gray-700"><IcoX /></button>
+              </div>
+              <div className="p-6 pt-4">
+                <Label text="Add New Vendor Type" />
+                <select value={form.vendor_type} onChange={e=>{ sf('vendor_type',e.target.value); setShowTypeModal(false) }}
+                  className="h-[42px] w-full rounded border border-[#6ea8fe] bg-white px-3 text-[15px] text-gray-800 outline-none ring-1 ring-[#6ea8fe]">
+                  <option value=""></option>
+                  <option value="Dispatcher">Dispatcher</option>
+                  <option value="Driver">Driver</option>
+                  <option value="Repair shop">Repair shop</option>
+                  <option value="Add new">Add new</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 // ── TxModal ───────────────────────────────────────────────────────────────────
-function TxModal({ driverId, tx, onClose, onSaved }: {
-  driverId: number; tx: ScheduledTransaction|null; onClose: ()=>void; onSaved: ()=>void
+function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
+  driverId: number; driverName: string; tx: ScheduledTransaction|null; onClose: ()=>void; onSaved: ()=>void
 }) {
   const isEdit = !!tx
-  const [transType,   setTransType]   = useState(tx?.trans_type || 'deduction')
-  const [category,    setCategory]    = useState(tx?.category || '')
-  const [amount,      setAmount]      = useState(String(tx?.amount || ''))
-  const [schedule,    setSchedule]    = useState(tx?.schedule || 'monthly')
-  const [startDate,   setStartDate]   = useState(tx?.start_date || new Date().toISOString().slice(0,10))
-  const [repeatType,  setRepeatType]  = useState(tx?.repeat_type || 'always')
-  const [repeatTimes, setRepeatTimes] = useState(String(tx?.repeat_times || ''))
-  const [endDate,     setEndDate]     = useState(tx?.end_date || '')
-  const [notes,       setNotes]       = useState(tx?.notes || '')
-  const [isActive,    setIsActive]    = useState(tx?.is_active ?? true)
-  const [saving,      setSaving]      = useState(false)
+  const [transType,     setTransType]     = useState(tx?.trans_type || 'deduction')
+  const [category,      setCategory]      = useState(tx?.category || '')
+  const [amount,        setAmount]        = useState(String(tx?.amount || '0'))
+  const [deductBy,      setDeductBy]      = useState('')
+  const [schedule,      setSchedule]      = useState(tx?.schedule || 'weekly')
+  const [startDate,     setStartDate]     = useState(tx?.start_date || '')
+  const [repeatType,    setRepeatType]    = useState(tx?.repeat_type || 'always')
+  const [repeatTimes,   setRepeatTimes]   = useState(String(tx?.repeat_times || ''))
+  const [endDate,       setEndDate]       = useState(tx?.end_date || '')
+  const [periodEndDate, setPeriodEndDate] = useState('')
+  const [customDesc,    setCustomDesc]    = useState(tx?.notes || '')
+  const [isActive,      setIsActive]      = useState(tx?.is_active ?? true)
+  const [saving,        setSaving]        = useState(false)
+
+  // Generate 10-row schedule preview
+  const scheduleRows = (() => {
+    const rows: {date:string;amount:string;description:string}[] = []
+    const base = startDate ? new Date(startDate) : new Date()
+    const step = schedule === 'daily' ? 1 : schedule === 'weekly' ? 7 : schedule === 'biweekly' ? 14 : 30
+    const fmt = (dt: Date) => dt.toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'2-digit'})
+    const descMap: Record<string,string> = {
+      daily:'Every day', weekly:'Weekly, every Friday', biweekly:'Every other week', monthly:'Monthly', annually:'Annually'
+    }
+    for (let i = 0; i < 10; i++) {
+      const dt = new Date(base)
+      dt.setDate(base.getDate() + i * step)
+      rows.push({ date: fmt(dt), amount: `$${(parseFloat(amount)||0).toFixed(2)}`, description: descMap[schedule] || schedule })
+    }
+    return rows
+  })()
 
   const save = () => {
-    if (!amount || parseFloat(amount) <= 0) { toast.error('Enter a valid amount'); return }
     setSaving(true)
     const payload = {
       driver_id: driverId, trans_type: transType,
-      category: category || undefined, amount: parseFloat(amount),
+      category: category || undefined, amount: parseFloat(amount) || 0,
       schedule: schedule || undefined, start_date: startDate || undefined,
       end_date: repeatType==='until' ? (endDate||undefined) : undefined,
       repeat_type: repeatType,
       repeat_times: repeatType==='times' ? (parseInt(repeatTimes)||undefined) : undefined,
-      notes: notes || undefined, is_active: isActive,
+      notes: customDesc || undefined, is_active: isActive,
     } as Parameters<typeof scheduledTxApi.create>[1]
     const req = isEdit && tx
       ? scheduledTxApi.update(driverId, tx.id, payload as Parameters<typeof scheduledTxApi.update>[2])
       : scheduledTxApi.create(driverId, payload)
     req
       .then(() => { toast.success(isEdit?'Updated':'Added'); onSaved() })
-      .catch(e => toast.error(e.message))
+      .catch((e:any) => toast.error(e.message))
       .finally(() => setSaving(false))
   }
 
+  const Radio = ({ name, value, checked, onChange, label }: {name:string;value:string;checked:boolean;onChange:()=>void;label:string}) => (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ' + (checked ? 'border-[#58c777]' : 'border-gray-300')}>
+        {checked && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+      </div>
+      <input type="radio" name={name} value={value} checked={checked} onChange={onChange} className="hidden" />
+      <span className="text-sm text-gray-700">{label}</span>
+    </label>
+  )
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose}/>
-      <div className="relative bg-white rounded-2xl shadow-2xl w-[520px] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h3 className="font-bold text-gray-900">{isEdit?'Edit':'New'} Scheduled Transaction</h3>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"><IcoX /></button>
+    <div className="fixed inset-0 z-[60] flex">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative ml-auto w-full max-w-[1100px] bg-white flex flex-col h-full shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
+          <h3 className="text-base font-bold text-gray-900">{isEdit ? 'Edit Payment' : 'New Payment'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><IcoX /></button>
         </div>
-        <div className="px-6 py-4 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Transaction Type">
-              <select value={transType} onChange={e=>setTransType(e.target.value)} className="select-base text-sm rounded-lg">
-                <option value="addition">Addition</option>
-                <option value="deduction">Deduction</option>
-                <option value="loan">Driver Loan</option>
-                <option value="escrow">Escrow</option>
-              </select>
-            </Field>
-            <Field label="Category">
-              <select value={category} onChange={e=>setCategory(e.target.value)} className="select-base text-sm rounded-lg">
-                <option value="">— Select —</option>
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 px-6 py-5 space-y-5 overflow-y-auto border-r border-gray-100">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Driver</label>
+                <div className="relative">
+                  <select className="input-base text-sm w-full pr-8 bg-[#f1f5f9]" disabled><option>{driverName}</option></select>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><IcoDown /></span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Payable to <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <select className="input-base text-sm w-full pr-8 bg-[#f1f5f9]"><option>{driverName}</option></select>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><IcoDown /></span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-2">Type</label>
+              <div className="flex items-center gap-6 flex-wrap">
+                <Radio name="txtype" value="addition"  checked={transType==='addition'}  onChange={()=>setTransType('addition')}  label="Addition" />
+                <Radio name="txtype" value="deduction" checked={transType==='deduction'} onChange={()=>setTransType('deduction')} label="Deduction" />
+                <Radio name="txtype" value="loan"      checked={transType==='loan'}      onChange={()=>setTransType('loan')}      label="Driver loan" />
+                <Radio name="txtype" value="escrow"    checked={transType==='escrow'}    onChange={()=>setTransType('escrow')}    label="Escrow" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Amount</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                <input type="number" step="0.01" min="0" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" className="input-base text-sm pl-7 w-full" />
+              </div>
+            </div>
+            {transType === 'loan' && (
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Deduct by</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                  <input type="number" step="0.01" min="0" value={deductBy} onChange={e=>setDeductBy(e.target.value)} placeholder="0.00" className="input-base text-sm pl-7 w-48" />
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Category</label>
+              <select value={category} onChange={e=>setCategory(e.target.value)}
+                className={'input-base text-sm w-full ' + (!category ? 'border-red-400 ring-1 ring-red-300' : '')}>
+                <option value=""></option>
                 {TX_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-            </Field>
-          </div>
-          <Field label="Amount ($)" required>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
-              <input type="number" step="0.01" min="0" value={amount} onChange={e=>setAmount(e.target.value)}
-                className="input-base text-sm pl-7 rounded-lg"/>
             </div>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Schedule">
-              <select value={schedule} onChange={e=>setSchedule(e.target.value)} className="select-base text-sm rounded-lg">
-                <option value="daily">Every day</option>
-                <option value="weekly">Every week</option>
-                <option value="biweekly">Every 2 weeks</option>
-                <option value="monthly">Every month</option>
-                <option value="annually">Annually</option>
-              </select>
-            </Field>
-            <Field label="Start Date">
-              <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="input-base text-sm rounded-lg"/>
-            </Field>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-2">Schedule</label>
+              <div className="flex items-center gap-5 flex-wrap">
+                <Radio name="sched" value="daily"    checked={schedule==='daily'}    onChange={()=>setSchedule('daily')}    label="Every day" />
+                <Radio name="sched" value="weekly"   checked={schedule==='weekly'}   onChange={()=>setSchedule('weekly')}   label="Every week" />
+                <Radio name="sched" value="biweekly" checked={schedule==='biweekly'} onChange={()=>setSchedule('biweekly')} label="Every other week" />
+                <Radio name="sched" value="monthly"  checked={schedule==='monthly'}  onChange={()=>setSchedule('monthly')}  label="Every month" />
+                <Radio name="sched" value="annually" checked={schedule==='annually'} onChange={()=>setSchedule('annually')} label="Annually" />
+              </div>
+            </div>
+            <div className="w-56">
+              <label className="block text-sm text-gray-700 mb-1">Start on</label>
+              <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="input-base text-sm w-full" />
+            </div>
+            {transType !== 'loan' && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Repeat</label>
+                <div className="flex items-center gap-5 flex-wrap">
+                  <Radio name="rpt" value="always" checked={repeatType==='always'} onChange={()=>setRepeatType('always')} label="Always" />
+                  <Radio name="rpt" value="times"  checked={repeatType==='times'}  onChange={()=>setRepeatType('times')}  label="Number of times" />
+                  <Radio name="rpt" value="until"  checked={repeatType==='until'}  onChange={()=>setRepeatType('until')}  label="Until the date" />
+                </div>
+                {repeatType==='times' && <input type="number" min="1" value={repeatTimes} onChange={e=>setRepeatTimes(e.target.value)} className="input-base text-sm w-32 mt-2" placeholder="Times" />}
+                {repeatType==='until' && <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="input-base text-sm w-48 mt-2" />}
+              </div>
+            )}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="text-sm font-semibold text-gray-800">Driver settlement description</label>
+                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">What period is this deduction for?</label>
+              <p className="text-xs text-gray-500 mb-1">Enter the last day of the period for this transaction.</p>
+              <input type="date" value={periodEndDate} onChange={e=>setPeriodEndDate(e.target.value)} className="input-base text-sm w-56" />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Custom description</label>
+              <textarea value={customDesc} onChange={e=>setCustomDesc(e.target.value)} rows={3} className="input-base text-sm resize-none w-full" />
+            </div>
           </div>
-          <Field label="Repeat">
-            <div className="flex gap-6 mt-1">
-              {[{v:'always',l:'Always'},{v:'times',l:'Fixed times'},{v:'until',l:'Until date'}].map(o => (
-                <label key={o.v} className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="rpt" value={o.v} checked={repeatType===o.v} onChange={() => setRepeatType(o.v)} className="accent-brand-600"/>
-                  <span className="text-sm text-gray-700">{o.l}</span>
+          <div className="w-72 px-6 py-5 space-y-6 flex-shrink-0 overflow-y-auto">
+            <div>
+              <h4 className="text-base font-bold text-gray-900 mb-3">Status</h4>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' + (isActive ? 'border-[#58c777]' : 'border-gray-300')}>
+                    {isActive && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+                  </div>
+                  <input type="radio" className="hidden" checked={isActive} onChange={()=>setIsActive(true)} />
+                  <span className="text-sm text-gray-700">Active</span>
                 </label>
-              ))}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' + (!isActive ? 'border-[#58c777]' : 'border-gray-300')}>
+                    {!isActive && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+                  </div>
+                  <input type="radio" className="hidden" checked={!isActive} onChange={()=>setIsActive(false)} />
+                  <span className="text-sm text-gray-700">Inactive</span>
+                </label>
+              </div>
             </div>
-          </Field>
-          {repeatType === 'times' && (
-            <Field label="Number of times">
-              <input type="number" min="1" value={repeatTimes} onChange={e=>setRepeatTimes(e.target.value)} className="input-base text-sm w-32 rounded-lg"/>
-            </Field>
-          )}
-          {repeatType === 'until' && (
-            <Field label="Until date">
-              <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="input-base text-sm rounded-lg"/>
-            </Field>
-          )}
-          <Field label="Notes">
-            <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} className="input-base text-sm resize-none rounded-lg"/>
-          </Field>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <div className={'relative w-10 h-5 rounded-full transition-colors cursor-pointer ' + (isActive ? 'bg-brand-500' : 'bg-gray-300')}
-              onClick={() => setIsActive(v => !v)}>
-              <div className={'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ' + (isActive ? 'translate-x-5' : '')}></div>
+            <div>
+              <h4 className="text-base font-bold text-gray-900 mb-1">Schedule</h4>
+              {scheduleRows[0] && <p className="text-xs text-gray-500 mb-3">Next transaction will be created on {scheduleRows[0].date}</p>}
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-[11px] font-semibold uppercase text-gray-400 border-b border-gray-200">
+                    <th className="py-1.5">Date</th><th className="py-1.5">Amount</th><th className="py-1.5">Period</th><th className="py-1.5">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scheduleRows.map((r,i) => (
+                    <tr key={i} className={i%2===1?'bg-gray-50':''}>
+                      <td className="py-1.5 text-gray-700">{r.date}</td>
+                      <td className="py-1.5 text-gray-700">{r.amount}</td>
+                      <td className="py-1.5"></td>
+                      <td className="py-1.5 text-gray-500">{r.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <span className="text-sm text-gray-700">Active</span>
-          </label>
+          </div>
         </div>
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
-          <button onClick={onClose} className="btn-secondary rounded-lg">Cancel</button>
-          <button onClick={save} disabled={saving} className="btn-primary rounded-lg px-5">
-            <IcoCheck /> {saving ? 'Saving...' : (isEdit ? 'Save Changes' : 'Add Transaction')}
-          </button>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+          <button onClick={onClose} className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded hover:bg-gray-900"><IcoX /> Close</button>
+          <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 px-5 py-2 bg-[#58c777] text-white text-sm font-medium rounded hover:bg-[#4ab668] disabled:opacity-70"><IcoCheck /> {saving ? 'Saving...' : 'Save'}</button>
         </div>
       </div>
     </div>
