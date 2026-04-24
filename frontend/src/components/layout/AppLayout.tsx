@@ -191,7 +191,7 @@ export default function AppLayout() {
           })}
 
           {/* Live Support */}
-          <div style={{ padding: '8px 10px', marginTop: 4 }}>
+          {/* <div style={{ padding: '8px 10px', marginTop: 4 }}>
             <button style={{
               width: '100%', padding: '8px 0',
               background: 'transparent',
@@ -203,7 +203,7 @@ export default function AppLayout() {
             }}>
               Live Support
             </button>
-          </div>
+          </div> */}
         </nav>
       </aside>
 

@@ -151,7 +151,7 @@ def generate_invoice_pdf(load: Load, db=None) -> bytes:
     delivery_loc = f"{delivery.city}, {delivery.state}" if delivery else ""
     route = f"{pickup_loc} - {delivery_loc}" if pickup_loc or delivery_loc else ""
 
-    driver_name  = load.driver.unit_number  if load.driver  else ""
+    driver_name  = load.driver.name         if load.driver  else ""
     truck_unit   = load.truck.unit_number   if load.truck   else ""
     trailer_unit = load.trailer.unit_number if load.trailer else ""
 
@@ -476,38 +476,32 @@ def generate_settlement_pdf(settlement, db=None) -> bytes:
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("LEFTPADDING",   (0, 0), (-1, -1), 8),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
-            ("ROWBACKGROUNDS",(0, 0), (-1, -1), [colors.white, LIGHT_GRAY]),
         ]))
         story.append(ded_tbl)
-        story.append(Spacer(1, 8))
+        story.append(Spacer(1, 10))
 
-    # ── summary ───────────────────────────────────────────────────────────────
-    adj_total      = sum(a.amount if a.adj_type == "addition" else -a.amount for a in adjustments)
-    grand_total    = round(subtotal + adj_total, 2)
-    payments_total = sum(p.amount for p in (settlement.payments or []))
-    balance_due    = round(grand_total - payments_total, 2)
-
-    summary_data = [
-        [P("Subtotal:",    total_s), P(f"${subtotal:,.2f}",    total_r)],
-        [P("Grand Total:", total_s), P(f"${grand_total:,.2f}", total_r)],
-    ]
-    if payments_total:
-        summary_data.append([P("Payments:",    total_s), P(f"-${payments_total:,.2f}", total_r)])
-        summary_data.append([P("Balance Due:", total_s), P(f"${balance_due:,.2f}",     total_r)])
-
-    sum_tbl = Table(summary_data, colWidths=[5.4 * inch, 1.8 * inch])
-    sum_tbl.setStyle(TableStyle([
-        ("TOPPADDING",    (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
-        ("LINEABOVE",     (0, -1), (-1, -1), 1.2, BLACK),
-        ("FONTNAME",      (0, -1), (-1, -1), "Helvetica-Bold"),
+    # ── total pay ─────────────────────────────────────────────────────────────
+    total_pay = subtotal + sum(
+        (adj.amount if adj.adj_type == "addition" else -adj.amount)
+        for adj in (settlement.adjustments or [])
+    )
+    total_pay_str = f"${total_pay:,.2f}" if total_pay >= 0 else f"-${abs(total_pay):,.2f}"
+    total_tbl = Table([[P("TOTAL PAY:", total_s), P(total_pay_str, total_r)]], colWidths=[5.4 * inch, 1.8 * inch])
+    total_tbl.setStyle(TableStyle([
+        ("BOX",           (0, 0), (-1, -1), 1, BLACK),
+        ("BACKGROUND",    (0, 0), (-1, -1), colors.HexColor("#fffbe6")),
+        ("TOPPADDING",    (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
     ]))
-    story.append(sum_tbl)
+    story.append(total_tbl)
+    story.append(Spacer(1, 16))
 
-    story.append(Spacer(1, 20))
-    story.append(P("uzLoads TMS and Driver App  \u2022  uzloads.net", footer_s))
+    # ── footer ────────────────────────────────────────────────────────────────
+    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceAfter=8, spaceBefore=0))
+    footer_text = f"{co_name} • {co_phone} • {co_email}"
+    story.append(P(footer_text, footer_s))
 
     doc.build(story)
     buf.seek(0)
