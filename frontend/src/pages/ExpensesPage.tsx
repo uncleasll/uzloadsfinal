@@ -50,7 +50,7 @@ export default function ExpensesPage() {
   useEffect(() => { load() }, [load])
   useEffect(() => {
     client.get('/api/v1/expenses/categories').then(r => setCategories(r.data)).catch(()=>{})
-    vendorsApi.list().then(setVendors).catch(()=>{})
+    vendorsApi.list().then(data => setVendors(data.map(v => ({ id: v.id, name: v.company_name })))).catch(()=>{})
     driversApi.list().then(setDrivers).catch(()=>{})
     trucksApi.list().then(setTrucks).catch(()=>{})
   }, [])

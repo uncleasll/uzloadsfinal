@@ -1560,7 +1560,7 @@ function TxModal({ driverId, tx, onClose, onSaved }: {
   const save = () => {
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter a valid amount'); return }
     setSaving(true)
-    const payload: Record<string,unknown> = {
+    const payload = {
       driver_id: driverId, trans_type: transType,
       category: category || undefined, amount: parseFloat(amount),
       schedule: schedule || undefined, start_date: startDate || undefined,
@@ -1568,9 +1568,9 @@ function TxModal({ driverId, tx, onClose, onSaved }: {
       repeat_type: repeatType,
       repeat_times: repeatType==='times' ? (parseInt(repeatTimes)||undefined) : undefined,
       notes: notes || undefined, is_active: isActive,
-    }
+    } as Parameters<typeof scheduledTxApi.create>[1]
     const req = isEdit && tx
-      ? scheduledTxApi.update(driverId, tx.id, payload)
+      ? scheduledTxApi.update(driverId, tx.id, payload as Parameters<typeof scheduledTxApi.update>[2])
       : scheduledTxApi.create(driverId, payload)
     req
       .then(() => { toast.success(isEdit?'Updated':'Added'); onSaved() })
