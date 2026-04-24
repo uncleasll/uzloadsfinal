@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
 import os
 
 from app.core.config import settings
@@ -18,9 +19,23 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+@app.middleware("http")
+async def handle_options(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return Response(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": "https://uzloadsfinal-7c41.vercel.app",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Credentials": "true",
+            }
+        )
+    return await call_next(request)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://uzloadsfinal-7c41.vercel.app"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,12 +43,10 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-# Serve uploaded files (driver documents, load documents, etc.)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 @app.on_event("startup")
 def startup_fix_snapshots():
-    """Calculate missing driver pay snapshots for existing loads on startup."""
     try:
         from app.db.session import SessionLocal
         from app.models.models import Load
