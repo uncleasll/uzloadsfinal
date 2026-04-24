@@ -14,7 +14,7 @@ const client = axios.create({
 client.interceptors.request.use(config => {
   const token = localStorage.getItem('auth_token')
   if (token && config.headers) {
-    config.headers['Authorization'] = Bearer ${token}
+    config.headers['Authorization'] = `Bearer ${token}`
   }
   return config
 })
@@ -22,7 +22,7 @@ client.interceptors.request.use(config => {
 client.interceptors.response.use(
   res => res,
   err => {
-    const msg = err.response?.data?.detail  err.response?.data?.message  err.message || 'Request failed'
+    const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Request failed'
     if (err.response?.status === 401) {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
