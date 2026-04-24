@@ -463,12 +463,18 @@ export default function DriversPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><IcoSearch /></span>
-            <input type="text" placeholder="Search" value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1) }}
-              className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-brand-500 w-48 transition-colors" />
-          </div>
+         <div className="relative flex items-center">
+  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><IcoSearch /></span>
+  <input type="text" placeholder="Search" value={search}
+    onChange={e => { setSearch(e.target.value); setPage(1) }}
+    className="pl-8 pr-8 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-brand-500 w-48 transition-colors" />
+  <button onClick={() => setShowFilter(v => !v)}
+    className={'absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 ' + (showFilter ? 'text-brand-600' : '')}>
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 10h10M11 16h2"/>
+    </svg>
+  </button>
+</div>
           <button onClick={() => setEditDriver('new')}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#58c777] text-white text-sm font-semibold rounded hover:bg-[#4ab668] transition-colors">
             <IcoPlus /> New
