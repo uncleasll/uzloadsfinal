@@ -153,13 +153,28 @@ class BrokerBase(BaseModel):
     mc_number: Optional[str] = None
     dot_number: Optional[str] = None
     address: Optional[str] = None
+    address2: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
     zip_code: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    fid_ein: Optional[str] = None
+    notes: Optional[str] = None
+
+    # Type flags
+    is_broker: Optional[bool] = True
+    is_shipper_receiver: Optional[bool] = False
+
+    # Billing / credit
     factoring: Optional[bool] = False
     factoring_company: Optional[str] = None
+    quickpay_fee: Optional[float] = None
+    credit: Optional[str] = None
+    avg_days_to_pay: Optional[int] = None
+    status: Optional[str] = "Pending"
+    pay_terms: Optional[str] = None
+
     is_active: Optional[bool] = True
 
 

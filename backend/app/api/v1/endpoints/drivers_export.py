@@ -11,6 +11,7 @@ import io
 
 from app.db.session import get_db
 from app.models.models import Driver, DriverProfile, Truck, Trailer
+from app.services.company_service import get_company
 
 router = APIRouter(tags=["drivers-export"])
 
@@ -82,11 +83,16 @@ def export_drivers_pdf(db: Session = Depends(get_db)):
 
     story = []
 
-    # Company header
-    story.append(Paragraph(
-        "<b>Silkroad llc</b><br/>Email: asilbekkarimov066@gmail.com<br/>Phone: (970) 610-8065",
-        hd_s
-    ))
+    # Company header — pulled live from "My Company" settings
+    company  = get_company(db)
+    co_name  = company.get("name")  or "My Company"
+    co_email = company.get("email") or ""
+    co_phone = company.get("phone") or ""
+    header_html = f"<b>{co_name}</b>"
+    if co_email: header_html += f"<br/>Email: {co_email}"
+    if co_phone: header_html += f"<br/>Phone: {co_phone}"
+
+    story.append(Paragraph(header_html, hd_s))
     story.append(Spacer(1, 0.2 * inch))
     story.append(Paragraph("<b>Drivers</b>", tt_s))
 

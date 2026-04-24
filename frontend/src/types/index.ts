@@ -106,13 +106,32 @@ export interface Broker {
   id: number
   name: string
   mc_number?: string
+  dot_number?: string
+  address?: string
+  address2?: string
   city?: string
   state?: string
+  zip_code?: string
   phone?: string
   email?: string
+  fid_ein?: string
+  notes?: string
+
+  // Type flags
+  is_broker: boolean
+  is_shipper_receiver: boolean
+
+  // Billing / credit
   factoring: boolean
   factoring_company?: string
+  quickpay_fee?: number
+  credit?: string
+  avg_days_to_pay?: number
+  status: 'Pending' | 'Approved' | 'No buy'
+  pay_terms?: string
+
   is_active: boolean
+  created_at?: string
 }
 
 export interface Dispatcher {

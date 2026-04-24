@@ -30,17 +30,39 @@ from openpyxl.styles import (
 )
 from openpyxl.utils import get_column_letter
 
+# ── Company settings (pulled live from DB) ────────────────────────────────────
+from app.services.company_service import get_company
+from app.db.session import SessionLocal
+
+
+def _get_company_info() -> dict:
+    """
+    Pull the latest company settings from the database so every generated
+    report / export uses the exact values saved on the "My Company" page.
+    Returns a dict with keys: name, email, phone, address.
+    """
+    db = SessionLocal()
+    try:
+        c = get_company(db)
+    finally:
+        db.close()
+
+    addr_parts = [c.get("city") or "", c.get("state") or "", c.get("zip_code") or ""]
+    addr = ", ".join(p for p in addr_parts if p)
+
+    return {
+        "name":    c.get("name")  or "My Company",
+        "email":   f"Email: {c.get('email')}" if c.get("email") else "",
+        "phone":   f"Phone: {c.get('phone')}" if c.get("phone") else "",
+        "address": addr,
+    }
+
+
 # ── Colors ────────────────────────────────────────────────────────────────────
 BLACK   = colors.HexColor("#000000")
 GRAY_BG = colors.HexColor("#f5f5f5")
 BORDER  = colors.HexColor("#cccccc")
 WHITE   = colors.white
-
-COMPANY_INFO = {
-    "name":  "Silkroad llc",
-    "email": "Email: asilbekkarimov066@gmail.com",
-    "phone": "Phone: (970) 610-8065",
-}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -90,12 +112,19 @@ def _pdf_doc(buffer, landscape_mode=False):
 def _header_table(story, report_title: str, meta_lines: List[str]):
     """Build the company header + report title + meta block matching sample PDF."""
 
+    # Pull live company settings from DB ("My Company" page)
+    company = _get_company_info()
+
     # Company info (right side)
-    company_text = (
-        f"<b>{COMPANY_INFO['name']}</b><br/>"
-        f"{COMPANY_INFO['email']}<br/>"
-        f"{COMPANY_INFO['phone']}"
-    )
+    company_right_parts = [f"<b>{company['name']}</b>"]
+    if company["email"]: company_right_parts.append(company["email"])
+    if company["phone"]: company_right_parts.append(company["phone"])
+    company_text = "<br/>".join(company_right_parts)
+
+    # Left-side brand block — also shows the configured company name
+    logo_text = f"<b>{company['name']}</b>"
+    if company["address"]:
+        logo_text += f"<br/><font size='7'>{company['address']}</font>"
 
     # Logo placeholder (simple truck icon text, since we can't embed the image)
     logo_style = ParagraphStyle("logo", fontSize=9, leading=11, textColor=BLACK)
@@ -106,7 +135,7 @@ def _header_table(story, report_title: str, meta_lines: List[str]):
 
     # 2-column header: [logo | company info]
     header_data = [[
-        Paragraph("<b>TOPTRUCK</b><br/><font size='7'>COMPANY</font>", logo_style),
+        Paragraph(logo_text, logo_style),
         Paragraph(company_text, company_style),
     ]]
     header_tbl = Table(header_data, colWidths=["50%", "50%"])
@@ -236,19 +265,22 @@ def _xlsx_workbook(report_title: str, meta_lines: List[str], headers: List[str],
 
     row_num = 1
 
+    # Pull live company settings from DB ("My Company" page)
+    company = _get_company_info()
+
     # Company header
     ws.merge_cells(f"A{row_num}:C{row_num}")
-    _set(row_num, 1, "TOPTRUCK COMPANY", font=company_font)
+    _set(row_num, 1, company["name"], font=company_font)
     ws.merge_cells(f"D{row_num}:G{row_num}")
-    _set(row_num, 4, COMPANY_INFO["name"], font=company_font,
+    _set(row_num, 4, company["name"], font=company_font,
          align=Alignment(horizontal="right"))
     row_num += 1
     ws.merge_cells(f"D{row_num}:G{row_num}")
-    _set(row_num, 4, COMPANY_INFO["email"],
+    _set(row_num, 4, company["email"],
          align=Alignment(horizontal="right"), font=cell_font)
     row_num += 1
     ws.merge_cells(f"D{row_num}:G{row_num}")
-    _set(row_num, 4, COMPANY_INFO["phone"],
+    _set(row_num, 4, company["phone"],
          align=Alignment(horizontal="right"), font=cell_font)
     row_num += 2
 

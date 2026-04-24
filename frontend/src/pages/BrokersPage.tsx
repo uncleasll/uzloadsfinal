@@ -4,6 +4,7 @@ import type { Broker } from '@/types'
 import toast from 'react-hot-toast'
 
 type TabType = 'brokers' | 'shippers'
+type StatusType = 'Pending' | 'Approved' | 'No buy'
 
 type BrokerFormState = {
   companyName: string
@@ -24,7 +25,7 @@ type BrokerFormState = {
   quickpayFee: string
   credit: string
   avgDaysToPay: string
-  status: 'Pending' | 'Approved' | 'No buy'
+  status: StatusType
   payTerms: string
 }
 
@@ -61,6 +62,70 @@ const STATES = [
 
 function clsx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ')
+}
+
+// Convert a Broker row from the API into the form shape used by the modal.
+function brokerToForm(b: Broker): BrokerFormState {
+  return {
+    companyName: b.name || '',
+    address: b.address || '',
+    addressLine2: b.address2 || '',
+    phone: b.phone || '',
+    email: b.email || '',
+    city: b.city || '',
+    state: b.state || '',
+    zip: b.zip_code || '',
+    fidEin: b.fid_ein || '',
+    mc: b.mc_number || '',
+    notes: b.notes || '',
+    isBroker: b.is_broker,
+    isShipperReceiver: b.is_shipper_receiver,
+    billingType: b.factoring ? 'factoring' : 'direct',
+    factoringCompany: b.factoring_company || '',
+    quickpayFee: b.quickpay_fee != null ? String(b.quickpay_fee) : '',
+    credit: b.credit || '',
+    avgDaysToPay: b.avg_days_to_pay != null ? String(b.avg_days_to_pay) : '',
+    status: (b.status as StatusType) || 'Pending',
+    payTerms: b.pay_terms || '',
+  }
+}
+
+// Convert form state into an API payload.
+function formToPayload(form: BrokerFormState): Partial<Broker> & { name: string } {
+  const parseNum = (v: string): number | undefined => {
+    const s = v.trim()
+    if (!s) return undefined
+    const n = Number(s)
+    return Number.isFinite(n) ? n : undefined
+  }
+  const parseIntStrict = (v: string): number | undefined => {
+    const n = parseNum(v)
+    return n != null ? Math.trunc(n) : undefined
+  }
+  return {
+    name: form.companyName.trim(),
+    mc_number: form.mc.trim() || undefined,
+    address: form.address.trim() || undefined,
+    address2: form.addressLine2.trim() || undefined,
+    city: form.city.trim() || undefined,
+    state: form.state || undefined,
+    zip_code: form.zip.trim() || undefined,
+    phone: form.phone.trim() || undefined,
+    email: form.email.trim() || undefined,
+    fid_ein: form.fidEin.trim() || undefined,
+    notes: form.notes.trim() || undefined,
+    is_broker: form.isBroker,
+    is_shipper_receiver: form.isShipperReceiver,
+    factoring: form.billingType === 'factoring',
+    factoring_company: form.billingType === 'factoring' && form.factoringCompany.trim()
+      ? form.factoringCompany.trim()
+      : undefined,
+    quickpay_fee: parseNum(form.quickpayFee),
+    credit: form.credit || undefined,
+    avg_days_to_pay: parseIntStrict(form.avgDaysToPay),
+    status: form.status,
+    pay_terms: form.payTerms.trim() || undefined,
+  }
 }
 
 // Icons
@@ -100,10 +165,10 @@ function EditIcon() {
   )
 }
 
-function ChevronDownIcon() {
+function TrashIcon() {
   return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.51a.75.75 0 0 1-1.08 0l-4.25-4.51a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
+    <svg viewBox="0 0 24 24" fill="none" className="h-[14px] w-[14px]">
+      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -112,6 +177,41 @@ function DoubleChevronLeft() { return <span className="text-[10px]">«</span> }
 function ChevronLeft() { return <span className="text-[10px]">‹</span> }
 function ChevronRight() { return <span className="text-[10px]">›</span> }
 function DoubleChevronRight() { return <span className="text-[10px]">»</span> }
+
+// Small badge helpers for the table.
+function StatusBadge({ status }: { status: string }) {
+  const s = status || 'Pending'
+  const styles: Record<string, string> = {
+    Pending:  'border-[#f4b14f] bg-[#fff8ef] text-[#ef9b1f]',
+    Approved: 'border-[#6ad08a] bg-[#eefaf2] text-[#38a169]',
+    'No buy': 'border-[#e57373] bg-[#fdecec] text-[#c0392b]',
+  }
+  return (
+    <span className={clsx(
+      'inline-flex items-center rounded-full border px-2.5 py-[2px] text-xs font-semibold',
+      styles[s] || styles.Pending,
+    )}>
+      {s}
+    </span>
+  )
+}
+
+function CreditBadge({ credit }: { credit?: string }) {
+  if (!credit) return <span className="text-[#94a3b8]">—</span>
+  const colors: Record<string, string> = {
+    A: 'border-[#6ad08a] text-[#4ebd72]',
+    B: 'border-[#f4b14f] text-[#ef9b1f]',
+    C: 'border-[#e57373] text-[#c0392b]',
+  }
+  return (
+    <span className={clsx(
+      'inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs font-medium',
+      colors[credit] || 'border-[#cbd5e1] text-[#64748b]',
+    )}>
+      {credit}
+    </span>
+  )
+}
 
 export default function BrokersPage() {
   const [brokers, setBrokers] = useState<Broker[]>([])
@@ -122,12 +222,16 @@ export default function BrokersPage() {
   const [search, setSearch] = useState('')
   const [perPage, setPerPage] = useState(50)
   const [page, setPage] = useState(1)
+  const [showInactive, setShowInactive] = useState(false)
+
   const [form, setForm] = useState<BrokerFormState>(INITIAL_FORM_STATE)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const isEdit = editingId !== null
 
   const load = async () => {
     try {
       setLoading(true)
-      const data = await brokersApi.list()
+      const data = await brokersApi.list({ is_active: showInactive ? undefined : true })
       setBrokers(data)
     } catch (e: unknown) {
       toast.error((e as Error).message || 'Failed to load customers')
@@ -138,17 +242,28 @@ export default function BrokersPage() {
 
   useEffect(() => {
     load()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showInactive])
 
+  // Filter by active tab + search. We do this client-side so toggling tabs
+  // and typing in the search box feels instant.
   const filteredBrokers = useMemo(() => {
+    let list = brokers
+    if (activeTab === 'brokers') {
+      list = list.filter((b) => b.is_broker)
+    } else {
+      list = list.filter((b) => b.is_shipper_receiver)
+    }
     const q = search.trim().toLowerCase()
-    if (!q) return brokers
-    return brokers.filter((b) =>
-      [b.name, b.mc_number, b.city, b.state, b.phone, b.email]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q))
-    )
-  }, [brokers, search])
+    if (q) {
+      list = list.filter((b) =>
+        [b.name, b.mc_number, b.city, b.state, b.phone, b.email]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(q))
+      )
+    }
+    return list
+  }, [brokers, activeTab, search])
 
   const totalPages = Math.max(1, Math.ceil(filteredBrokers.length / perPage))
   const safePage = Math.min(page, totalPages)
@@ -161,11 +276,28 @@ export default function BrokersPage() {
   const startEntry = filteredBrokers.length === 0 ? 0 : (safePage - 1) * perPage + 1
   const endEntry = Math.min(safePage * perPage, filteredBrokers.length)
 
-  const resetForm = () => setForm(INITIAL_FORM_STATE)
-  
+  const openCreateModal = () => {
+    // Seed the type flags from the active tab so creating from the Shippers
+    // tab defaults to a shipper/receiver — small, but a real ergonomic win.
+    setEditingId(null)
+    setForm({
+      ...INITIAL_FORM_STATE,
+      isBroker: activeTab === 'brokers',
+      isShipperReceiver: activeTab === 'shippers',
+    })
+    setShowForm(true)
+  }
+
+  const openEditModal = (broker: Broker) => {
+    setEditingId(broker.id)
+    setForm(brokerToForm(broker))
+    setShowForm(true)
+  }
+
   const closeModal = () => {
     setShowForm(false)
-    resetForm()
+    setEditingId(null)
+    setForm(INITIAL_FORM_STATE)
   }
 
   const updateForm = <K extends keyof BrokerFormState>(key: K, value: BrokerFormState[K]) => {
@@ -177,26 +309,37 @@ export default function BrokersPage() {
       toast.error('Company Name is required')
       return
     }
+    if (!form.isBroker && !form.isShipperReceiver) {
+      toast.error('Pick at least one customer type (Broker or Shipper/Receiver)')
+      return
+    }
     setSaving(true)
     try {
-      await brokersApi.create({
-        name: form.companyName.trim(),
-        mc_number: form.mc.trim() || undefined,
-        city: form.city.trim() || undefined,
-        state: form.state || undefined,
-        phone: form.phone.trim() || undefined,
-        email: form.email.trim() || undefined,
-        factoring: form.billingType === 'factoring',
-        factoring_company: form.factoringCompany.trim() || undefined,
-        is_active: true,
-      })
-      toast.success('Customer created')
+      const payload = formToPayload(form)
+      if (isEdit && editingId != null) {
+        await brokersApi.update(editingId, payload)
+        toast.success('Customer updated')
+      } else {
+        await brokersApi.create(payload)
+        toast.success('Customer created')
+      }
       closeModal()
       await load()
     } catch (e: unknown) {
-      toast.error((e as Error).message || 'Failed to create customer')
+      toast.error((e as Error).message || 'Failed to save customer')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDelete = async (broker: Broker) => {
+    if (!confirm(`Deactivate customer "${broker.name}"?`)) return
+    try {
+      await brokersApi.delete(broker.id)
+      toast.success('Customer deactivated')
+      await load()
+    } catch (e: unknown) {
+      toast.error((e as Error).message || 'Failed to deactivate customer')
     }
   }
 
@@ -232,7 +375,7 @@ export default function BrokersPage() {
             </div>
 
             <button
-              onClick={() => setShowForm(true)}
+              onClick={openCreateModal}
               className="inline-flex h-9 items-center gap-1.5 rounded bg-[#58c777] px-3.5 text-sm font-semibold text-white transition hover:bg-[#4ab668]"
             >
               <PlusDocIcon />
@@ -243,7 +386,7 @@ export default function BrokersPage() {
 
         <div className="flex items-end gap-[1px]">
           <button
-            onClick={() => setActiveTab('brokers')}
+            onClick={() => { setActiveTab('brokers'); setPage(1) }}
             className={clsx(
               'rounded-t border border-b-0 px-5 py-2 text-sm font-semibold transition-colors',
               activeTab === 'brokers'
@@ -254,7 +397,7 @@ export default function BrokersPage() {
             Brokers
           </button>
           <button
-            onClick={() => setActiveTab('shippers')}
+            onClick={() => { setActiveTab('shippers'); setPage(1) }}
             className={clsx(
               'rounded-t border border-b-0 px-5 py-2 text-sm font-semibold transition-colors',
               activeTab === 'shippers'
@@ -291,48 +434,61 @@ export default function BrokersPage() {
                   Loading...
                 </td>
               </tr>
-            ) : activeTab === 'shippers' ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-sm text-[#94a3b8]">
-                  Shippers/Receivers UI tayyor, backend list hali brokerlardan alohida ulanmagan.
-                </td>
-              </tr>
             ) : paginatedBrokers.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-4 py-12 text-center text-sm text-[#94a3b8]">
-                  No customers found
+                  {activeTab === 'shippers' ? 'No shippers/receivers found' : 'No customers found'}
                 </td>
               </tr>
             ) : (
               paginatedBrokers.map((broker) => (
-                <tr key={broker.id} className="border-b border-[#f1f4f8] text-sm text-[#1f2937] transition-colors hover:bg-[#fafbfd]">
+                <tr
+                  key={broker.id}
+                  className={clsx(
+                    'border-b border-[#f1f4f8] text-sm transition-colors hover:bg-[#fafbfd] cursor-pointer',
+                    broker.is_active ? 'text-[#1f2937]' : 'text-[#94a3b8] italic'
+                  )}
+                  onClick={() => openEditModal(broker)}
+                >
                   <td className="px-4 py-2.5">
                     <button className="font-medium text-[#1a73e8] underline-offset-2 hover:underline">
                       {broker.name}
                     </button>
                   </td>
-                  <td className="px-4 py-2.5 text-[#475569]">{broker.city ? `${broker.city}${broker.state ? `, ${broker.state}` : ''}` : '—'}</td>
+                  <td className="px-4 py-2.5 text-[#475569]">
+                    {broker.city ? `${broker.city}${broker.state ? `, ${broker.state}` : ''}` : '—'}
+                  </td>
                   <td className="px-4 py-2.5 text-[#475569]">{broker.phone || '—'}</td>
                   <td className="px-4 py-2.5 text-[#475569]">{broker.mc_number || '—'}</td>
-                  <td className="px-4 py-2.5 text-[#475569]">{broker.factoring ? 'Factoring' : 'Direct billing'}</td>
-                  <td className="px-4 py-2.5">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#6ad08a] text-xs font-medium text-[#4ebd72]">
-                      B
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-[#475569]">—</td>
-                  <td className="px-4 py-2.5">
-                    <span className="inline-flex items-center rounded-full border border-[#f4b14f] bg-[#fff8ef] px-2.5 py-[2px] text-xs font-semibold text-[#ef9b1f]">
-                      Pending
-                    </span>
+                  <td className="px-4 py-2.5 text-[#475569]">
+                    {broker.factoring
+                      ? `Factoring${broker.factoring_company ? ` · ${broker.factoring_company}` : ''}`
+                      : 'Direct billing'}
                   </td>
                   <td className="px-4 py-2.5">
+                    <CreditBadge credit={broker.credit} />
+                  </td>
+                  <td className="px-4 py-2.5 text-[#475569]">
+                    {broker.avg_days_to_pay != null ? broker.avg_days_to_pay : '—'}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <StatusBadge status={broker.status} />
+                  </td>
+                  <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
-                      <button className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#59c879] text-white transition hover:bg-[#4eb96d]">
+                      <button
+                        onClick={() => openEditModal(broker)}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#59c879] text-white transition hover:bg-[#4eb96d]"
+                        title="Edit"
+                      >
                         <EditIcon />
                       </button>
-                      <button className="text-[#64748b] hover:text-black">
-                        <ChevronDownIcon />
+                      <button
+                        onClick={() => handleDelete(broker)}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-red-500 transition hover:bg-red-200"
+                        title="Deactivate"
+                      >
+                        <TrashIcon />
                       </button>
                     </div>
                   </td>
@@ -347,19 +503,35 @@ export default function BrokersPage() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-xs text-[#526071]">
             <div className="flex items-center gap-1.5">
-              <button onClick={() => setPage(1)} className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100">
+              <button
+                onClick={() => setPage(1)}
+                disabled={safePage <= 1}
+                className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100 disabled:opacity-40"
+              >
                 <DoubleChevronLeft />
               </button>
-              <button onClick={() => setPage(Math.max(1, page - 1))} className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100">
+              <button
+                onClick={() => setPage(Math.max(1, safePage - 1))}
+                disabled={safePage <= 1}
+                className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100 disabled:opacity-40"
+              >
                 <ChevronLeft />
               </button>
               <button className="inline-flex h-6 min-w-[24px] items-center justify-center rounded bg-[#58c777] px-2 text-xs font-semibold text-white">
                 {safePage}
               </button>
-              <button onClick={() => setPage(Math.min(totalPages, page + 1))} className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100">
+              <button
+                onClick={() => setPage(Math.min(totalPages, safePage + 1))}
+                disabled={safePage >= totalPages}
+                className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100 disabled:opacity-40"
+              >
                 <ChevronRight />
               </button>
-              <button onClick={() => setPage(totalPages)} className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100">
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={safePage >= totalPages}
+                className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100 disabled:opacity-40"
+              >
                 <DoubleChevronRight />
               </button>
             </div>
@@ -368,8 +540,11 @@ export default function BrokersPage() {
               Showing {startEntry} to {endEntry} of {filteredBrokers.length} entries
             </span>
 
-            <button className="font-semibold text-[#1f2937] underline underline-offset-2 hover:text-black">
-              Show inactive partners
+            <button
+              onClick={() => { setShowInactive((v) => !v); setPage(1) }}
+              className="font-semibold text-[#1f2937] underline underline-offset-2 hover:text-black"
+            >
+              {showInactive ? 'Hide inactive' : 'Show inactive partners'}
             </button>
           </div>
 
@@ -398,10 +573,10 @@ export default function BrokersPage() {
       {showForm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-sm">
           <div className="flex max-h-[95vh] w-full max-w-[1100px] flex-col overflow-hidden rounded bg-white shadow-2xl">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 bg-[#f8f9fb] px-6 py-3">
-              <h2 className="text-[16px] font-bold text-gray-800">New Customer</h2>
+              <h2 className="text-[16px] font-bold text-gray-800">{isEdit ? 'Edit Customer' : 'New Customer'}</h2>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-700">
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -412,11 +587,13 @@ export default function BrokersPage() {
             {/* Body */}
             <div className="flex-1 overflow-auto px-8 py-6">
               <div className="flex flex-col gap-10 md:flex-row">
-                
+
                 {/* LEFT COLUMN - General Info */}
                 <div className="flex flex-1 flex-col gap-4">
                   <div>
-                    <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Company Name</label>
+                    <label className="mb-1.5 block text-[13px] font-medium text-gray-600">
+                      Company Name <span className="text-red-500">*</span>
+                    </label>
                     <div className="relative">
                       <input
                         value={form.companyName}
@@ -541,7 +718,7 @@ export default function BrokersPage() {
 
                 {/* RIGHT COLUMN - Settings / Billing */}
                 <div className="w-full md:w-[480px] flex flex-col">
-                  
+
                   {/* Customer Type Section */}
                   <div className="mb-8">
                     <h3 className="mb-3 text-[15px] font-bold text-gray-800">Customer type</h3>
@@ -566,7 +743,7 @@ export default function BrokersPage() {
                   {/* Billing Section */}
                   <div>
                     <h3 className="mb-3 text-[15px] font-bold text-gray-800">Billing</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       {/* Radio Buttons */}
                       <div className="flex flex-col gap-3 justify-center">
@@ -612,7 +789,7 @@ export default function BrokersPage() {
                           value={form.quickpayFee}
                           onChange={(e) => updateForm('quickpayFee', e.target.value)}
                           placeholder="e.g. 2.25"
-                          className="h-[36px] w-full rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm outline-none text-gray-700 placeholder:text-gray-500" 
+                          className="h-[36px] w-full rounded border border-gray-200 bg-[#f1f5f9] px-3 text-sm outline-none text-gray-700 placeholder:text-gray-500 focus:border-[#58c777]"
                         />
                       </div>
                       <div>
@@ -633,6 +810,7 @@ export default function BrokersPage() {
                         <input
                           value={form.avgDaysToPay}
                           onChange={(e) => updateForm('avgDaysToPay', e.target.value)}
+                          inputMode="numeric"
                           className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#58c777]"
                         />
                       </div>
@@ -644,7 +822,7 @@ export default function BrokersPage() {
                         <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Status</label>
                         <select
                           value={form.status}
-                          onChange={(e) => updateForm('status', e.target.value as BrokerFormState['status'])}
+                          onChange={(e) => updateForm('status', e.target.value as StatusType)}
                           className="h-[36px] w-full rounded border border-[#6ea8fe] px-2 text-sm font-medium text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe] bg-white"
                         >
                           <option value="Pending">Pending</option>

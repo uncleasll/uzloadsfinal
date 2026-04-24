@@ -87,15 +87,35 @@ export const trailersApi = {
   },
 }
 
+export interface BrokerListParams {
+  is_active?: boolean
+  is_broker?: boolean
+  is_shipper_receiver?: boolean
+  search?: string
+}
+
 export const brokersApi = {
-  list: async (isActive?: boolean): Promise<Broker[]> => {
-    const params = isActive !== undefined ? { is_active: isActive } : {}
+  // Accepts either `brokersApi.list(true)` (legacy: filter by is_active)
+  // or `brokersApi.list({ is_active, is_broker, search, ... })` (full filters).
+  list: async (arg: boolean | BrokerListParams = {}): Promise<Broker[]> => {
+    const params: BrokerListParams = typeof arg === 'boolean' ? { is_active: arg } : arg
     const { data } = await client.get(`${V1}/brokers`, { params })
     return data
   },
-  create: async (payload: Partial<Broker>): Promise<Broker> => {
+  get: async (id: number): Promise<Broker> => {
+    const { data } = await client.get(`${V1}/brokers/${id}`)
+    return data
+  },
+  create: async (payload: Partial<Broker> & { name: string }): Promise<Broker> => {
     const { data } = await client.post(`${V1}/brokers`, payload)
     return data
+  },
+  update: async (id: number, payload: Partial<Broker>): Promise<Broker> => {
+    const { data } = await client.put(`${V1}/brokers/${id}`, payload)
+    return data
+  },
+  delete: async (id: number): Promise<void> => {
+    await client.delete(`${V1}/brokers/${id}`)
   },
 }
 

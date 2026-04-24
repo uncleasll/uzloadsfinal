@@ -183,13 +183,28 @@ class Broker(Base):
     mc_number = Column(String(50))
     dot_number = Column(String(50))
     address = Column(String(500))
+    address2 = Column(String(500))
     city = Column(String(100))
     state = Column(String(50))
     zip_code = Column(String(20))
     phone = Column(String(50))
     email = Column(String(200))
+    fid_ein = Column(String(50))
+    notes = Column(Text)
+
+    # Type flags — a broker row can represent a broker, a shipper/receiver, or both.
+    is_broker = Column(Boolean, default=True, nullable=False)
+    is_shipper_receiver = Column(Boolean, default=False, nullable=False)
+
+    # Billing / credit
     factoring = Column(Boolean, default=False)
     factoring_company = Column(String(200))
+    quickpay_fee = Column(Float)
+    credit = Column(String(10))              # A / B / C grade
+    avg_days_to_pay = Column(Integer)
+    status = Column(String(20), default="Pending", nullable=False)  # Pending / Approved / No buy
+    pay_terms = Column(String(100))
+
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
 

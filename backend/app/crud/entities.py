@@ -180,10 +180,30 @@ def update_trailer(db: Session, trailer_id: int, trailer_in: TrailerUpdate) -> O
 
 # ─── Brokers ──────────────────────────────────────────────────────────────────
 
-def get_brokers(db: Session, is_active: Optional[bool] = None) -> List[Broker]:
+def get_brokers(
+    db: Session,
+    is_active: Optional[bool] = None,
+    is_broker: Optional[bool] = None,
+    is_shipper_receiver: Optional[bool] = None,
+    search: Optional[str] = None,
+) -> List[Broker]:
     q = db.query(Broker)
     if is_active is not None:
         q = q.filter(Broker.is_active == is_active)
+    if is_broker is not None:
+        q = q.filter(Broker.is_broker == is_broker)
+    if is_shipper_receiver is not None:
+        q = q.filter(Broker.is_shipper_receiver == is_shipper_receiver)
+    if search:
+        like = f"%{search}%"
+        q = q.filter(
+            (Broker.name.ilike(like))
+            | (Broker.mc_number.ilike(like))
+            | (Broker.city.ilike(like))
+            | (Broker.state.ilike(like))
+            | (Broker.phone.ilike(like))
+            | (Broker.email.ilike(like))
+        )
     return q.order_by(Broker.name).all()
 
 
@@ -208,6 +228,16 @@ def update_broker(db: Session, broker_id: int, broker_in: BrokerUpdate) -> Optio
     db.commit()
     db.refresh(broker)
     return broker
+
+
+def delete_broker(db: Session, broker_id: int) -> bool:
+    """Soft delete — keeps referential integrity with loads that reference the broker."""
+    broker = db.query(Broker).filter(Broker.id == broker_id).first()
+    if not broker:
+        return False
+    broker.is_active = False
+    db.commit()
+    return True
 
 
 # ─── Dispatchers ──────────────────────────────────────────────────────────────

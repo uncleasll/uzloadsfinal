@@ -98,8 +98,8 @@ export default function AppLayout() {
             </svg>
           </div>
           <div style={{ overflow: 'hidden' }}>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: 13, lineHeight: 1.2, whiteSpace: 'nowrap' }}>ezloads</div>
-            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap' }}>easy loads</div>
+            <div style={{ color: '#fff', fontWeight: 700, fontSize: 13, lineHeight: 1.2, whiteSpace: 'nowrap' }}>uzloads</div>
+            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap' }}>uzb loads</div>
           </div>
         </div>
 
