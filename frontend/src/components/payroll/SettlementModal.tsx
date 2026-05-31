@@ -148,7 +148,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
           {/* Info banner */}
           <div className="flex items-center gap-2 px-6 py-2.5 bg-purple-50 border-b border-purple-100 flex-shrink-0">
             <svg className="w-4 h-4 text-purple-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <p className="text-sm text-gray-600">Need Help? Watch our quick video tutorial on <a href="#" className="text-green-600 font-medium hover:underline">How to create and manage driver payroll settlements.</a></p>
+            <p className="text-sm text-gray-600">Need Help? Watch our quick video tutorial on <a href="#" className="text-blue-600 font-medium hover:underline">How to create and manage driver payroll settlements.</a></p>
           </div>
 
           {/* Top form */}
@@ -158,7 +158,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Driver</label>
                 <div className="relative">
                   <select value={form.driver_id} onChange={e=>setF('driver_id',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none">
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                     {drivers.map(d=><option key={d.id} value={d.id}>{d.name} [{d.driver_type}]</option>)}
                   </select>
                   <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
@@ -168,7 +168,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Settlement Status <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <select value={form.status} onChange={e=>setF('status',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none">
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                     {STATUSES.map(s=><option key={s} value={s}>{STATUS_LABEL[s]||s}</option>)}
                   </select>
                   <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
@@ -177,13 +177,13 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
               <div className="w-40">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Date <span className="text-red-500">*</span></label>
                 <input type="date" value={form.date} onChange={e=>setF('date',e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div className="w-52">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Payable to <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <select value={form.payable_to} onChange={e=>setF('payable_to',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none">
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                     <option value=""></option>
                     {drivers.map(d=><option key={d.id} value={d.name}>{d.name}</option>)}
                   </select>
@@ -198,7 +198,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
 
             {/* Report HoS */}
             <div className="flex justify-end">
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded">
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded">
                 <IcoHoS/> Report HoS
               </button>
             </div>
@@ -229,15 +229,15 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                 <div className="flex items-center gap-3 flex-wrap">
                   <h3 className="font-bold text-gray-900 text-sm flex items-center gap-1">
                     Driver Settlement #{settlement.settlement_number}
-                    <button className="text-green-500 hover:text-green-700 ml-1"><IcoPencil/></button>
+                    <button className="text-blue-500 hover:text-blue-700 ml-1"><IcoPencil/></button>
                   </h3>
                   <a href={pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><IcoDL/> Download as PDF</a>
                   <button onClick={()=>setShowEmail(true)} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><IcoMail/> Email</button>
                   <button onClick={()=>setShowHistory(v=>!v)} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><IcoHist/> History</button>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={()=>setShowAdj('addition')} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded"><IcoPlus/> Addition</button>
-                  <button onClick={()=>setShowAdj('deduction')} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded"><IcoMinus/> Deduction</button>
+                  <button onClick={()=>setShowAdj('addition')} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded"><IcoPlus/> Addition</button>
+                  <button onClick={()=>setShowAdj('deduction')} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded"><IcoMinus/> Deduction</button>
                 </div>
               </div>
 
@@ -297,8 +297,8 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-gray-900 text-sm">Payments</h3>
                 <div className="flex gap-2">
-                  <button onClick={()=>setShowPay(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded"><IcoPencil/> New Payment</button>
-                  <button onClick={()=>setShowCarry(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded"><IcoCarry/> Create Carryover</button>
+                  <button onClick={()=>setShowPay(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded"><IcoPencil/> New Payment</button>
+                  <button onClick={()=>setShowCarry(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded"><IcoCarry/> Create Carryover</button>
                 </div>
               </div>
               <div className="border border-gray-200 rounded overflow-hidden">
@@ -316,10 +316,10 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                             </td>
                             <td className="px-3 py-2 text-gray-700">{p.description||'—'}</td>
                             <td className="px-3 py-2 text-right">
-                              <button className="text-green-600 hover:underline font-semibold">{formatCurrency(p.amount)}</button>
+                              <button className="text-blue-600 hover:underline font-semibold">{formatCurrency(p.amount)}</button>
                             </td>
                             <td className="px-3 py-2 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={()=>deletePay(p.id)} className="text-green-500 hover:text-green-700"><IcoPencil/></button>
+                              <button onClick={()=>deletePay(p.id)} className="text-blue-500 hover:text-blue-700"><IcoPencil/></button>
                             </td>
                           </tr>
                         ))
@@ -343,7 +343,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
             <section>
               <h3 className="text-sm font-semibold text-gray-600 mb-1">Notes</h3>
               <textarea value={form.notes} onChange={e=>setF('notes',e.target.value)} rows={2} placeholder="Add notes..."
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:border-green-500"/>
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:border-blue-500"/>
             </section>
           </div>
 
@@ -359,7 +359,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                   (current === 'Paid' && (st === 'Preparing' || st === 'Ready'))
                 const label = st === 'Ready' ? 'Ready for Payment' : st
                 const color = isCurrent
-                  ? (st === 'Paid' ? 'bg-green-600 text-white' : st === 'Ready' ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white')
+                  ? (st === 'Paid' ? 'bg-blue-600 text-white' : st === 'Ready' ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white')
                   : isPast ? 'bg-gray-300 text-gray-600'
                   : 'bg-gray-100 text-gray-400'
                 return (
@@ -389,7 +389,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                   </button>
                   <button onClick={()=>handleStatusChange('Paid')}
                     disabled={Math.abs(settlement.balance_due || 0) > 0.01}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"
                     title={Math.abs(settlement.balance_due || 0) > 0.01 ? 'Balance due must be $0.00 to mark as Paid' : 'Mark as Paid'}>
                     → Mark as Paid
                   </button>
@@ -413,7 +413,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                   <IcoBack/> Back to Open Balance
                 </button>
               )}
-              <button onClick={exportQB} className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded">
+              <button onClick={exportQB} className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded">
                 <IcoQB/> Export to QuickBooks
               </button>
             </div>
@@ -434,7 +434,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                     ← Preparing
                   </button>
                   <button onClick={handleMarkPaid}
-                    className="inline-flex items-center gap-1 px-3 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded">
+                    className="inline-flex items-center gap-1 px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded">
                     ✓ Mark Paid
                   </button>
                 </>
@@ -447,7 +447,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
               )}
 
               <button onClick={onClose} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold rounded"><IcoX/> Close</button>
-              <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded disabled:opacity-50"><IcoCheck/> {saving?'Saving…':'Save'}</button>
+              <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded disabled:opacity-50"><IcoCheck/> {saving?'Saving…':'Save'}</button>
             </div>
           </div>
         </div>
@@ -545,10 +545,10 @@ function AdjRow({adj,onDelete}:{adj:SettlementAdjustment;onDelete:()=>void}) {
       <td colSpan={2}/>
       <td className="px-3 py-2 text-gray-700">{adj.category?(adj.description?adj.category+': '+adj.description:adj.category):adj.description||adj.adj_type}</td>
       <td colSpan={2}/>
-      <td className={'px-3 py-2 text-right font-semibold '+(isDed?'text-red-600':'text-green-700')}>{isDed?'-':'+'}{formatCurrency(adj.amount)}</td>
+      <td className={'px-3 py-2 text-right font-semibold '+(isDed?'text-red-600':'text-blue-700')}>{isDed?'-':'+'}{formatCurrency(adj.amount)}</td>
       <td className="px-3 py-2 text-center">
         <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button className="text-green-500 hover:text-green-700 p-0.5 rounded hover:bg-green-50"><IcoPencil/></button>
+          <button className="text-blue-500 hover:text-blue-700 p-0.5 rounded hover:bg-blue-50"><IcoPencil/></button>
           <button onClick={onDelete} className="text-red-400 hover:text-red-600 p-0.5 rounded hover:bg-red-50">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4"/></svg>
           </button>
@@ -587,7 +587,7 @@ function AdjModal({type,settlementId,onClose,onSaved}:{type:'addition'|'deductio
         <div className="px-5 py-4 space-y-3">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date</label>
-            <div className="flex items-center gap-2 border border-gray-300 rounded px-3 py-2 focus-within:border-green-500">
+            <div className="flex items-center gap-2 border border-gray-300 rounded px-3 py-2 focus-within:border-blue-500">
               <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="flex-1 text-sm focus:outline-none"/>
               {date && <button onClick={()=>setDate('')} className="text-gray-400 hover:text-gray-600 text-xs"><IcoX/></button>}
             </div>
@@ -597,21 +597,21 @@ function AdjModal({type,settlementId,onClose,onSaved}:{type:'addition'|'deductio
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
               <input type="number" step="0.01" min="0" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00"
-                className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
             </div>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Category</label>
-            <select value={category} onChange={e=>setCat(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500">
+            <select value={category} onChange={e=>setCat(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500">
               {ADJ_CATS.map(c=><option key={c}>{c}</option>)}
             </select>
           </div>
           <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="Notes..."
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:border-green-500"/>
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:border-blue-500"/>
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
           <button onClick={onClose} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm rounded font-medium"><IcoX/> Close</button>
-          <button onClick={save} disabled={saving||!amount} className="inline-flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-semibold disabled:opacity-50"><IcoCheck/> {saving?'Saving…':'Save'}</button>
+          <button onClick={save} disabled={saving||!amount} className="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-semibold disabled:opacity-50"><IcoCheck/> {saving?'Saving…':'Save'}</button>
         </div>
       </div>
     </div>
@@ -646,27 +646,27 @@ function PayModal({settlementId,settlement,onClose,onSaved}:{settlementId:number
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date</label>
-              <div className="flex items-center gap-1 border border-gray-300 rounded px-2 py-2 focus-within:border-green-500">
+              <div className="flex items-center gap-1 border border-gray-300 rounded px-2 py-2 focus-within:border-blue-500">
                 <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="flex-1 text-xs focus:outline-none"/>
                 {date && <button onClick={()=>setDate('')} className="text-gray-400 hover:text-gray-600"><IcoX/></button>}
               </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Description</label>
-              <input type="text" value={desc} onChange={e=>setDesc(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+              <input type="text" value={desc} onChange={e=>setDesc(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Amount</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                <input type="number" step="0.01" value={amount} onChange={e=>setAmt(e.target.value)} className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                <input type="number" step="0.01" value={amount} onChange={e=>setAmt(e.target.value)} className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
             </div>
           </div>
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
           <button onClick={onClose} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm rounded font-medium"><IcoX/> Close</button>
-          <button onClick={save} disabled={saving||!amount} className="inline-flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-semibold disabled:opacity-50"><IcoCheck/> {saving?'Saving…':'Save'}</button>
+          <button onClick={save} disabled={saving||!amount} className="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-semibold disabled:opacity-50"><IcoCheck/> {saving?'Saving…':'Save'}</button>
         </div>
       </div>
     </div>
@@ -698,19 +698,19 @@ function CarryModal({settlementId,balanceDue,num,onClose,onSaved}:{settlementId:
           <p className="text-sm text-gray-600">Create a carryover entry for the remaining balance of <strong>{formatCurrency(balanceDue)}</strong> from settlement #{num}.</p>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date</label>
-            <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+            <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Amount</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-              <input type="number" step="0.01" value={amount} onChange={e=>setAmt(e.target.value)} className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+              <input type="number" step="0.01" value={amount} onChange={e=>setAmt(e.target.value)} className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
             </div>
           </div>
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
           <button onClick={onClose} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm rounded font-medium"><IcoX/> Close</button>
-          <button onClick={save} disabled={saving} className="inline-flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-semibold disabled:opacity-50"><IcoCarry/> {saving?'Creating…':'Create Carryover'}</button>
+          <button onClick={save} disabled={saving} className="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-semibold disabled:opacity-50"><IcoCarry/> {saving?'Creating…':'Create Carryover'}</button>
         </div>
       </div>
     </div>
@@ -749,7 +749,7 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
                 <label className="text-xs font-semibold text-gray-600 w-6">To</label>
                 <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               </div>
-              <div className="flex items-center gap-2 border border-gray-300 rounded px-3 py-2 focus-within:border-green-500">
+              <div className="flex items-center gap-2 border border-gray-300 rounded px-3 py-2 focus-within:border-blue-500">
                 <span className="text-gray-400 text-sm">@</span>
                 <input type="email" value={to} onChange={e=>setTo(e.target.value)} placeholder="recipient@example.com" className="flex-1 text-sm focus:outline-none"/>
               </div>
@@ -757,12 +757,12 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
                 <button onClick={()=>setShowCc(v=>!v)} className="text-xs text-blue-600 hover:underline">add CC recipient</button>
                 <button onClick={()=>setShowBcc(v=>!v)} className="text-xs text-blue-600 hover:underline">add BCC recipient</button>
               </div>
-              {showCc  && <input type="email" value={cc}  onChange={e=>setCc(e.target.value)}  placeholder="CC"  className="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>}
-              {showBcc && <input type="email" value={bcc} onChange={e=>setBcc(e.target.value)} placeholder="BCC" className="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>}
+              {showCc  && <input type="email" value={cc}  onChange={e=>setCc(e.target.value)}  placeholder="CC"  className="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>}
+              {showBcc && <input type="email" value={bcc} onChange={e=>setBcc(e.target.value)} placeholder="BCC" className="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>}
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Subject</label>
-              <input type="text" value={subject} onChange={e=>setSubject(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+              <input type="text" value={subject} onChange={e=>setSubject(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Body</label>
@@ -770,7 +770,7 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
                 <div className="flex justify-center mb-5">
                   <div className="text-center"><div className="text-2xl font-black text-red-600 tracking-tight">TOPTRUCK</div><div className="text-xs text-gray-500 font-semibold tracking-widest">COMPANY</div></div>
                 </div>
-                <hr className="border-green-500 mb-4"/>
+                <hr className="border-blue-500 mb-4"/>
                 <p className="font-semibold mb-2">Hello {driverName}</p>
                 <p className="text-gray-600 mb-3">Attached is your payroll settlement from Silkroad llc</p>
                 <hr className="mb-3"/>
@@ -780,7 +780,7 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
             <div>
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="text-xs font-semibold text-gray-600">Attachments</span>
-                <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <a href={pdfUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{fname}</a>
@@ -791,7 +791,7 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
           </div>
           <div className="w-[280px] px-5 py-4 bg-gray-50">
             <div className="text-center mb-5"><div className="text-2xl font-black text-red-600 tracking-tight">TOPTRUCK</div><div className="text-xs text-gray-500 font-semibold tracking-widest">COMPANY</div></div>
-            <hr className="border-green-500 mb-4"/>
+            <hr className="border-blue-500 mb-4"/>
             <p className="font-semibold text-sm mb-2">Hello {driverName}</p>
             <p className="text-gray-600 text-sm mb-3">Attached is your payroll settlement from Silkroad llc</p>
             <hr className="mb-3"/>
@@ -799,7 +799,7 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
           </div>
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-          <button onClick={send} disabled={sending||!to} className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-semibold disabled:opacity-50">
+          <button onClick={send} disabled={sending||!to} className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-semibold disabled:opacity-50">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
             {sending?'Sending…':'Send'}
           </button>
@@ -899,7 +899,7 @@ function AdvancedPaymentsSection({ settlementId, driverId, appliedAdjustments, c
                   <td className="px-3 py-2 text-gray-700 truncate max-w-[240px]">{ap.description || '—'}</td>
                   <td className="px-3 py-2 text-right font-semibold text-amber-700">{formatCurrency(ap.remaining)}</td>
                   <td className="px-3 py-2 text-center">
-                    <button onClick={() => handleApply(ap.id)} className="w-6 h-6 flex items-center justify-center text-green-600 hover:text-white hover:bg-green-600 rounded font-bold text-lg leading-none transition-colors">+</button>
+                    <button onClick={() => handleApply(ap.id)} className="w-6 h-6 flex items-center justify-center text-blue-600 hover:text-white hover:bg-blue-600 rounded font-bold text-lg leading-none transition-colors">+</button>
                   </td>
                 </tr>
               ))}

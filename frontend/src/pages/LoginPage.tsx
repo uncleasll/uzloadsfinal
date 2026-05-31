@@ -24,7 +24,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a2332] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-3">
@@ -41,7 +41,7 @@ export default function LoginPage() {
           <p className="text-white/40 text-sm">Transportation Management System</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 border border-blue-100">
           <h1 className="text-xl font-bold text-gray-900 mb-1">Sign in to your account</h1>
           <p className="text-sm text-gray-500 mb-6">Enter your credentials to continue</p>
 

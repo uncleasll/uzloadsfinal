@@ -16,7 +16,7 @@ import toast from 'react-hot-toast'
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
 const STATUS_STYLE: Record<string, string> = {
-  'New':        'bg-green-100 text-green-700',
+  'New':        'bg-blue-100 text-blue-700',
   'Canceled':   'bg-red-100 text-red-600',
   'TONU':       'bg-red-100 text-red-600',
   'Dispatched': 'bg-blue-100 text-blue-700',
@@ -171,7 +171,7 @@ export default function LoadsPage() {
           <div className="relative flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div className="absolute left-0 top-0 h-full bg-red-300 transition-all"
               style={{ width: totalRate > 0 ? `${Math.min((pendingTotal / totalRate) * 100, 100)}%` : '0%' }} />
-            <div className="absolute top-0 h-full bg-green-400 transition-all"
+            <div className="absolute top-0 h-full bg-blue-400 transition-all"
               style={{
                 left: totalRate > 0 ? `${Math.min((pendingTotal / totalRate) * 100, 100)}%` : '0%',
                 width: totalRate > 0 ? `${Math.min((invoicedTotal / totalRate) * 100, 100)}%` : '0%',
@@ -187,7 +187,7 @@ export default function LoadsPage() {
             type="text"
             placeholder="Search..."
             onChange={handleSearch}
-            className="pl-6 pr-6 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:border-green-400 w-36"
+            className="pl-6 pr-6 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:border-blue-400 w-36"
           />
           <button onClick={() => setShowFilterDrawer(true)} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 10h10M11 16h2"/></svg>
@@ -203,7 +203,7 @@ export default function LoadsPage() {
         {/* New Load */}
         <button
           onClick={() => setShowNewForm(v => !v)}
-          className="flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-[11px] font-semibold rounded transition-colors flex-shrink-0"
+          className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded transition-colors flex-shrink-0"
         >
           <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
           New Load
@@ -285,7 +285,7 @@ export default function LoadsPage() {
                     const v = e.target.value; const num = parseInt(v)
                     setFilters(p => ({ ...p, page: 1, load_number: !isNaN(num) && v ? num : undefined }))
                   }}
-                  className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-green-400"
+                  className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-blue-400"
                 />
               </td>
               {/* Date from */}
@@ -293,7 +293,7 @@ export default function LoadsPage() {
                 <input type="date"
                   value={activeFilters.date_from || ''}
                   onChange={e => { setActiveFilters(p => ({ ...p, date_from: e.target.value || undefined })); setFilters(p => ({ ...p, page: 1 })) }}
-                  className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-green-400"
+                  className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-blue-400"
                 />
               </td>
               {/* Driver */}
@@ -318,7 +318,7 @@ export default function LoadsPage() {
               <td className="px-1 py-0.5">
                 <input type="text"
                   onChange={e => setFilters(p => ({ ...p, page: 1, search: e.target.value || undefined }))}
-                  className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-green-400"
+                  className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-blue-400"
                 />
               </td>
               {/* Pickup, Delivery, Rate — readonly */}
@@ -330,7 +330,7 @@ export default function LoadsPage() {
                 <input type="date"
                   value={activeFilters.date_to || ''}
                   onChange={e => { setActiveFilters(p => ({ ...p, date_to: e.target.value || undefined })); setFilters(p => ({ ...p, page: 1 })) }}
-                  className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-green-400"
+                  className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-blue-400"
                 />
               </td>
               {/* Status */}
@@ -414,7 +414,7 @@ export default function LoadsPage() {
                   </td>
                   <td className="px-1 py-1 text-center" onClick={e => e.stopPropagation()}>
                     {load.documents.length > 0 && (
-                      <span className="inline-block w-2 h-2 rounded-full bg-green-500" title={`${load.documents.length} doc(s)`} />
+                      <span className="inline-block w-2 h-2 rounded-full bg-blue-500" title={`${load.documents.length} doc(s)`} />
                     )}
                   </td>
                   <td className="px-1.5 py-1" onClick={e => e.stopPropagation()}>
@@ -447,7 +447,7 @@ export default function LoadsPage() {
             }).map(p => (
               <button key={p} onClick={() => setFilters(prev => ({ ...prev, page: p }))}
                 className={`w-5 h-5 rounded text-[11px] font-medium transition-colors ${
-                  p === (filters.page || 1) ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                  p === (filters.page || 1) ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}>
                 {p}
               </button>
@@ -465,7 +465,7 @@ export default function LoadsPage() {
           </span>
 
           <button onClick={() => setShowOnlyActive(p => !p)}
-            className={`text-[11px] underline ${showOnlyActive ? 'text-green-600' : 'text-gray-400 hover:text-gray-600'}`}>
+            className={`text-[11px] underline ${showOnlyActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
             {showOnlyActive ? 'Show all loads' : 'Show only active loads'}
           </button>
         </div>
@@ -474,7 +474,7 @@ export default function LoadsPage() {
           <span className="text-[11px] text-gray-400">Show records</span>
           {PAGE_SIZE_OPTIONS.map(n => (
             <button key={n} onClick={() => setFilters(p => ({ ...p, page: 1, page_size: n }))}
-              className={`text-[11px] px-1 rounded ${(filters.page_size || 50) === n ? 'text-green-600 font-bold underline' : 'text-gray-400 hover:text-gray-700'}`}>
+              className={`text-[11px] px-1 rounded ${(filters.page_size || 50) === n ? 'text-blue-600 font-bold underline' : 'text-gray-400 hover:text-gray-700'}`}>
               {n}
             </button>
           ))}

@@ -73,7 +73,7 @@ export default function MyCompanyPage() {
       <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0">
         <h1 className="text-xl font-bold text-gray-900">My Company</h1>
         <button onClick={handleSave} disabled={saving}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded disabled:opacity-50">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
@@ -118,25 +118,25 @@ export default function MyCompanyPage() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Company Name <span className="text-red-500">*</span></label>
                 <input value={form.name} onChange={e=>sf('name',e.target.value)}
                   placeholder="e.g. TopTruck Company"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Legal Name</label>
                 <input value={form.legal_name} onChange={e=>sf('legal_name',e.target.value)}
                   placeholder="e.g. TopTruck Company LLC"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">MC Number</label>
                 <input value={form.mc_number} onChange={e=>sf('mc_number',e.target.value)}
                   placeholder="e.g. MC-123456"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">DOT Number</label>
                 <input value={form.dot_number} onChange={e=>sf('dot_number',e.target.value)}
                   placeholder="e.g. 1234567"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
             </div>
           </div>
@@ -149,19 +149,19 @@ export default function MyCompanyPage() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
                 <input value={form.phone} onChange={e=>sf('phone',e.target.value)}
                   placeholder="e.g. (970) 610-8065"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Email</label>
                 <input type="email" value={form.email} onChange={e=>sf('email',e.target.value)}
                   placeholder="e.g. info@company.com"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Website</label>
                 <input value={form.website} onChange={e=>sf('website',e.target.value)}
                   placeholder="e.g. https://www.company.com"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
             </div>
           </div>
@@ -174,20 +174,20 @@ export default function MyCompanyPage() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Street Address</label>
                 <input value={form.address} onChange={e=>sf('address',e.target.value)}
                   placeholder="e.g. 123 Main St"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">City</label>
                 <input value={form.city} onChange={e=>sf('city',e.target.value)}
                   placeholder="e.g. Dallas"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">State</label>
                   <div className="relative">
                     <select value={form.state} onChange={e=>sf('state',e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none">
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                       <option value=""></option>
                       {US_STATES.map(s=><option key={s} value={s}>{s}</option>)}
                     </select>
@@ -198,7 +198,7 @@ export default function MyCompanyPage() {
                   <label className="block text-xs font-semibold text-gray-600 mb-1">ZIP Code</label>
                   <input value={form.zip_code} onChange={e=>sf('zip_code',e.target.value)}
                     placeholder="e.g. 75001"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
                 </div>
               </div>
             </div>

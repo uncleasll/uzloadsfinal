@@ -19,7 +19,7 @@ import PaymentsPage from '@/pages/PaymentsPage'
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
   if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-[#1a2332]">
+    <div className="flex h-screen items-center justify-center bg-white">
       <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
     </div>
   )

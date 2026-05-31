@@ -69,7 +69,7 @@ export default function ExpensesPage() {
         <h1 className="text-xl font-bold text-gray-900">Expenses</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowNew(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded">
             + New Expense
           </button>
         </div>
@@ -80,7 +80,7 @@ export default function ExpensesPage() {
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
           <select value={filters.category} onChange={e=>setFilters(p=>({...p,category:e.target.value}))}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-green-500 w-40">
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 w-40">
             <option value="">All</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -88,12 +88,12 @@ export default function ExpensesPage() {
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
           <input type="date" value={filters.date_from} onChange={e=>setFilters(p=>({...p,date_from:e.target.value}))}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-green-500"/>
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500"/>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
           <input type="date" value={filters.date_to} onChange={e=>setFilters(p=>({...p,date_to:e.target.value}))}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-green-500"/>
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500"/>
         </div>
         <div className="flex-1"/>
         <div className="text-right">
@@ -230,12 +230,12 @@ function ExpenseModal({ expenseId, categories, vendors, drivers, trucks, onClose
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Date <span className="text-red-500">*</span></label>
               <input type="date" value={form.expense_date} onChange={e=>sf('expense_date',e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Category <span className="text-red-500">*</span></label>
               <select value={form.category} onChange={e=>sf('category',e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500">
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500">
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -245,14 +245,14 @@ function ExpenseModal({ expenseId, categories, vendors, drivers, trucks, onClose
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
               <input type="number" step="0.01" value={form.amount} onChange={e=>sf('amount',e.target.value)}
-                className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-green-500"/>
+                className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Vendor</label>
               <select value={form.vendor_id} onChange={e=>sf('vendor_id',e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500">
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500">
                 <option value=""></option>
                 {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
@@ -260,7 +260,7 @@ function ExpenseModal({ expenseId, categories, vendors, drivers, trucks, onClose
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Driver</label>
               <select value={form.driver_id} onChange={e=>sf('driver_id',e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500">
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500">
                 <option value=""></option>
                 {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
@@ -268,7 +268,7 @@ function ExpenseModal({ expenseId, categories, vendors, drivers, trucks, onClose
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Truck</label>
               <select value={form.truck_id} onChange={e=>sf('truck_id',e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500">
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500">
                 <option value=""></option>
                 {trucks.map(t => <option key={t.id} value={t.id}>{t.unit_number}</option>)}
               </select>
@@ -277,13 +277,13 @@ function ExpenseModal({ expenseId, categories, vendors, drivers, trucks, onClose
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Description</label>
             <textarea value={form.description} onChange={e=>sf('description',e.target.value)} rows={3}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:border-green-500"/>
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:border-blue-500"/>
           </div>
         </div>
 
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
           <button onClick={onClose} className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm rounded font-medium">Close</button>
-          <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-semibold disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-semibold disabled:opacity-50">
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>

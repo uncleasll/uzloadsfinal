@@ -183,7 +183,7 @@ function StatusBadge({ status }: { status: string }) {
   const s = status || 'Pending'
   const styles: Record<string, string> = {
     Pending:  'border-[#f4b14f] bg-[#fff8ef] text-[#ef9b1f]',
-    Approved: 'border-[#6ad08a] bg-[#eefaf2] text-[#38a169]',
+    Approved: 'border-[#93c5fd] bg-[#eff6ff] text-[#2563eb]',
     'No buy': 'border-[#e57373] bg-[#fdecec] text-[#c0392b]',
   }
   return (
@@ -199,7 +199,7 @@ function StatusBadge({ status }: { status: string }) {
 function CreditBadge({ credit }: { credit?: string }) {
   if (!credit) return <span className="text-[#94a3b8]">—</span>
   const colors: Record<string, string> = {
-    A: 'border-[#6ad08a] text-[#4ebd72]',
+    A: 'border-[#93c5fd] text-[#4ebd72]',
     B: 'border-[#f4b14f] text-[#ef9b1f]',
     C: 'border-[#e57373] text-[#c0392b]',
   }
@@ -376,7 +376,7 @@ export default function BrokersPage() {
 
             <button
               onClick={openCreateModal}
-              className="inline-flex h-9 items-center gap-1.5 rounded bg-[#58c777] px-3.5 text-sm font-semibold text-white transition hover:bg-[#4ab668]"
+              className="inline-flex h-9 items-center gap-1.5 rounded bg-[#2563eb] px-3.5 text-sm font-semibold text-white transition hover:bg-[#4ab668]"
             >
               <PlusDocIcon />
               New customer
@@ -391,7 +391,7 @@ export default function BrokersPage() {
               'rounded-t border border-b-0 px-5 py-2 text-sm font-semibold transition-colors',
               activeTab === 'brokers'
                 ? 'border-[#cfd6de] bg-[#f8f9fb] text-[#2d3748]'
-                : 'border-transparent bg-transparent text-[#38b26b] hover:bg-gray-50'
+                : 'border-transparent bg-transparent text-[#2563eb] hover:bg-gray-50'
             )}
           >
             Brokers
@@ -402,7 +402,7 @@ export default function BrokersPage() {
               'rounded-t border border-b-0 px-5 py-2 text-sm font-semibold transition-colors',
               activeTab === 'shippers'
                 ? 'border-[#cfd6de] bg-[#f8f9fb] text-[#2d3748]'
-                : 'border-transparent bg-transparent text-[#38b26b] hover:bg-gray-50'
+                : 'border-transparent bg-transparent text-[#2563eb] hover:bg-gray-50'
             )}
           >
             Shippers/Receivers
@@ -517,7 +517,7 @@ export default function BrokersPage() {
               >
                 <ChevronLeft />
               </button>
-              <button className="inline-flex h-6 min-w-[24px] items-center justify-center rounded bg-[#58c777] px-2 text-xs font-semibold text-white">
+              <button className="inline-flex h-6 min-w-[24px] items-center justify-center rounded bg-[#2563eb] px-2 text-xs font-semibold text-white">
                 {safePage}
               </button>
               <button
@@ -599,7 +599,7 @@ export default function BrokersPage() {
                         value={form.companyName}
                         onChange={(e) => updateForm('companyName', e.target.value)}
                         placeholder="Search by name or MC number"
-                        className="h-[36px] w-full rounded border border-gray-200 bg-[#fcfcfd] px-3 text-sm outline-none placeholder:text-gray-400 focus:border-[#58c777] focus:ring-1 focus:ring-[#58c777]"
+                        className="h-[36px] w-full rounded border border-gray-200 bg-[#fcfcfd] px-3 text-sm outline-none placeholder:text-gray-400 focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
                       />
                       <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                         <SearchIcon />
@@ -612,7 +612,7 @@ export default function BrokersPage() {
                     <input
                       value={form.address}
                       onChange={(e) => updateForm('address', e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#58c777]"
+                      className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                     />
                   </div>
 
@@ -621,7 +621,7 @@ export default function BrokersPage() {
                     <input
                       value={form.addressLine2}
                       onChange={(e) => updateForm('addressLine2', e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#58c777]"
+                      className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                     />
                   </div>
 
@@ -635,7 +635,7 @@ export default function BrokersPage() {
                         <input
                           value={form.phone}
                           onChange={(e) => updateForm('phone', e.target.value)}
-                          className="h-[36px] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#58c777]"
+                          className="h-[36px] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
                         />
                       </div>
                     </div>
@@ -648,7 +648,7 @@ export default function BrokersPage() {
                         <input
                           value={form.email}
                           onChange={(e) => updateForm('email', e.target.value)}
-                          className="h-[36px] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#58c777]"
+                          className="h-[36px] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
                         />
                       </div>
                     </div>
@@ -660,7 +660,7 @@ export default function BrokersPage() {
                       <input
                         value={form.city}
                         onChange={(e) => updateForm('city', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#58c777]"
+                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                       />
                     </div>
                     <div>
@@ -668,7 +668,7 @@ export default function BrokersPage() {
                       <select
                         value={form.state}
                         onChange={(e) => updateForm('state', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#58c777] bg-white"
+                        className="h-[36px] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] bg-white"
                       >
                         <option value=""></option>
                         {STATES.map((state) => (
@@ -681,7 +681,7 @@ export default function BrokersPage() {
                       <input
                         value={form.zip}
                         onChange={(e) => updateForm('zip', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#58c777]"
+                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                       />
                     </div>
                   </div>
@@ -692,7 +692,7 @@ export default function BrokersPage() {
                       <input
                         value={form.fidEin}
                         onChange={(e) => updateForm('fidEin', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#58c777]"
+                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                       />
                     </div>
                     <div>
@@ -700,7 +700,7 @@ export default function BrokersPage() {
                       <input
                         value={form.mc}
                         onChange={(e) => updateForm('mc', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#58c777]"
+                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                       />
                     </div>
                   </div>
@@ -711,7 +711,7 @@ export default function BrokersPage() {
                       value={form.notes}
                       onChange={(e) => updateForm('notes', e.target.value)}
                       rows={3}
-                      className="w-full rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#58c777]"
+                      className="w-full rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#2563eb]"
                     />
                   </div>
                 </div>
@@ -724,14 +724,14 @@ export default function BrokersPage() {
                     <h3 className="mb-3 text-[15px] font-bold text-gray-800">Customer type</h3>
                     <div className="flex flex-col gap-2.5">
                       <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                        <div className={clsx("flex h-4 w-4 items-center justify-center rounded", form.isBroker ? "bg-[#58c777]" : "border border-gray-300")}>
+                        <div className={clsx("flex h-4 w-4 items-center justify-center rounded", form.isBroker ? "bg-[#2563eb]" : "border border-gray-300")}>
                            {form.isBroker && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
                         </div>
                         <input type="checkbox" className="hidden" checked={form.isBroker} onChange={(e) => updateForm('isBroker', e.target.checked)} />
                         Broker
                       </label>
                       <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                        <div className={clsx("flex h-4 w-4 items-center justify-center rounded", form.isShipperReceiver ? "bg-[#58c777]" : "border border-gray-300")}>
+                        <div className={clsx("flex h-4 w-4 items-center justify-center rounded", form.isShipperReceiver ? "bg-[#2563eb]" : "border border-gray-300")}>
                            {form.isShipperReceiver && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
                         </div>
                         <input type="checkbox" className="hidden" checked={form.isShipperReceiver} onChange={(e) => updateForm('isShipperReceiver', e.target.checked)} />
@@ -748,16 +748,16 @@ export default function BrokersPage() {
                       {/* Radio Buttons */}
                       <div className="flex flex-col gap-3 justify-center">
                         <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                          <div className={clsx("flex h-[18px] w-[18px] items-center justify-center rounded-full border", form.billingType === 'direct' ? "border-[#58c777]" : "border-gray-300")}>
-                            {form.billingType === 'direct' && <div className="h-2.5 w-2.5 rounded-full bg-[#58c777]"></div>}
+                          <div className={clsx("flex h-[18px] w-[18px] items-center justify-center rounded-full border", form.billingType === 'direct' ? "border-[#2563eb]" : "border-gray-300")}>
+                            {form.billingType === 'direct' && <div className="h-2.5 w-2.5 rounded-full bg-[#2563eb]"></div>}
                           </div>
                           <input type="radio" className="hidden" checked={form.billingType === 'direct'} onChange={() => updateForm('billingType', 'direct')} />
                           Direct billing
                         </label>
 
                         <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                          <div className={clsx("flex h-[18px] w-[18px] items-center justify-center rounded-full border", form.billingType === 'factoring' ? "border-[#58c777]" : "border-gray-300")}>
-                            {form.billingType === 'factoring' && <div className="h-2.5 w-2.5 rounded-full bg-[#58c777]"></div>}
+                          <div className={clsx("flex h-[18px] w-[18px] items-center justify-center rounded-full border", form.billingType === 'factoring' ? "border-[#2563eb]" : "border-gray-300")}>
+                            {form.billingType === 'factoring' && <div className="h-2.5 w-2.5 rounded-full bg-[#2563eb]"></div>}
                           </div>
                           <input type="radio" className="hidden" checked={form.billingType === 'factoring'} onChange={() => updateForm('billingType', 'factoring')} />
                           Factoring
@@ -771,7 +771,7 @@ export default function BrokersPage() {
                           value={form.factoringCompany}
                           onChange={(e) => updateForm('factoringCompany', e.target.value)}
                           disabled={form.billingType !== 'factoring'}
-                          className="h-[36px] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#58c777] disabled:bg-gray-50 bg-white"
+                          className="h-[36px] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] disabled:bg-gray-50 bg-white"
                         >
                           <option value=""></option>
                           <option value="RTS">RTS</option>
@@ -789,7 +789,7 @@ export default function BrokersPage() {
                           value={form.quickpayFee}
                           onChange={(e) => updateForm('quickpayFee', e.target.value)}
                           placeholder="e.g. 2.25"
-                          className="h-[36px] w-full rounded border border-gray-200 bg-[#f1f5f9] px-3 text-sm outline-none text-gray-700 placeholder:text-gray-500 focus:border-[#58c777]"
+                          className="h-[36px] w-full rounded border border-gray-200 bg-[#f1f5f9] px-3 text-sm outline-none text-gray-700 placeholder:text-gray-500 focus:border-[#2563eb]"
                         />
                       </div>
                       <div>
@@ -797,7 +797,7 @@ export default function BrokersPage() {
                         <select
                           value={form.credit}
                           onChange={(e) => updateForm('credit', e.target.value)}
-                          className="h-[36px] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#58c777] bg-white"
+                          className="h-[36px] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] bg-white"
                         >
                           <option value=""></option>
                           <option value="A">A</option>
@@ -811,7 +811,7 @@ export default function BrokersPage() {
                           value={form.avgDaysToPay}
                           onChange={(e) => updateForm('avgDaysToPay', e.target.value)}
                           inputMode="numeric"
-                          className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#58c777]"
+                          className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                         />
                       </div>
                     </div>
@@ -835,7 +835,7 @@ export default function BrokersPage() {
                         <input
                           value={form.payTerms}
                           onChange={(e) => updateForm('payTerms', e.target.value)}
-                          className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#58c777]"
+                          className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                         />
                       </div>
                     </div>
@@ -857,7 +857,7 @@ export default function BrokersPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex h-9 items-center gap-2 rounded bg-[#58c777] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70"
+                className="inline-flex h-9 items-center gap-2 rounded bg-[#2563eb] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
                 {saving ? 'Saving...' : 'Save'}

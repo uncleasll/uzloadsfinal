@@ -66,7 +66,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
             <svg className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <p className="text-sm text-gray-600">
               Need Help? Watch our quick video tutorial on{' '}
-              <a href="#" className="text-green-600 font-medium hover:underline">How to create and manage driver payroll settlements.</a>
+              <a href="#" className="text-blue-600 font-medium hover:underline">How to create and manage driver payroll settlements.</a>
             </p>
           </div>
 
@@ -81,7 +81,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
                     const d=drivers.find(x=>String(x.id)===v)
                     setPayableTo(d ? d.name : '')
                   }}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none">
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                   <option value=""></option>
                   {drivers.map(d=><option key={d.id} value={d.id}>{d.name} [{d.driver_type}]</option>)}
                 </select>
@@ -92,7 +92,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Payable to <span className="text-red-500">*</span></label>
               <div className="relative">
                 <select value={payableTo} onChange={e=>setPayableTo(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none">
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                   <option value=""></option>
                   {drivers.map(d=><option key={d.id} value={d.name}>{d.name}</option>)}
                 </select>
@@ -108,25 +108,25 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
               <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-gray-500 whitespace-nowrap">Date Range: From</label>
                 <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-green-500"/>
+                  className="border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500"/>
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-gray-500 whitespace-nowrap">Date Range: To</label>
                 <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-green-500"/>
+                  className="border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500"/>
               </div>
               <div className="flex flex-col gap-1">
                 {[{v:'pickup',l:'by Pickup Date'},{v:'delivery',l:'by Delivery Date'}].map(o=>(
                   <label key={o.v} className="flex items-center gap-1.5 cursor-pointer">
                     <input type="radio" name="dt_new" value={o.v} checked={dateType===o.v}
                       onChange={()=>setDateType(o.v as 'pickup'|'delivery')}
-                      className="accent-green-600 w-3.5 h-3.5"/>
+                      className="accent-blue-600 w-3.5 h-3.5"/>
                     <span className="text-xs text-gray-600">{o.l}</span>
                   </label>
                 ))}
               </div>
               <button onClick={fetchBalances}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded flex-shrink-0">
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded flex-shrink-0">
                 <IcoCheck/> Apply
               </button>
             </div>
@@ -157,7 +157,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
                       <td className="px-4 py-3 text-gray-500">{updatedField(b) ? formatDate(updatedField(b)) : '—'}</td>
                       <td className="px-4 py-3">
                         <button disabled={creating===b.driver_id} onClick={()=>handleCreate(b)}
-                          className="text-green-600 font-medium text-sm hover:underline disabled:opacity-50">
+                          className="text-blue-600 font-medium text-sm hover:underline disabled:opacity-50">
                           {creating===b.driver_id ? 'Creating…' : 'Create Settlement'}
                         </button>
                       </td>
@@ -173,7 +173,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
           <button onClick={onClose} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded hover:bg-gray-900">
             <IcoX/> Close
           </button>
-          <button disabled className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-400 text-white text-sm font-medium rounded opacity-50 cursor-not-allowed">
+          <button disabled className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-400 text-white text-sm font-medium rounded opacity-50 cursor-not-allowed">
             <IcoCheck/> Save
           </button>
         </div>

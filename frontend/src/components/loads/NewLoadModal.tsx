@@ -263,7 +263,7 @@ export default function NewLoadModal({ onClose, onSaved, entities }: Props) {
         </div>
         <ColHeader icon={<PickupIcon />} label="Pickup" color="text-brand-600" />
         <ColHeader icon={<DeliveryIcon />} label="Delivery" color="text-red-500" />
-        <ColHeader icon={<BrokerIcon />} label="Broker" color="text-green-600" />
+        <ColHeader icon={<BrokerIcon />} label="Broker" color="text-blue-600" />
         <ColHeader icon={<DriverIcon />} label="Driver" color="text-blue-500" />
         <div className="px-4 py-2 space-y-0">
           <div className="flex items-center gap-1 text-xs font-semibold text-gray-600">
@@ -476,8 +476,8 @@ export default function NewLoadModal({ onClose, onSaved, entities }: Props) {
 
             {/* Attached list */}
             {attachments.map((att, idx) => (
-              <div key={idx} className="flex items-center justify-between mt-1 text-xs bg-green-50 border border-green-200 rounded px-2 py-1">
-                <span className="text-green-700 font-medium flex-shrink-0">[{att.type}]</span>
+              <div key={idx} className="flex items-center justify-between mt-1 text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                <span className="text-blue-700 font-medium flex-shrink-0">[{att.type}]</span>
                 <span className="text-gray-600 truncate mx-1 max-w-[70px]" title={att.file.name}>{att.file.name}</span>
                 <button onClick={() => removeAttachment(idx)} className="text-red-400 hover:text-red-600 flex-shrink-0">✕</button>
               </div>
@@ -534,7 +534,7 @@ function NoteIcon() {
   return <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
 }
 function ClipIcon() {
-  return <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+  return <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
 }
 function CheckIcon() {
   return <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>

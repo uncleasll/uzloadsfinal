@@ -24,7 +24,7 @@ interface AdvPay {
 const CATS = ['Com check','Fuel advance','Pre-payment','Loan','Other','Repair advance','Detention advance','Escrow release']
 
 function Badge({ ap }: { ap: AdvPay }) {
-  if (ap.is_applied) return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Applied</span>
+  if (ap.is_applied) return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Applied</span>
   if (ap.applied_amount > 0) return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Partial</span>
   return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">Unapplied</span>
 }
@@ -80,7 +80,7 @@ export default function AdvancedPaymentsPage() {
           <p className="text-xs text-gray-500 mt-0.5">Pre-settlement payments (com-checks, fuel advances) applied to driver settlements</p>
         </div>
         <button onClick={() => { setEditItem(null); setShowModal(true) }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded transition-colors">
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
           New Advanced Payment
         </button>
@@ -90,7 +90,7 @@ export default function AdvancedPaymentsPage() {
       <div className="px-5 py-2.5 border-b border-gray-100 bg-gray-50 flex items-center gap-8 flex-shrink-0">
         {[
           { l: 'Total Issued', v: formatCurrency(totalAmt), c: 'text-gray-900' },
-          { l: 'Total Applied', v: formatCurrency(totalApp), c: 'text-green-700' },
+          { l: 'Total Applied', v: formatCurrency(totalApp), c: 'text-blue-700' },
           { l: 'Outstanding', v: formatCurrency(totalRem), c: totalRem > 0 ? 'text-amber-700' : 'text-gray-400' },
         ].map((s, i) => (
           <div key={i} className="flex items-center gap-6">
@@ -105,7 +105,7 @@ export default function AdvancedPaymentsPage() {
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Driver</label>
           <select value={filters.driver_id} onChange={e => { setFilters(p => ({ ...p, driver_id: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-green-500 w-44">
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 w-44">
             <option value="">All drivers</option>
             {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
@@ -114,18 +114,18 @@ export default function AdvancedPaymentsPage() {
           <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
           <input type="date" value={filters.date_from}
             onChange={e => { setFilters(p => ({ ...p, date_from: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-green-500" />
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
           <input type="date" value={filters.date_to}
             onChange={e => { setFilters(p => ({ ...p, date_to: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-green-500" />
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
         </div>
         <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer pb-1.5">
           <input type="checkbox" checked={filters.unapplied_only}
             onChange={e => { setFilters(p => ({ ...p, unapplied_only: e.target.checked })); setPage(1) }}
-            className="accent-green-600 w-3.5 h-3.5" />
+            className="accent-blue-600 w-3.5 h-3.5" />
           Unapplied only
         </label>
         {(filters.driver_id || filters.date_from || filters.date_to || filters.unapplied_only) && (
@@ -153,7 +153,7 @@ export default function AdvancedPaymentsPage() {
             {loading ? (
               <tr><td colSpan={10} className="py-16 text-center text-gray-400">
                 <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                   Loading…
                 </div>
               </td></tr>
@@ -162,7 +162,7 @@ export default function AdvancedPaymentsPage() {
                 <div className="flex flex-col items-center gap-3 text-gray-400">
                   <svg className="w-12 h-12 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                   <span>No advanced payments found</span>
-                  <button onClick={() => setShowModal(true)} className="text-green-600 text-sm hover:underline font-medium">+ Create one</button>
+                  <button onClick={() => setShowModal(true)} className="text-blue-600 text-sm hover:underline font-medium">+ Create one</button>
                 </div>
               </td></tr>
             ) : items.map(ap => (
@@ -174,7 +174,7 @@ export default function AdvancedPaymentsPage() {
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{ap.category || '—'}</td>
                 <td className="px-3 py-2.5 text-gray-600 text-xs truncate max-w-[240px]">{ap.description || '—'}</td>
                 <td className="px-3 py-2.5 text-right font-semibold text-gray-900">{formatCurrency(ap.amount)}</td>
-                <td className="px-3 py-2.5 text-right text-green-700 font-medium text-xs">
+                <td className="px-3 py-2.5 text-right text-blue-700 font-medium text-xs">
                   {ap.applied_amount > 0 ? formatCurrency(ap.applied_amount) : '—'}
                 </td>
                 <td className={`px-3 py-2.5 text-right font-semibold text-xs ${ap.remaining > 0 ? 'text-amber-700' : 'text-gray-400'}`}>
@@ -280,7 +280,7 @@ function APModal({ item, drivers, onClose, onSaved }: {
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Driver <span className="text-red-500">*</span></label>
               <div className="relative">
                 <select value={form.driver_id} onChange={e => sf('driver_id', e.target.value)} disabled={!canEdit}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none disabled:bg-gray-50 disabled:text-gray-400">
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none disabled:bg-gray-50 disabled:text-gray-400">
                   <option value="">Select driver</option>
                   {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
@@ -290,7 +290,7 @@ function APModal({ item, drivers, onClose, onSaved }: {
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date <span className="text-red-500">*</span></label>
               <input type="date" value={form.payment_date} onChange={e => sf('payment_date', e.target.value)} disabled={!canEdit}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 disabled:bg-gray-50" />
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-50" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -301,14 +301,14 @@ function APModal({ item, drivers, onClose, onSaved }: {
                 <input type="number" step="0.01" min="0.01" value={form.amount}
                   onChange={e => sf('amount', e.target.value)} disabled={!canEdit}
                   placeholder="0.00"
-                  className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-green-500 disabled:bg-gray-50" />
+                  className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-50" />
               </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Category</label>
               <div className="relative">
                 <select value={form.category} onChange={e => sf('category', e.target.value)} disabled={!canEdit}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none disabled:bg-gray-50">
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none disabled:bg-gray-50">
                   {CATS.map(c => <option key={c}>{c}</option>)}
                 </select>
                 <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
@@ -319,7 +319,7 @@ function APModal({ item, drivers, onClose, onSaved }: {
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Description</label>
             <textarea value={form.description} onChange={e => sf('description', e.target.value)} disabled={!canEdit}
               rows={3} placeholder="e.g. Com check for truck repairs — Load #1045"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-green-500 disabled:bg-gray-50" />
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-blue-500 disabled:bg-gray-50" />
           </div>
           {!item && (
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700">
@@ -334,7 +334,7 @@ function APModal({ item, drivers, onClose, onSaved }: {
           </button>
           {canEdit && (
             <button onClick={handleSave} disabled={saving}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg font-semibold disabled:opacity-50 flex items-center gap-1.5">
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-semibold disabled:opacity-50 flex items-center gap-1.5">
               {saving && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
               {saving ? 'Saving…' : item ? 'Save Changes' : 'Create Payment'}
             </button>

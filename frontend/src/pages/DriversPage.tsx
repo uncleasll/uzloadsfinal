@@ -370,7 +370,7 @@ function DriverActionMenu({ onEdit, onDelete }: { onEdit: ()=>void; onDelete: ()
   return (
     <div ref={ref} className="relative flex items-center">
       <button onClick={(e)=>{e.stopPropagation();onEdit()}}
-        className="inline-flex items-center justify-center w-7 h-7 rounded bg-[#58c777] text-white hover:bg-[#4ab668] transition-colors"
+        className="inline-flex items-center justify-center w-7 h-7 rounded bg-[#2563eb] text-white hover:bg-[#4ab668] transition-colors"
         title="Edit Driver">
         <IcoEdit />
       </button>
@@ -476,7 +476,7 @@ export default function DriversPage() {
   </button>
 </div>
           <button onClick={() => setEditDriver('new')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#58c777] text-white text-sm font-semibold rounded hover:bg-[#4ab668] transition-colors">
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#2563eb] text-white text-sm font-semibold rounded hover:bg-[#4ab668] transition-colors">
             <IcoPlus /> New
           </button>
         </div>
@@ -570,7 +570,7 @@ export default function DriversPage() {
                   <td className="px-4 py-2 text-sm text-gray-600">{d.driver_type === 'OO' ? 'O/O' : 'Drv'}</td>
                   <td className="px-4 py-2">
                     {d.profile?.driver_status === 'Hired' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">● Hired</span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">● Hired</span>
                     ) : d.profile?.driver_status === 'Terminated' ? (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">Terminated</span>
                     ) : (
@@ -1083,7 +1083,7 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                             {meta && <span className={'text-xs text-amber-500'}>{meta}</span>}
                             {warnText && <span className="text-xs text-amber-500">({warnText})</span>}
                             {typeDocs.length === 0 && !meta && (
-                              <span className="text-xs text-gray-400">- <span className="text-green-600">(No {dt.key === 'drug_test' ? 'drug tests' : 'documents'})</span></span>
+                              <span className="text-xs text-gray-400">- <span className="text-blue-600">(No {dt.key === 'drug_test' ? 'drug tests' : 'documents'})</span></span>
                             )}
                             {typeDocs.length > 0 && (
                               <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{typeDocs.length}</span>
@@ -1363,8 +1363,8 @@ function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string
         {[{v:'Drv',l:'Company driver'},{v:'OO',l:'Owner operator'}].map(o => (
           <label key={o.v} className="flex items-center gap-2 cursor-pointer">
             <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' +
-              (form.driver_type === o.v ? 'border-[#58c777]' : 'border-gray-300')}>
-              {form.driver_type === o.v && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+              (form.driver_type === o.v ? 'border-[#2563eb]' : 'border-gray-300')}>
+              {form.driver_type === o.v && <div className="w-2 h-2 rounded-full bg-[#2563eb]"></div>}
             </div>
             <input type="radio" className="hidden" checked={form.driver_type===o.v} onChange={()=>sf('driver_type',o.v)} />
             <span className="text-sm text-gray-700">{o.l}</span>
@@ -1383,8 +1383,8 @@ function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string
           ].map(o => (
             <label key={o.v} className="flex items-center gap-2 cursor-pointer">
               <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' +
-                (form.pay_type === o.v ? 'border-[#58c777]' : 'border-gray-300')}>
-                {form.pay_type === o.v && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+                (form.pay_type === o.v ? 'border-[#2563eb]' : 'border-gray-300')}>
+                {form.pay_type === o.v && <div className="w-2 h-2 rounded-full bg-[#2563eb]"></div>}
               </div>
               <input type="radio" className="hidden" checked={form.pay_type===o.v} onChange={()=>sf('pay_type',o.v)} />
               <span className="text-sm text-gray-700">{o.l}</span>
@@ -1449,7 +1449,7 @@ function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string
       {!isOO && form.pay_type === 'flatpay' && (
         <div className="grid grid-cols-2 gap-8">
           <div className="space-y-4">
-            <button className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#58c777] text-white text-sm font-medium rounded hover:bg-[#4ab668]">
+            <button className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#2563eb] text-white text-sm font-medium rounded hover:bg-[#4ab668]">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
               Run now
             </button>
@@ -1583,7 +1583,7 @@ function ScheduledTabView({ isEdit, txs, onAdd, onEdit, onDelete }: {
       </div>
 
       <div className="flex justify-end mb-3">
-        <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#58c777] text-white text-sm font-semibold rounded hover:bg-[#4ab668]">
+        <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2563eb] text-white text-sm font-semibold rounded hover:bg-[#4ab668]">
           <IcoPlus /> Add
         </button>
       </div>
@@ -1783,62 +1783,62 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
             <div className="flex flex-1 flex-col gap-4">
               <Field label="Company Name" required>
                 <input value={form.company_name} onChange={e=>sf('company_name',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777] focus:ring-1 focus:ring-[#58c777]" />
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]" />
               </Field>
               <Field label="Address">
                 <input value={form.address} onChange={e=>sf('address',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
               <Field label="Address line 2">
                 <input value={form.address2} onChange={e=>sf('address2',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Phone">
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">📞</span>
                     <input value={form.phone} onChange={e=>sf('phone',e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#58c777]" />
+                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#2563eb]" />
                   </div>
                 </Field>
                 <Field label="Email">
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">@</span>
                     <input value={form.email} onChange={e=>sf('email',e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#58c777]" />
+                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#2563eb]" />
                   </div>
                 </Field>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <Field label="City">
                   <input value={form.city} onChange={e=>sf('city',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
                 <Field label="State">
                   <select value={form.state} onChange={e=>sf('state',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#58c777]">
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#2563eb]">
                     <option value=""></option>
                     {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </Field>
                 <Field label="Zip">
                   <input value={form.zip_code} onChange={e=>sf('zip_code',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="FID/EIN">
                   <input value={form.fid_ein} onChange={e=>sf('fid_ein',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
                 <Field label="MC">
                   <input value={form.mc_number} onChange={e=>sf('mc_number',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
               </div>
               <Field label="Notes">
                 <textarea value={form.notes} onChange={e=>sf('notes',e.target.value)} rows={2}
-                  className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#58c777]" />
+                  className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
             </div>
             {/* Right */}
@@ -1854,7 +1854,7 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
                   </div>
                 )}
                 <button onClick={() => setShowTypeModal(true)}
-                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#58c777] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]">
+                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#2563eb] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]">
                   <IcoPlus /> Vendor type
                 </button>
               </div>
@@ -1862,14 +1862,14 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
                 <h3 className="mb-4 text-[16px] font-bold text-gray-800">Billing</h3>
                 <div className="flex items-center gap-6 mb-6">
                   <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
-                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_additional_payee ? 'border-[#58c777] bg-[#58c777]' : 'border-gray-300 bg-gray-50')}>
+                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_additional_payee ? 'border-[#2563eb] bg-[#2563eb]' : 'border-gray-300 bg-gray-50')}>
                       {form.is_additional_payee && <IcoCheck />}
                     </div>
                     <input type="checkbox" className="hidden" checked={form.is_additional_payee} onChange={e=>sf('is_additional_payee',e.target.checked)} />
                     Additional payee
                   </label>
                   <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
-                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_equipment_owner ? 'border-[#58c777] bg-[#58c777]' : 'border-gray-300 bg-gray-50')}>
+                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_equipment_owner ? 'border-[#2563eb] bg-[#2563eb]' : 'border-gray-300 bg-gray-50')}>
                       {form.is_equipment_owner && <IcoCheck />}
                     </div>
                     <input type="checkbox" className="hidden" checked={form.is_equipment_owner} onChange={e=>sf('is_equipment_owner',e.target.checked)} />
@@ -1881,7 +1881,7 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
                   <input value={form.additional_payee_rate_pct}
                     onChange={e=>sf('additional_payee_rate_pct',e.target.value)}
                     disabled={!form.is_additional_payee}
-                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#58c777] disabled:opacity-80" />
+                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#2563eb] disabled:opacity-80" />
                 </div>
                 <div>
                   <Label text="Settlement template type" />
@@ -1907,7 +1907,7 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
             <IcoX /> Close
           </button>
           <button onClick={save} disabled={saving}
-            className="inline-flex h-9 items-center gap-2 rounded bg-[#58c777] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70">
+            className="inline-flex h-9 items-center gap-2 rounded bg-[#2563eb] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70">
             <IcoCheck /> {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
@@ -1982,46 +1982,46 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
             <div className="flex flex-1 flex-col gap-4">
               <Field label="Company Name" required>
                 <input value={form.company_name} onChange={e=>sf('company_name',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777] focus:ring-1 focus:ring-[#58c777]" />
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]" />
               </Field>
               <Field label="Address">
                 <input value={form.address} onChange={e=>sf('address',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
               <Field label="Address line 2">
                 <input value={form.address2} onChange={e=>sf('address2',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
               <div className="grid grid-cols-3 gap-4">
                 <Field label="City">
                   <input value={form.city} onChange={e=>sf('city',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
                 <Field label="State">
                   <select value={form.state} onChange={e=>sf('state',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#58c777]">
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#2563eb]">
                     <option value=""></option>
                     {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </Field>
                 <Field label="Zip">
                   <input value={form.zip_code} onChange={e=>sf('zip_code',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="FID/EIN">
                   <input value={form.fid_ein} onChange={e=>sf('fid_ein',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
                 <Field label="MC">
                   <input value={form.mc_number} onChange={e=>sf('mc_number',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]" />
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
               </div>
               <Field label="Notes">
                 <textarea value={form.notes} onChange={e=>sf('notes',e.target.value)} rows={2}
-                  className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#58c777]" />
+                  className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
               {/* Contacts / Documents tabs */}
               <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -2029,7 +2029,7 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
                   {(['contacts','documents'] as const).map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
                       className={'px-5 py-2.5 text-sm font-semibold capitalize transition-colors ' +
-                        (activeTab === tab ? 'border-b-2 border-[#58c777] text-[#58c777] bg-white' : 'text-gray-500 hover:text-gray-700 bg-gray-50')}>
+                        (activeTab === tab ? 'border-b-2 border-[#2563eb] text-[#2563eb] bg-white' : 'text-gray-500 hover:text-gray-700 bg-gray-50')}>
                       {tab.charAt(0).toUpperCase() + tab.slice(1)}
                     </button>
                   ))}
@@ -2038,7 +2038,7 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
                   {activeTab === 'contacts' && (
                     <div>
                       <div className="flex justify-end mb-3">
-                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#58c777] text-white text-xs font-semibold rounded hover:bg-[#4ab668]">
+                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2563eb] text-white text-xs font-semibold rounded hover:bg-[#4ab668]">
                           <IcoPlus /> New Contact
                         </button>
                       </div>
@@ -2054,17 +2054,17 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
                           <tr className="border-t border-gray-100">
                             <td className="px-3 py-2.5 text-gray-700">default contact</td>
                             <td className="px-3 py-2.5 text-center">
-                              <span className="text-[#58c777]"><IcoOK /></span>
+                              <span className="text-[#2563eb]"><IcoOK /></span>
                             </td>
                             <td className="px-3 py-2.5 text-center">
-                              <span className="text-[#58c777]"><IcoOK /></span>
+                              <span className="text-[#2563eb]"><IcoOK /></span>
                             </td>
                             <td className="px-3 py-2.5 text-gray-500">{vendor.phone || '—'}</td>
                             <td className="px-3 py-2.5 text-gray-500">{vendor.email || '—'}</td>
                             <td className="px-3 py-2.5 text-gray-400">—</td>
                             <td className="px-3 py-2.5">
                               <div className="flex gap-1">
-                                <button className="p-1 text-green-500 hover:text-green-700"><IcoEdit /></button>
+                                <button className="p-1 text-blue-500 hover:text-blue-700"><IcoEdit /></button>
                                 <button className="p-1 text-red-400 hover:text-red-600"><IcoTrash /></button>
                               </div>
                             </td>
@@ -2092,7 +2092,7 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
                   </div>
                 )}
                 <button onClick={() => setShowTypeModal(true)}
-                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#58c777] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]">
+                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#2563eb] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]">
                   <IcoPlus /> Vendor type
                 </button>
               </div>
@@ -2100,14 +2100,14 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
                 <h3 className="mb-4 text-[16px] font-bold text-gray-800">Billing</h3>
                 <div className="flex items-center gap-6 mb-6">
                   <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
-                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_additional_payee ? 'border-[#58c777] bg-[#58c777]' : 'border-gray-300 bg-gray-50')}>
+                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_additional_payee ? 'border-[#2563eb] bg-[#2563eb]' : 'border-gray-300 bg-gray-50')}>
                       {form.is_additional_payee && <IcoCheck />}
                     </div>
                     <input type="checkbox" className="hidden" checked={form.is_additional_payee} onChange={e=>sf('is_additional_payee',e.target.checked)} />
                     Additional payee
                   </label>
                   <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
-                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_equipment_owner ? 'border-[#58c777] bg-[#58c777]' : 'border-gray-300 bg-gray-50')}>
+                    <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_equipment_owner ? 'border-[#2563eb] bg-[#2563eb]' : 'border-gray-300 bg-gray-50')}>
                       {form.is_equipment_owner && <IcoCheck />}
                     </div>
                     <input type="checkbox" className="hidden" checked={form.is_equipment_owner} onChange={e=>sf('is_equipment_owner',e.target.checked)} />
@@ -2119,7 +2119,7 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
                   <input value={form.additional_payee_rate_pct}
                     onChange={e=>sf('additional_payee_rate_pct',e.target.value)}
                     disabled={!form.is_additional_payee}
-                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#58c777] disabled:opacity-80" />
+                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#2563eb] disabled:opacity-80" />
                 </div>
                 <div>
                   <Label text="Settlement template type" />
@@ -2145,7 +2145,7 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
             <IcoX /> Close
           </button>
           <button onClick={save} disabled={saving}
-            className="inline-flex h-9 items-center gap-2 rounded bg-[#58c777] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70">
+            className="inline-flex h-9 items-center gap-2 rounded bg-[#2563eb] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70">
             <IcoCheck /> {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
@@ -2233,8 +2233,8 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
 
   const Radio = ({ name, value, checked, onChange, label }: {name:string;value:string;checked:boolean;onChange:()=>void;label:string}) => (
     <label className="flex items-center gap-2 cursor-pointer">
-      <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ' + (checked ? 'border-[#58c777]' : 'border-gray-300')}>
-        {checked && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+      <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ' + (checked ? 'border-[#2563eb]' : 'border-gray-300')}>
+        {checked && <div className="w-2 h-2 rounded-full bg-[#2563eb]"></div>}
       </div>
       <input type="radio" name={name} value={value} checked={checked} onChange={onChange} className="hidden" />
       <span className="text-sm text-gray-700">{label}</span>
@@ -2329,7 +2329,7 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <label className="text-sm font-semibold text-gray-800">Driver settlement description</label>
-                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
               </div>
             </div>
             <div>
@@ -2347,15 +2347,15 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
               <h4 className="text-base font-bold text-gray-900 mb-3">Status</h4>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' + (isActive ? 'border-[#58c777]' : 'border-gray-300')}>
-                    {isActive && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+                  <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' + (isActive ? 'border-[#2563eb]' : 'border-gray-300')}>
+                    {isActive && <div className="w-2 h-2 rounded-full bg-[#2563eb]"></div>}
                   </div>
                   <input type="radio" className="hidden" checked={isActive} onChange={()=>setIsActive(true)} />
                   <span className="text-sm text-gray-700">Active</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' + (!isActive ? 'border-[#58c777]' : 'border-gray-300')}>
-                    {!isActive && <div className="w-2 h-2 rounded-full bg-[#58c777]"></div>}
+                  <div className={'w-4 h-4 rounded-full border-2 flex items-center justify-center ' + (!isActive ? 'border-[#2563eb]' : 'border-gray-300')}>
+                    {!isActive && <div className="w-2 h-2 rounded-full bg-[#2563eb]"></div>}
                   </div>
                   <input type="radio" className="hidden" checked={!isActive} onChange={()=>setIsActive(false)} />
                   <span className="text-sm text-gray-700">Inactive</span>
@@ -2387,7 +2387,7 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <button onClick={onClose} className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded hover:bg-gray-900"><IcoX /> Close</button>
-          <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 px-5 py-2 bg-[#58c777] text-white text-sm font-medium rounded hover:bg-[#4ab668] disabled:opacity-70"><IcoCheck /> {saving ? 'Saving...' : 'Save'}</button>
+          <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 px-5 py-2 bg-[#2563eb] text-white text-sm font-medium rounded hover:bg-[#4ab668] disabled:opacity-70"><IcoCheck /> {saving ? 'Saving...' : 'Save'}</button>
         </div>
       </div>
     </div>

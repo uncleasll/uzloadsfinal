@@ -22,10 +22,11 @@ app = FastAPI(
 @app.middleware("http")
 async def handle_options(request: Request, call_next):
     if request.method == "OPTIONS":
+        origin = request.headers.get("origin", "")
         return Response(
             status_code=200,
             headers={
-                "Access-Control-Allow-Origin": "https://uzloadsfinal-7c41.vercel.app",
+                "Access-Control-Allow-Origin": origin,
                 "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
                 "Access-Control-Allow-Headers": "*",
                 "Access-Control-Allow-Credentials": "true",
@@ -35,8 +36,12 @@ async def handle_options(request: Request, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://uzloadsfinal-7c41.vercel.app"],
-    allow_credentials=False,
+    allow_origins=[
+        "https://uzloadsfinal-7c41.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

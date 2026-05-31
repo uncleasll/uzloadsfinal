@@ -52,17 +52,17 @@ function InlineText({
   }
   if (editing) return (
     <span className="inline-flex items-center gap-1">
-      <input ref={ref} className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-green-500 bg-white" style={{ width: 100 }}
+      <input ref={ref} className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white" style={{ width: 100 }}
         value={val} onChange={e => setVal(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setVal(value) } }} />
-      <button onClick={save} disabled={saving} className="text-green-600 hover:text-green-700 disabled:opacity-40"><Check /></button>
+      <button onClick={save} disabled={saving} className="text-blue-600 hover:text-blue-700 disabled:opacity-40"><Check /></button>
       <button onClick={() => { setEditing(false); setVal(value) }} className="text-gray-400 hover:text-gray-600"><X /></button>
     </span>
   )
   return (
     <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
       <span className="text-gray-800">{value || placeholder}</span>
-      <span className="text-green-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
+      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
     </span>
   )
 }
@@ -81,17 +81,17 @@ function InlineNumber({
   }
   if (editing) return (
     <span className="inline-flex items-center gap-1">
-      <input ref={ref} type="number" step="0.01" className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-green-500 bg-white w-24"
+      <input ref={ref} type="number" step="0.01" className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white w-24"
         value={val} onChange={e => setVal(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setVal(String(value)) } }} />
-      <button onClick={save} disabled={saving} className="text-green-600 hover:text-green-700 disabled:opacity-40"><Check /></button>
+      <button onClick={save} disabled={saving} className="text-blue-600 hover:text-blue-700 disabled:opacity-40"><Check /></button>
       <button onClick={() => { setEditing(false); setVal(String(value)) }} className="text-gray-400 hover:text-gray-600"><X /></button>
     </span>
   )
   return (
     <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
       <span className="text-gray-800">{prefix}{value.toFixed(2)}</span>
-      <span className="text-green-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
+      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
     </span>
   )
 }
@@ -107,7 +107,7 @@ function InlineSelect({
   }
   if (editing) return (
     <span className="inline-flex items-center gap-1">
-      <select autoFocus className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-green-500 bg-white"
+      <select autoFocus className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white"
         defaultValue={value} onChange={e => save(e.target.value)} disabled={saving}>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -119,7 +119,7 @@ function InlineSelect({
     <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
       {cls ? <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${cls}`}>{value}</span>
            : <span className="text-gray-800">{value}</span>}
-      <span className="text-green-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
+      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
     </span>
   )
 }
@@ -136,10 +136,10 @@ function InlineDate({ value, onSave }: { value: string; onSave: (v: string) => P
   }
   if (editing) return (
     <span className="inline-flex items-center gap-1">
-      <input ref={ref} type="date" className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-green-500 bg-white"
+      <input ref={ref} type="date" className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white"
         value={val} onChange={e => setVal(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setVal(value) } }} />
-      <button onClick={save} disabled={saving} className="text-green-600 hover:text-green-700 disabled:opacity-40"><Check /></button>
+      <button onClick={save} disabled={saving} className="text-blue-600 hover:text-blue-700 disabled:opacity-40"><Check /></button>
       <button onClick={() => { setEditing(false); setVal(value) }} className="text-gray-400 hover:text-gray-600"><X /></button>
     </span>
   )
@@ -147,7 +147,7 @@ function InlineDate({ value, onSave }: { value: string; onSave: (v: string) => P
   return (
     <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
       <span className="text-gray-800">{display}</span>
-      <span className="text-green-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
+      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
     </span>
   )
 }
@@ -163,7 +163,7 @@ function InlineEntitySelect({
   }
   if (editing) return (
     <span className="inline-flex items-center gap-1">
-      <select autoFocus className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-green-500 bg-white max-w-[160px]"
+      <select autoFocus className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white max-w-[160px]"
         defaultValue={value ?? ''} onChange={e => save(e.target.value)} disabled={saving}>
         <option value="">— none —</option>
         {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
@@ -174,7 +174,7 @@ function InlineEntitySelect({
   return (
     <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
       <span className={label ? 'text-blue-600 font-medium' : 'text-gray-400'}>{label || '[not set]'}</span>
-      <span className="text-green-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
+      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
     </span>
   )
 }
@@ -419,7 +419,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                 <div className="border-2 border-gray-200 rounded-lg px-3 py-1.5 text-center bg-white hover:border-gray-300 transition-colors cursor-default" style={{ minWidth: 130 }}>
                   <div className="text-xs text-gray-400 font-medium mb-0.5">#{stop.stop_order} {stop.stop_type}</div>
                   <div className="flex items-center justify-center gap-1">
-                    <MapPin color={stop.stop_type === 'pickup' ? '#16a34a' : '#2563eb'} />
+                    <MapPin color={stop.stop_type === 'pickup' ? '#1d4ed8' : '#2563eb'} />
                     <span className="text-sm font-bold text-gray-900 uppercase truncate max-w-[120px]">
                       {stop.city}, {stop.state}
                     </span>
@@ -439,10 +439,10 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
 
           {/* ── Route actions ── */}
           <div className="flex items-center gap-4 mb-4 text-xs">
-            <button className="flex items-center gap-1 text-green-700 hover:text-green-800 font-medium"><MapIcon /> Map</button>
-            <button className="flex items-center gap-1 text-green-700 hover:text-green-800 font-medium"><Plus /> Add stop</button>
-            <button className="flex items-center gap-1 text-green-700 hover:text-green-800 font-medium"><Refresh /> Recalculate distance</button>
-            <button className="flex items-center gap-1 text-green-700 hover:text-green-800 font-medium"><Send /> Dispatch info to the driver</button>
+            <button className="flex items-center gap-1 text-blue-700 hover:text-blue-800 font-medium"><MapIcon /> Map</button>
+            <button className="flex items-center gap-1 text-blue-700 hover:text-blue-800 font-medium"><Plus /> Add stop</button>
+            <button className="flex items-center gap-1 text-blue-700 hover:text-blue-800 font-medium"><Refresh /> Recalculate distance</button>
+            <button className="flex items-center gap-1 text-blue-700 hover:text-blue-800 font-medium"><Send /> Dispatch info to the driver</button>
           </div>
 
           {/* ── 4-col info grid ── */}
@@ -452,7 +452,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
             <div>
               <h3 className="font-bold text-gray-900 text-sm mb-2.5 flex items-center gap-1">
                 Load #{load.load_number}
-                <span className="text-green-600 cursor-pointer"><Pencil size="xs" /></span>
+                <span className="text-blue-600 cursor-pointer"><Pencil size="xs" /></span>
               </h3>
               <div className="space-y-1.5">
                 <Field label="Status:">
@@ -550,20 +550,20 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                 <span>Notes</span>
               </div>
               <button onClick={() => setAddingNote(true)}
-                className="flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors flex-shrink-0">
+                className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors flex-shrink-0">
                 <FileText /> New note
               </button>
             </div>
 
             {addingNote && (
-              <div className="px-3 py-2.5 border-b border-gray-100 bg-green-50/40">
+              <div className="px-3 py-2.5 border-b border-gray-100 bg-blue-50/40">
                 <textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:border-green-500"
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:border-blue-500"
                   rows={3} placeholder="Enter note…"
                   onKeyDown={e => { if (e.key === 'Escape') { setAddingNote(false); setNoteText('') } }} />
                 <div className="flex gap-2 mt-1.5">
                   <button onClick={handleAddNote} disabled={noteSaving}
-                    className="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium disabled:opacity-50">
+                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium disabled:opacity-50">
                     {noteSaving ? 'Saving…' : 'Save'}
                   </button>
                   <button onClick={() => { setAddingNote(false); setNoteText('') }}
@@ -586,7 +586,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                 <button key={tab} onClick={() => setActiveTab(tab)}
                   className={`px-5 py-2.5 text-xs font-medium border-b-2 transition-colors flex-1 text-center capitalize ${
                     activeTab === tab
-                      ? 'border-green-600 text-green-700 bg-white'
+                      ? 'border-blue-600 text-blue-700 bg-white'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}>
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -601,15 +601,15 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                 <div>
                   <div className="flex justify-end gap-2 mb-3 flex-wrap">
                     <button onClick={() => { setShowSvcForm('lumper'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium">
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
                       <FileText /> New lumper
                     </button>
                     <button onClick={() => { setShowSvcForm('detention'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium">
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
                       <FileText /> New detention
                     </button>
                     <button onClick={() => { setShowSvcForm('other'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium">
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
                       <FileText /> Other additions/deductions
                     </button>
                   </div>
@@ -623,14 +623,14 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">Add / Deduct</label>
                           <select value={svcForm.add_deduct} onChange={e => setSvcForm(f => ({ ...f, add_deduct: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-green-500">
+                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-500">
                             <option>Add</option><option>Deduct</option>
                           </select>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">Paid By</label>
                           <select value={svcForm.paid_by} onChange={e => setSvcForm(f => ({ ...f, paid_by: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-green-500">
+                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-500">
                             <option>Company</option><option>Broker</option><option>Driver</option>
                           </select>
                         </div>
@@ -638,24 +638,24 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                           <label className="block text-xs font-medium text-gray-500 mb-1">Invoice Amount</label>
                           <input type="number" step="0.01" min="0" value={svcForm.invoice_amount}
                             onChange={e => setSvcForm(f => ({ ...f, invoice_amount: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-green-500" placeholder="0.00" />
+                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500" placeholder="0.00" />
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">Drivers Payable</label>
                           <input type="number" step="0.01" min="0" value={svcForm.drivers_payable}
                             onChange={e => setSvcForm(f => ({ ...f, drivers_payable: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-green-500" placeholder="0.00" />
+                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500" placeholder="0.00" />
                         </div>
                         <div className="col-span-2">
                           <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
                           <input type="text" value={svcForm.notes}
                             onChange={e => setSvcForm(f => ({ ...f, notes: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-green-500" />
+                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500" />
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={handleAddService} disabled={svcSaving}
-                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium disabled:opacity-50">
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium disabled:opacity-50">
                           {svcSaving ? 'Saving…' : 'Save'}
                         </button>
                         <button onClick={() => setShowSvcForm(null)}
@@ -724,7 +724,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                             <td className="px-3 py-2 text-right">
                               <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <a href={`/api/v1/loads/${loadId}/documents/${doc.id}/download`} target="_blank" rel="noreferrer"
-                                  className="text-green-600 hover:text-green-700"><Download /></a>
+                                  className="text-blue-600 hover:text-blue-700"><Download /></a>
                                 <button onClick={() => handleDeleteDoc(doc.id)} className="text-red-400 hover:text-red-600"><Trash /></button>
                               </div>
                             </td>
@@ -756,12 +756,12 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium">
+                        <button className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
                           <Plus /> Create invoice
                         </button>
                         <div className="relative" ref={recalcRef}>
                           <button onClick={() => setShowRecalcMenu(v => !v)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium">
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
                             Recalculate <ChevronDown />
                           </button>
                           {showRecalcMenu && (
@@ -781,7 +781,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                     </div>
 
                     <table className="w-full border border-gray-200 rounded overflow-hidden text-xs">
-                      <thead className="bg-green-700 text-white">
+                      <thead className="bg-blue-700 text-white">
                         <tr>
                           <th className="px-3 py-2 text-left font-semibold w-24">Date</th>
                           <th className="px-3 py-2 text-left font-semibold">Description</th>
@@ -807,9 +807,9 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-semibold text-gray-900 text-sm flex items-center gap-1">
-                        Drivers Payable <span className="text-green-600 cursor-pointer"><Pencil size="xs" /></span>
+                        Drivers Payable <span className="text-blue-600 cursor-pointer"><Pencil size="xs" /></span>
                       </h4>
-                      <button className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium">
+                      <button className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
                         <Plus /> Additions/Deductions
                       </button>
                     </div>
@@ -849,7 +849,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                   {/* Other Payable */}
                   <div>
                     <h4 className="font-semibold text-gray-900 text-sm flex items-center gap-1 mb-2">
-                      Other Payable <span className="text-green-600 cursor-pointer"><Pencil size="xs" /></span>
+                      Other Payable <span className="text-blue-600 cursor-pointer"><Pencil size="xs" /></span>
                     </h4>
                     <table className="w-full border border-gray-200 rounded overflow-hidden text-xs">
                       <thead>
@@ -920,7 +920,7 @@ function UploadBtn({
     return (
       <div className="relative">
         <button onClick={() => setOpen(v => !v)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium disabled:opacity-50"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium disabled:opacity-50"
           disabled={uploading}>
           <Upload /> {label} <ChevronDown />
         </button>
@@ -942,7 +942,7 @@ function UploadBtn({
   }
 
   return (
-    <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-medium cursor-pointer disabled:opacity-50">
+    <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium cursor-pointer disabled:opacity-50">
       <Upload /> {label}
       <input type="file" className="hidden" disabled={uploading} onChange={e => {
         const f = e.target.files?.[0]

@@ -34,7 +34,7 @@ const TYPE_LABELS: Record<string, string> = {
 function TypeBadge({ type }: { type: string }) {
   const cls =
     type === 'advanced_payment' ? 'bg-amber-100 text-amber-700' :
-    type === 'settlement_payment' ? 'bg-green-100 text-green-700' :
+    type === 'settlement_payment' ? 'bg-blue-100 text-blue-700' :
     'bg-gray-100 text-gray-600'
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>{TYPE_LABELS[type] || type}</span>
 }
@@ -92,7 +92,7 @@ export default function PaymentsPage() {
           <p className="text-xs text-gray-500 mt-0.5">All payment records — settlement payments and other transactions</p>
         </div>
         <button onClick={() => { setEditItem(null); setShowModal(true) }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded transition-colors">
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
           New Payment
         </button>
@@ -108,7 +108,7 @@ export default function PaymentsPage() {
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Driver</label>
           <select value={filters.driver_id} onChange={e => { setFilters(p => ({ ...p, driver_id: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-green-500 w-44">
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 w-44">
             <option value="">All drivers</option>
             {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
@@ -116,7 +116,7 @@ export default function PaymentsPage() {
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
           <select value={filters.payment_type} onChange={e => { setFilters(p => ({ ...p, payment_type: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-green-500 w-44">
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 w-44">
             <option value="">All types</option>
             {PAYMENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
           </select>
@@ -125,13 +125,13 @@ export default function PaymentsPage() {
           <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
           <input type="date" value={filters.date_from}
             onChange={e => { setFilters(p => ({ ...p, date_from: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-green-500" />
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
           <input type="date" value={filters.date_to}
             onChange={e => { setFilters(p => ({ ...p, date_to: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-green-500" />
+            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
         </div>
         {(filters.driver_id || filters.payment_type || filters.date_from || filters.date_to) && (
           <button onClick={() => { setFilters({ driver_id: '', payment_type: '', date_from: '', date_to: '' }); setPage(1) }}
@@ -252,7 +252,7 @@ function PaymentModal({ item, drivers, onClose, onSaved }: {
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Type</label>
               <div className="relative">
                 <select value={form.payment_type} onChange={e => sf('payment_type', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none">
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                   {PAYMENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
                 </select>
                 <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
@@ -261,7 +261,7 @@ function PaymentModal({ item, drivers, onClose, onSaved }: {
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date <span className="text-red-500">*</span></label>
               <input type="date" value={form.payment_date} onChange={e => sf('payment_date', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500" />
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -269,7 +269,7 @@ function PaymentModal({ item, drivers, onClose, onSaved }: {
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Driver</label>
               <div className="relative">
                 <select value={form.driver_id} onChange={e => sf('driver_id', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-green-500 appearance-none">
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                   <option value="">Select driver</option>
                   {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
@@ -282,7 +282,7 @@ function PaymentModal({ item, drivers, onClose, onSaved }: {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">$</span>
                 <input type="number" step="0.01" min="0.01" value={form.amount}
                   onChange={e => sf('amount', e.target.value)} placeholder="0.00"
-                  className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-green-500" />
+                  className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
               </div>
             </div>
           </div>
@@ -290,19 +290,19 @@ function PaymentModal({ item, drivers, onClose, onSaved }: {
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Payable To</label>
             <input type="text" value={form.payable_to} onChange={e => sf('payable_to', e.target.value)}
               placeholder="Name or company"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500" />
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Description</label>
             <textarea value={form.description} onChange={e => sf('description', e.target.value)}
               rows={3} placeholder="Payment details…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-green-500" />
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-blue-500" />
           </div>
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
           <button onClick={onClose} className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm rounded-lg font-medium">Close</button>
           <button onClick={handleSave} disabled={saving}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg font-semibold disabled:opacity-50 flex items-center gap-1.5">
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-semibold disabled:opacity-50 flex items-center gap-1.5">
             {saving && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             {saving ? 'Saving…' : item ? 'Save Changes' : 'Create Payment'}
           </button>

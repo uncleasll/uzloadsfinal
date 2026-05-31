@@ -118,7 +118,7 @@ export default function VendorsPage() {
               onChange={e => { setSearch(e.target.value); setPage(1) }}
               className="h-9 pl-8 pr-3 w-[260px] text-sm border border-[#d7dce2] rounded focus:outline-none focus:border-[#94a3b8] placeholder:text-[#b1b7c0]" />
           </div>
-          <button onClick={() => setEditVendor('new')} className="inline-flex h-9 items-center gap-1.5 rounded bg-[#58c777] px-3.5 text-sm font-semibold text-white transition hover:bg-[#4ab668]">
+          <button onClick={() => setEditVendor('new')} className="inline-flex h-9 items-center gap-1.5 rounded bg-[#2563eb] px-3.5 text-sm font-semibold text-white transition hover:bg-[#4ab668]">
             <IcoPlus /> New Vendor
           </button>
         </div>
@@ -161,12 +161,12 @@ export default function VendorsPage() {
                 <td className="px-4 py-2.5 text-[#475569]">{v.state || '—'}</td>
                 <td className="px-4 py-2.5 text-center">
                   {v.is_equipment_owner
-                    ? <svg className="w-4 h-4 text-[#58c777] mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4"/></svg>
+                    ? <svg className="w-4 h-4 text-[#2563eb] mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4"/></svg>
                     : <span className="text-gray-300">—</span>}
                 </td>
                 <td className="px-4 py-2.5 text-center">
                   {v.is_additional_payee
-                    ? <svg className="w-4 h-4 text-[#58c777] mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4"/></svg>
+                    ? <svg className="w-4 h-4 text-[#2563eb] mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4"/></svg>
                     : <span className="text-gray-300">—</span>}
                 </td>
                 <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
@@ -192,7 +192,7 @@ export default function VendorsPage() {
             <PagBtn onClick={() => setPage(1)} disabled={page <= 1}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></PagBtn>
             <PagBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg></PagBtn>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => { const s = Math.max(1, Math.min(page - 2, totalPages - 4)); return s + i }).map(p => (
-              <button key={p} onClick={() => setPage(p)} className={`w-6 h-6 text-xs rounded font-semibold ${p === page ? 'bg-[#58c777] text-white' : 'text-[#a8b1bc] border border-[#e3e8ee] bg-[#f8fafc] hover:bg-gray-100'}`}>{p}</button>
+              <button key={p} onClick={() => setPage(p)} className={`w-6 h-6 text-xs rounded font-semibold ${p === page ? 'bg-[#2563eb] text-white' : 'text-[#a8b1bc] border border-[#e3e8ee] bg-[#f8fafc] hover:bg-gray-100'}`}>{p}</button>
             ))}
             <PagBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></PagBtn>
             <PagBtn onClick={() => setPage(totalPages)} disabled={page >= totalPages}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></PagBtn>
@@ -273,7 +273,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                 <input
                   value={form.company_name}
                   onChange={(e) => set('company_name', e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777] focus:ring-1 focus:ring-[#58c777]"
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
                 />
               </div>
 
@@ -282,7 +282,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                 <input
                   value={form.address}
                   onChange={(e) => set('address', e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]"
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                 />
               </div>
 
@@ -291,7 +291,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                 <input
                   value={form.address2}
                   onChange={(e) => set('address2', e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]"
+                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                 />
               </div>
 
@@ -305,7 +305,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                     <input
                       value={form.phone}
                       onChange={(e) => set('phone', e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#58c777]"
+                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
                     />
                   </div>
                 </div>
@@ -318,7 +318,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                     <input
                       value={form.email}
                       onChange={(e) => set('email', e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#58c777]"
+                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
                     />
                   </div>
                 </div>
@@ -330,7 +330,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                   <input
                     value={form.city}
                     onChange={(e) => set('city', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]"
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                   />
                 </div>
                 <div>
@@ -338,7 +338,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                   <select
                     value={form.state}
                     onChange={(e) => set('state', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#58c777]"
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#2563eb]"
                   >
                     <option value=""></option>
                     {STATES.map((state) => (
@@ -351,7 +351,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                   <input
                     value={form.zip_code}
                     onChange={(e) => set('zip_code', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]"
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                   />
                 </div>
               </div>
@@ -362,7 +362,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                   <input
                     value={form.fid_ein}
                     onChange={(e) => set('fid_ein', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]"
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                   />
                 </div>
                 <div>
@@ -370,7 +370,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                   <input
                     value={form.mc_number}
                     onChange={(e) => set('mc_number', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#58c777]"
+                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                   />
                 </div>
               </div>
@@ -381,7 +381,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                   value={form.notes}
                   onChange={(e) => set('notes', e.target.value)}
                   rows={2}
-                  className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#58c777]"
+                  className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#2563eb]"
                 />
               </div>
             </div>
@@ -407,7 +407,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                 
                 <button 
                   onClick={() => setShowTypeModal(true)} 
-                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#58c777] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]"
+                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#2563eb] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]"
                 >
                   <IcoPlus /> Vendor type
                 </button>
@@ -419,7 +419,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                 
                 <div className="flex items-center gap-6 mb-6">
                   <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
-                    <div className={clsx("flex h-4 w-4 items-center justify-center rounded border", form.is_additional_payee ? "border-[#58c777] bg-[#58c777]" : "border-gray-300 bg-gray-50")}>
+                    <div className={clsx("flex h-4 w-4 items-center justify-center rounded border", form.is_additional_payee ? "border-[#2563eb] bg-[#2563eb]" : "border-gray-300 bg-gray-50")}>
                       {form.is_additional_payee && <IcoChk />}
                     </div>
                     <input type="checkbox" className="hidden" checked={form.is_additional_payee} onChange={(e) => set('is_additional_payee', e.target.checked)} />
@@ -427,7 +427,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                   </label>
 
                   <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
-                    <div className={clsx("flex h-4 w-4 items-center justify-center rounded border", form.is_equipment_owner ? "border-[#58c777] bg-[#58c777]" : "border-gray-300 bg-gray-50")}>
+                    <div className={clsx("flex h-4 w-4 items-center justify-center rounded border", form.is_equipment_owner ? "border-[#2563eb] bg-[#2563eb]" : "border-gray-300 bg-gray-50")}>
                       {form.is_equipment_owner && <IcoChk />}
                     </div>
                     <input type="checkbox" className="hidden" checked={form.is_equipment_owner} onChange={(e) => set('is_equipment_owner', e.target.checked)} />
@@ -444,7 +444,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                     value={form.additional_payee_rate_pct}
                     onChange={(e) => set('additional_payee_rate_pct', e.target.value)}
                     disabled={!form.is_additional_payee}
-                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#58c777] disabled:opacity-80"
+                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#2563eb] disabled:opacity-80"
                   />
                 </div>
 
@@ -482,7 +482,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex h-9 items-center gap-2 rounded bg-[#58c777] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70"
+            className="inline-flex h-9 items-center gap-2 rounded bg-[#2563eb] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70"
           >
             <IcoChk /> {saving ? 'Saving...' : 'Save'}
           </button>

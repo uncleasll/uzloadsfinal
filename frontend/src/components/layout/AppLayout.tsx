@@ -67,13 +67,13 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#111827' }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: '#ffffff' }}>
 
       {/* ── Sidebar ── */}
       <aside
         style={{
           width: sidebarOpen ? 176 : 0,
-          background: '#1a2332',
+          background: '#0f172a',
           transition: 'width 0.25s ease',
           flexShrink: 0,
           overflow: 'hidden',
@@ -90,7 +90,7 @@ export default function AppLayout() {
         }}>
           <div style={{
             width: 32, height: 32, borderRadius: 8,
-            background: 'rgba(255,255,255,0.1)',
+            background: 'rgba(37,99,235,0.18)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
             <svg style={{ width: 18, height: 18, color: '#fff' }} fill="currentColor" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@ export default function AppLayout() {
                     padding: '7px 14px',
                     fontSize: 12, fontWeight: 500,
                     color: ia ? '#fff' : 'rgba(255,255,255,0.65)',
-                    background: ia ? '#22c55e' : 'transparent',
+                    background: ia ? '#2563eb' : 'transparent',
                     textDecoration: 'none',
                     whiteSpace: 'nowrap', overflow: 'hidden',
                     transition: 'background 0.15s, color 0.15s',
@@ -174,7 +174,7 @@ export default function AppLayout() {
                           display: 'flex', alignItems: 'center',
                           paddingLeft: 40, paddingRight: 14, paddingTop: 5, paddingBottom: 5,
                           fontSize: 11,
-                          color: ia ? '#4ade80' : 'rgba(255,255,255,0.45)',
+                          color: ia ? '#93c5fd' : 'rgba(255,255,255,0.48)',
                           fontWeight: ia ? 600 : 400,
                           textDecoration: 'none',
                           whiteSpace: 'nowrap', overflow: 'hidden',
@@ -212,7 +212,7 @@ export default function AppLayout() {
 
         {/* Topbar */}
         <header style={{
-          height: 44, background: '#1a2332',
+          height: 44, background: '#0f172a',
           display: 'flex', alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0 16px', flexShrink: 0, zIndex: 20,
@@ -246,7 +246,7 @@ export default function AppLayout() {
               <div style={{
                 width: 30, height: 30, borderRadius: '50%',
                 overflow: 'hidden', flexShrink: 0,
-                background: '#22c55e',
+                background: '#2563eb',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>A</span>
