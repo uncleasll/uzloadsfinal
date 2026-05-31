@@ -1264,8 +1264,38 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                   />
                 )}
                 {payTab === 'payee' && (
-                  <div className="py-8 text-center text-sm text-gray-400">
-                    Additional payee configuration — coming soon.
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="form-label">Payable To</label>
+                      <select value={form.payable_to} onChange={e=>sf('payable_to',e.target.value)} className="select-base text-sm rounded-lg">
+                        <option value={form.first_name || form.last_name ? `${form.first_name} ${form.last_name}`.trim() : form.payable_to}>
+                          {form.first_name || form.last_name ? `${form.first_name} ${form.last_name}`.trim() : 'Driver'}
+                        </option>
+                        {vendors.filter(v => v.is_additional_payee || v.is_equipment_owner).map(v => (
+                          <option key={v.id} value={v.company_name}>{v.company_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">Co-driver</label>
+                      <select value={form.co_driver_id} onChange={e=>sf('co_driver_id',e.target.value)} className="select-base text-sm rounded-lg">
+                        <option value="">None</option>
+                        {allDrivers.filter(d => !driver || d.id !== driver.id).map(d => (
+                          <option key={d.id} value={d.id}>{d.name} [{d.driver_type}]</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">Fuel card</label>
+                      <input value={form.fuel_card} onChange={e=>sf('fuel_card',e.target.value)} className="input-base text-sm rounded-lg" placeholder="Card number"/>
+                    </div>
+                    <div>
+                      <label className="form-label">IFTA handled</label>
+                      <button type="button" onClick={() => sf('ifta', !form.ifta)}
+                        className={'w-full text-left px-3 py-2 rounded-lg border text-sm ' + (form.ifta ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-gray-300 bg-white text-gray-600')}>
+                        {form.ifta ? 'Company handles IFTA' : 'Driver handles IFTA'}
+                      </button>
+                    </div>
                   </div>
                 )}
                 {payTab === 'notes' && (
@@ -1274,8 +1304,25 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                     placeholder="Internal notes about this driver..."/>
                 )}
                 {payTab === 'app' && (
-                  <div className="py-8 text-center text-sm text-gray-400">
-                    Driver app integration — coming soon.
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="form-label">Driver email</label>
+                      <input type="email" value={form.email} onChange={e=>sf('email',e.target.value)} className="input-base text-sm rounded-lg" placeholder="driver@example.com"/>
+                    </div>
+                    <div>
+                      <label className="form-label">Driver phone</label>
+                      <input type="tel" value={form.phone} onChange={e=>sf('phone',e.target.value)} className="input-base text-sm rounded-lg" placeholder="(555) 000-0000"/>
+                    </div>
+                    <div>
+                      <label className="form-label">Driver status</label>
+                      <select value={form.driver_status} onChange={e=>sf('driver_status',e.target.value)} className="select-base text-sm rounded-lg">
+                        {DRIVER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">Access note</label>
+                      <input value={form.notes} onChange={e=>sf('notes',e.target.value)} className="input-base text-sm rounded-lg" placeholder="Portal/access notes"/>
+                    </div>
                   </div>
                 )}
               </div>

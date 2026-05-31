@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, NavLink } from 'react-router-dom'
 import { reportsApi } from '@/api/payroll'
-import { driversApi, brokersApi, trucksApi, dispatchersApi } from '@/api/entities'
+import { driversApi, brokersApi, trucksApi, trailersApi, dispatchersApi } from '@/api/entities'
 import { formatCurrency, formatDate, PERIOD_OPTIONS } from '@/utils'
-import type { Driver, Broker, Truck, Dispatcher } from '@/types'
+import type { Driver, Broker, Truck, Trailer, Dispatcher } from '@/types'
+import LoadModal from '@/components/loads/LoadModal'
 import toast from 'react-hot-toast'
 
 const ALL_STATUSES = ['New','Canceled','TONU','Dispatched','En Route','Picked-up','Delivered','Closed']
@@ -47,14 +48,38 @@ function useEntities() {
   const [drivers, setDrivers]       = useState<Driver[]>([])
   const [brokers, setBrokers]       = useState<Broker[]>([])
   const [trucks, setTrucks]         = useState<Truck[]>([])
+  const [trailers, setTrailers]     = useState<Trailer[]>([])
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([])
+  const [loading, setLoading]       = useState(true)
   useEffect(() => {
-    driversApi.list().then(setDrivers).catch(console.error)
-    brokersApi.list().then(setBrokers).catch(console.error)
-    trucksApi.list().then(setTrucks).catch(console.error)
-    dispatchersApi.list().then(setDispatchers).catch(console.error)
+    Promise.all([
+      driversApi.list(true), brokersApi.list(true), trucksApi.list(true),
+      trailersApi.list(true), dispatchersApi.list(true),
+    ]).then(([d, b, t, tr, di]) => {
+      setDrivers(d); setBrokers(b); setTrucks(t); setTrailers(tr); setDispatchers(di)
+    }).catch(console.error).finally(() => setLoading(false))
   }, [])
-  return { drivers, brokers, trucks, dispatchers }
+  return { drivers, brokers, trucks, trailers, dispatchers, loading }
+}
+
+function emailReport(pdfUrl: string, xlsxUrl: string) {
+  const subject = 'Report export'
+  const body = `Please download the report files:\n\nPDF: ${window.location.origin}${pdfUrl}\nExcel: ${window.location.origin}${xlsxUrl}`
+  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
+
+function openLoad(loadId: unknown) {
+  const id = Number(loadId)
+  if (id) window.dispatchEvent(new CustomEvent('reports:open-load', { detail: id }))
+}
+
+function LoadNumberLink({ row }: { row: Record<string, unknown> }) {
+  return (
+    <button onClick={() => openLoad(row.load_id)}
+      className="font-semibold text-blue-600 hover:underline">
+      {row.load_number as number}
+    </button>
+  )
 }
 
 // ─── Report card (company header + PDF/Excel buttons) ─────────────────────────
@@ -70,7 +95,7 @@ function ReportCard({
       <div className="flex justify-end gap-4 px-5 py-2.5 bg-white border-b border-gray-100">
         <button onClick={() => downloadFile(pdfUrl)}  className="text-sm text-brand-600 hover:underline font-medium">PDF</button>
         <button onClick={() => downloadFile(xlsxUrl)} className="text-sm text-brand-600 hover:underline font-medium">Excel</button>
-        <button className="text-sm text-gray-400 hover:underline font-medium cursor-not-allowed">Email</button>
+        <button onClick={() => emailReport(pdfUrl, xlsxUrl)} className="text-sm text-brand-600 hover:underline font-medium">Email</button>
       </div>
       <div className="px-6 py-5 bg-white">
         {/* Company header */}
@@ -286,7 +311,7 @@ function TotalRevenue() {
                   <tr key={i} className={i%2===0?'bg-white':'bg-gray-50'}>
                     {cfg.columns.includes('pickup_date')&&<td className="table-td">{formatDate(r.pickup_date as string)}</td>}
                     {cfg.columns.includes('actual_delivery_date')&&<td className="table-td">{formatDate(r.actual_delivery_date as string)}</td>}
-                    {cfg.columns.includes('load_number')&&<td className="table-td font-semibold text-blue-600">{r.load_number as number}</td>}
+                    {cfg.columns.includes('load_number')&&<td className="table-td"><LoadNumberLink row={r} /></td>}
                     {cfg.columns.includes('route')&&<td className="table-td">{r.pickup_city as string}, {r.pickup_state as string} → {r.delivery_city as string}, {r.delivery_state as string}</td>}
                     {cfg.columns.includes('broker')&&<td className="table-td">{r.broker as string}</td>}
                     {cfg.columns.includes('po_number')&&<td className="table-td">{r.po_number as string}</td>}
@@ -431,7 +456,7 @@ function RatePerMile() {
                   <tr key={i} className={i%2===0?'bg-white':'bg-gray-50'}>
                     <td className="table-td">{formatDate(r.pickup_date as string)}</td>
                     <td className="table-td">{formatDate(r.actual_delivery_date as string)}</td>
-                    <td className="table-td font-semibold text-blue-600">{r.load_number as number}</td>
+                    <td className="table-td"><LoadNumberLink row={r} /></td>
                     <td className="table-td">{r.truck as string}</td>
                     <td className="table-td">{r.driver as string}</td>
                     <td className="table-td">{r.dispatcher as string}</td>
@@ -568,8 +593,8 @@ function PaymentSummary() {
 function Expenses() {
   const [running,setRunning]=useState(false)
   const [results,setResults]=useState<Record<string,unknown>|null>(null)
-  const [cfg,setCfg]=useState({period:'last_30_days',category:'Carryover Adjustment',detailed:false})
-  const CATS=['Carryover Adjustment','Fuel','Tolls','Insurance','Maintenance','Other']
+  const [cfg,setCfg]=useState({period:'last_30_days',category:'All',detailed:false})
+  const CATS=['All','Carryover Adjustment','Fuel','Tolls','Insurance','Maintenance','Other']
   const run=async()=>{setRunning(true);try{setResults(await reportsApi.expenses({period:cfg.period,category:cfg.category,detailed:cfg.detailed}))}catch(e:unknown){toast.error((e as Error).message)}finally{setRunning(false)}}
   const pdfUrl=buildApiUrl('/expenses/pdf',{period:cfg.period,category:cfg.category}); const xlsxUrl=buildApiUrl('/expenses/xlsx',{period:cfg.period,category:cfg.category})
   const rows=(results?.rows as Record<string,unknown>[])||[]; const summary=(results?.summary as Record<string,number>)||{}
@@ -581,14 +606,25 @@ function Expenses() {
         <div><p className="text-xs font-semibold text-gray-600 mb-1">Category</p><select value={cfg.category} onChange={e=>setCfg(c=>({...c,category:e.target.value}))} className="select-base text-sm w-52">{CATS.map(c=><option key={c}>{c}</option>)}</select></div>
         <label className="flex items-center gap-2 cursor-pointer mb-1.5"><input type="checkbox" checked={cfg.detailed} onChange={e=>setCfg(c=>({...c,detailed:e.target.checked}))} className="rounded accent-brand-600 w-4 h-4"/><span className="text-sm text-gray-600">Detailed report</span></label>
       </div>
-      <RunSetButtons onRun={run} onReset={()=>setCfg({period:'last_30_days',category:'Carryover Adjustment',detailed:false})} running={running} />
+      <RunSetButtons onRun={run} onReset={()=>setCfg({period:'last_30_days',category:'All',detailed:false})} running={running} />
       {results&&(
         <ReportCard pdfUrl={pdfUrl} xlsxUrl={xlsxUrl}>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Expenses Report</h2>
           <MetaLines lines={[`Dates range: ${results.date_from} - ${results.date_to}`,`Category: ${cfg.category}`]} />
-          <table className="w-full text-xs border border-gray-200 rounded"><thead className="bg-gray-50"><tr><th className="table-th w-10">#</th><th className="table-th">Category</th><th className="table-th text-right">Amount</th></tr></thead>
-          <tbody><tr><td colSpan={3} className="py-6 text-center text-gray-400">No records</td></tr></tbody>
-          <tfoot><tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-xs"><td colSpan={2} className="table-td text-right">Total:</td><td className="table-td text-right">{formatCurrency(summary.total||0)}</td></tr></tfoot></table>
+          <table className="w-full text-xs border border-gray-200 rounded"><thead className="bg-gray-50"><tr><th className="table-th w-10">#</th><th className="table-th">Date</th><th className="table-th">Category</th><th className="table-th">Description</th><th className="table-th">Vendor</th><th className="table-th text-right">Amount</th></tr></thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.length===0?<tr><td colSpan={6} className="py-6 text-center text-gray-400">No records</td></tr>:rows.map((r,i)=>(
+              <tr key={i} className={i%2===0?'bg-white':'bg-gray-50'}>
+                <td className="table-td">{i+1}</td>
+                <td className="table-td">{formatDate(r.expense_date as string)}</td>
+                <td className="table-td">{r.category as string}</td>
+                <td className="table-td">{r.description as string}</td>
+                <td className="table-td">{r.vendor as string}</td>
+                <td className="table-td text-right">{formatCurrency(r.amount as number)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot><tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-xs"><td colSpan={5} className="table-td text-right">Total:</td><td className="table-td text-right">{formatCurrency(summary.total||0)}</td></tr></tfoot></table>
         </ReportCard>
       )}
     </div>
@@ -671,7 +707,7 @@ function GrossProfitPerLoad() {
                 {rows.length===0?<tr><td colSpan={12} className="py-8 text-center text-gray-400">No data</td></tr>:rows.map((r,i)=>(
                   <tr key={i} className={i%2===0?'bg-white':'bg-gray-50'}>
                     <td className="table-td">{formatDate(r.pickup_date as string)}</td><td className="table-td">{formatDate(r.actual_delivery_date as string)}</td>
-                    <td className="table-td font-semibold text-blue-600">{r.load_number as number}</td><td className="table-td">{r.truck as string}</td><td className="table-td">{r.driver as string}</td>
+                    <td className="table-td"><LoadNumberLink row={r} /></td><td className="table-td">{r.truck as string}</td><td className="table-td">{r.driver as string}</td>
                     <td className="table-td">{r.pickup_city as string}, {r.pickup_state as string} - {r.delivery_city as string}, {r.delivery_state as string}</td>
                     <td className="table-td text-right">{(r.total_miles as number)||0}</td><td className="table-td text-right">{formatCurrency(r.rate as number)}</td>
                     <td className="table-td text-right">{formatCurrency(r.qp_fee as number)}</td>
@@ -729,7 +765,41 @@ function ProfitLoss() {
 }
 
 // ─── Main ReportsPage ──────────────────────────────────────────────────────────
+function EmailReports() {
+  const templates = [
+    ['Total Revenue', 'total-revenue'],
+    ['Rate Per Mile', 'rate-per-mile'],
+    ['Gross Profit', 'gross-profit'],
+    ['Profit & Loss', 'profit-loss'],
+  ]
+  return (
+    <div className="p-6">
+      <h1 className="text-xl font-bold text-gray-900 mb-4">Email Reports</h1>
+      <div className="border border-gray-200 rounded bg-white divide-y divide-gray-100 max-w-2xl">
+        {templates.map(([label, path]) => (
+          <div key={path} className="flex items-center justify-between px-4 py-3">
+            <div>
+              <div className="text-sm font-semibold text-gray-900">{label}</div>
+              <div className="text-xs text-gray-500">Open report, export PDF/XLSX, then attach it through your email client.</div>
+            </div>
+            <NavLink to={`../${path}`} className="px-3 py-1.5 text-sm rounded bg-brand-600 text-white hover:bg-brand-700">
+              Open
+            </NavLink>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function ReportsPage() {
+  const entities = useEntities()
+  const [openLoadId, setOpenLoadId] = useState<number | null>(null)
+  useEffect(() => {
+    const handler = (event: Event) => setOpenLoadId((event as CustomEvent<number>).detail)
+    window.addEventListener('reports:open-load', handler)
+    return () => window.removeEventListener('reports:open-load', handler)
+  }, [])
   return (
     <div className="flex h-full overflow-hidden">
       <aside className="w-52 flex-shrink-0 bg-gray-50 border-r border-gray-200 overflow-y-auto">
@@ -755,10 +825,14 @@ export default function ReportsPage() {
           <Route path="gross-profit" element={<GrossProfit />} />
           <Route path="gross-profit-per-load" element={<GrossProfitPerLoad />} />
           <Route path="profit-loss" element={<ProfitLoss />} />
-          <Route path="emails" element={<div className="px-6 py-10 text-center text-gray-400">Email reports coming soon.</div>} />
+          <Route path="emails" element={<EmailReports />} />
           <Route path="*" element={<Navigate to="total-revenue" replace />} />
         </Routes>
       </div>
+      {openLoadId !== null && (
+        <LoadModal loadId={openLoadId} onClose={() => setOpenLoadId(null)}
+          onSaved={() => {}} entities={entities} />
+      )}
     </div>
   )
 }

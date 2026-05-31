@@ -67,13 +67,13 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#ffffff' }}>
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
 
       {/* ── Sidebar ── */}
       <aside
         style={{
-          width: sidebarOpen ? 176 : 0,
-          background: '#0f172a',
+          width: sidebarOpen ? 216 : 0,
+          background: 'linear-gradient(180deg, #0f172a 0%, #111827 52%, #0b1120 100%)',
           transition: 'width 0.25s ease',
           flexShrink: 0,
           overflow: 'hidden',
@@ -85,12 +85,12 @@ export default function AppLayout() {
         {/* Logo */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)',
+          padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)',
           flexShrink: 0,
         }}>
           <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: 'rgba(37,99,235,0.18)',
+            width: 36, height: 36, borderRadius: 8,
+            background: 'linear-gradient(135deg, #2563eb, #0ea5e9)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
             <svg style={{ width: 18, height: 18, color: '#fff' }} fill="currentColor" viewBox="0 0 24 24">
@@ -98,13 +98,13 @@ export default function AppLayout() {
             </svg>
           </div>
           <div style={{ overflow: 'hidden' }}>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: 13, lineHeight: 1.2, whiteSpace: 'nowrap' }}>uzloads</div>
-            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap' }}>uzb loads</div>
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, lineHeight: 1.2, whiteSpace: 'nowrap', letterSpacing: 0 }}>uzLoads</div>
+            <div style={{ color: 'rgba(255,255,255,0.48)', fontSize: 11, lineHeight: 1.2, whiteSpace: 'nowrap' }}>Fleet operations</div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+        <nav className="scrollbar-thin" style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 14px' }}>
           {NAV.map(item => {
             const active = isActive(item)
             const open = openMenus[item.label]
@@ -117,10 +117,13 @@ export default function AppLayout() {
                   title={item.label}
                   style={({ isActive: ia }) => ({
                     display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '7px 14px',
-                    fontSize: 12, fontWeight: 500,
+                    padding: '8px 10px',
+                    borderRadius: 7,
+                    marginBottom: 2,
+                    fontSize: 12, fontWeight: ia ? 700 : 500,
                     color: ia ? '#fff' : 'rgba(255,255,255,0.65)',
-                    background: ia ? '#2563eb' : 'transparent',
+                    background: ia ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : 'transparent',
+                    boxShadow: ia ? '0 8px 18px rgba(37,99,235,0.22)' : 'none',
                     textDecoration: 'none',
                     whiteSpace: 'nowrap', overflow: 'hidden',
                     transition: 'background 0.15s, color 0.15s',
@@ -139,10 +142,12 @@ export default function AppLayout() {
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '7px 14px',
-                    fontSize: 12, fontWeight: 500,
+                    padding: '8px 10px',
+                    borderRadius: 7,
+                    marginBottom: 2,
+                    fontSize: 12, fontWeight: active ? 700 : 500,
                     color: active ? '#fff' : 'rgba(255,255,255,0.65)',
-                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    background: active ? 'rgba(37,99,235,0.14)' : 'transparent', border: 'none', cursor: 'pointer',
                     overflow: 'hidden',
                     transition: 'color 0.15s',
                   }}
@@ -165,16 +170,16 @@ export default function AppLayout() {
                 </button>
 
                 {open && (
-                  <div style={{ background: 'rgba(0,0,0,0.2)' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.18)', borderRadius: 7, margin: '0 0 4px' }}>
                     {item.children.map(child => (
                       <NavLink
                         key={child.to}
                         to={child.to}
                         style={({ isActive: ia }) => ({
                           display: 'flex', alignItems: 'center',
-                          paddingLeft: 40, paddingRight: 14, paddingTop: 5, paddingBottom: 5,
+                          paddingLeft: 38, paddingRight: 10, paddingTop: 6, paddingBottom: 6,
                           fontSize: 11,
-                          color: ia ? '#93c5fd' : 'rgba(255,255,255,0.48)',
+                          color: ia ? '#bfdbfe' : 'rgba(255,255,255,0.52)',
                           fontWeight: ia ? 600 : 400,
                           textDecoration: 'none',
                           whiteSpace: 'nowrap', overflow: 'hidden',
@@ -212,16 +217,18 @@ export default function AppLayout() {
 
         {/* Topbar */}
         <header style={{
-          height: 44, background: '#0f172a',
+          height: 52, background: '#fff',
           display: 'flex', alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 16px', flexShrink: 0, zIndex: 20,
+          padding: '0 18px', flexShrink: 0, zIndex: 20,
+          borderBottom: '1px solid #e5e7eb',
+          boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
         }}>
           {/* Hamburger */}
           <button
             onClick={() => setSidebarOpen(v => !v)}
             style={{
-              color: 'rgba(255,255,255,0.7)', background: 'transparent',
+              color: '#475569', background: '#f8fafc',
               border: 'none', cursor: 'pointer', padding: 6, borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
@@ -237,10 +244,11 @@ export default function AppLayout() {
               onClick={() => setShowUserMenu(v => !v)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                background: 'transparent', border: 'none', cursor: 'pointer',
+                background: '#f8fafc', border: '1px solid #e5e7eb', cursor: 'pointer',
+                borderRadius: 999, padding: '3px 4px 3px 10px',
               }}
             >
-              <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: 500 }}>
+              <span style={{ color: '#334155', fontSize: 12, fontWeight: 600 }}>
                 Asilbek Karimov
               </span>
               <div style={{
@@ -294,7 +302,7 @@ export default function AppLayout() {
         </header>
 
         {/* Page content */}
-        <main style={{ flex: 1, overflow: 'hidden', background: '#fff' }}>
+        <main style={{ flex: 1, overflow: 'hidden', background: '#f8fafc', padding: 12 }}>
           <Outlet />
         </main>
       </div>

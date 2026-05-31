@@ -264,6 +264,10 @@ export interface LoadsResponse {
   page_size: number
   total_pages: number
   total_rate: number
+  total_pending_rate?: number
+  total_invoiced_rate?: number
+  total_paid_rate?: number
+  total_overdue_rate?: number
 }
 
 export interface LoadFilters {
@@ -280,6 +284,8 @@ export interface LoadFilters {
   show_only_active?: boolean
   direct_billing?: boolean
   load_number?: number
+  sort_by?: string
+  sort_dir?: 'asc' | 'desc'
   page?: number
   page_size?: number
 }
@@ -290,6 +296,7 @@ export interface LoadCreatePayload {
   load_date: string
   actual_delivery_date?: string
   rate: number
+  total_miles?: number
   loaded_miles?: number
   empty_miles?: number
   po_number?: string

@@ -39,6 +39,8 @@ def get_loads(
     direct_billing: Optional[bool] = None,
     state: Optional[str] = None,
     load_number: Optional[int] = None,
+    sort_by: str = "load_number",
+    sort_dir: str = "desc",
 ):
     query = db.query(Load).options(
         joinedload(Load.driver),
@@ -52,7 +54,11 @@ def get_loads(
     )
 
     if show_only_active:
-        query = query.filter(Load.is_active == True)
+        query = query.filter(
+            Load.is_active == True,
+            Load.status.notin_([LoadStatus.CLOSED, LoadStatus.CANCELED]),
+            Load.billing_status != BillingStatus.PAID,
+        )
 
     if load_number:
         query = query.filter(Load.load_number == load_number)
@@ -102,29 +108,56 @@ def get_loads(
         query = query.filter(Load.direct_billing == direct_billing)
 
     total = query.count()
+    filtered_load_ids = [load_id for (load_id,) in query.enable_eagerloads(False).with_entities(Load.id).all()]
 
-    # Financial totals
-    total_rate = db.query(func.sum(Load.rate)).filter(
-        Load.id.in_([l.id for l in query.all()])
-    ).scalar() or 0.0
+    # Financial totals for the full filtered result set, not just the visible page.
+    totals = {
+        "pending_rate": 0.0,
+        "invoiced_rate": 0.0,
+        "paid_rate": 0.0,
+        "overdue_rate": 0.0,
+    }
+    if filtered_load_ids:
+        total_rows = (
+            db.query(Load.billing_status, func.sum(Load.rate))
+            .filter(Load.id.in_(filtered_load_ids))
+            .group_by(Load.billing_status)
+            .all()
+        )
+        for billing_status, amount in total_rows:
+            amount = float(amount or 0)
+            if billing_status == BillingStatus.PAID:
+                totals["paid_rate"] += amount
+            elif billing_status in (BillingStatus.INVOICED, BillingStatus.SENT_TO_FACTORING, BillingStatus.FUNDED):
+                totals["invoiced_rate"] += amount
+            else:
+                totals["pending_rate"] += amount
 
-    query = query.order_by(Load.load_number.desc())
+        totals["overdue_rate"] = (
+            db.query(func.sum(Load.rate))
+            .filter(
+                Load.id.in_(filtered_load_ids),
+                Load.actual_delivery_date < date.today(),
+                Load.billing_status.notin_([BillingStatus.PAID, BillingStatus.CANCELED]),
+            )
+            .scalar()
+            or 0.0
+        )
+
+    sort_columns = {
+        "load_number": Load.load_number,
+        "date": Load.load_date,
+        "rate": Load.rate,
+        "completed": Load.actual_delivery_date,
+        "status": Load.status,
+        "billing": Load.billing_status,
+        "po_number": Load.po_number,
+    }
+    sort_col = sort_columns.get(sort_by, Load.load_number)
+    query = query.order_by(sort_col.asc() if sort_dir == "asc" else sort_col.desc())
     offset = (page - 1) * page_size
     items = query.offset(offset).limit(page_size).all()
-
-    # Recalculate totals on actual filtered set
-    rate_query = db.query(func.sum(Load.rate))
-    if show_only_active:
-        rate_query = rate_query.filter(Load.is_active == True)
-    if status:
-        rate_query = rate_query.filter(Load.status.in_(statuses))
-    if driver_id:
-        rate_query = rate_query.filter(Load.driver_id == driver_id)
-    if broker_id:
-        rate_query = rate_query.filter(Load.broker_id == broker_id)
-    total_rate = rate_query.scalar() or 0.0
-
-    invoiced_q = rate_query.filter(Load.billing_status.in_(["Invoiced", "Sent to factoring", "Funded", "Paid"]))
+    total_rate = totals["pending_rate"] + totals["invoiced_rate"] + totals["paid_rate"]
 
     return {
         "items": items,
@@ -133,6 +166,10 @@ def get_loads(
         "page_size": page_size,
         "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 1,
         "total_rate": total_rate,
+        "total_pending_rate": totals["pending_rate"],
+        "total_invoiced_rate": totals["invoiced_rate"],
+        "total_paid_rate": totals["paid_rate"],
+        "total_overdue_rate": totals["overdue_rate"],
     }
 
 
@@ -152,6 +189,18 @@ def get_load(db: Session, load_id: int):
 
 
 def create_load(db: Session, load_in: LoadCreate, author: str = "System") -> Load:
+    if load_in.broker_id and load_in.po_number:
+        duplicate = db.query(Load).filter(
+            Load.is_active == True,
+            Load.broker_id == load_in.broker_id,
+            Load.po_number == load_in.po_number,
+        ).first()
+        if duplicate:
+            raise ValueError(
+                f"Duplicate PO #{load_in.po_number} for this broker already exists "
+                f"on load #{duplicate.load_number}."
+            )
+
     load_number = get_next_load_number(db)
     stops = load_in.stops or []
     load_data = load_in.model_dump(exclude={"stops"})
@@ -225,6 +274,21 @@ def update_load(db: Session, load_id: int, load_in: LoadUpdate, author: str = "S
 
     from app.services.driver_pay_service import take_snapshot, is_locked
     update_data = load_in.model_dump(exclude_unset=True, exclude={"stops"})
+    next_broker_id = update_data.get("broker_id", db_load.broker_id)
+    next_po_number = update_data.get("po_number", db_load.po_number)
+    if next_broker_id and next_po_number:
+        duplicate = db.query(Load).filter(
+            Load.id != load_id,
+            Load.is_active == True,
+            Load.broker_id == next_broker_id,
+            Load.po_number == next_po_number,
+        ).first()
+        if duplicate:
+            raise ValueError(
+                f"Duplicate PO #{next_po_number} for this broker already exists "
+                f"on load #{duplicate.load_number}."
+            )
+
     driver_changed = "driver_id" in update_data and update_data["driver_id"] != db_load.driver_id
     for key, value in update_data.items():
         setattr(db_load, key, value)

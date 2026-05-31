@@ -115,8 +115,48 @@ export default function PayrollPage() {
     if (action === 'Export to QuickBooks') {
       Promise.all(selected.map(id => payrollApi.exportQB(id).catch(()=>{})))
         .then(() => { toast.success('Exported '+selected.length+' settlement(s)'); load() })
+    } else if (action === 'Change status') {
+      const next = prompt('New status: Preparing, Ready, Sent, Paid, Void')
+      if (!next) return
+      const status = next.trim()
+      Promise.all(selected.map(id => payrollApi.changeStatus(id, status)))
+        .then(() => { toast.success('Status changed for '+selected.length+' settlement(s)'); setSelected([]); load() })
+        .catch(e => toast.error(e.message))
+    } else if (action === 'Download attachments') {
+      selected.forEach(id => window.open(payrollApi.getPdfUrl(id), '_blank'))
+      toast.success('Opened '+selected.length+' settlement PDF(s)')
+    } else if (action === 'Download Excel') {
+      const rows = selItems.map(s => ({
+        number: s.settlement_number,
+        date: s.date,
+        payable_to: s.payable_to,
+        driver: s.driver?.name || '',
+        settlement_total: s.settlement_total,
+        balance_due: s.balance_due,
+        status: s.status,
+        notes: s.notes || '',
+      }))
+      const header = Object.keys(rows[0] || {})
+      const csv = [
+        header.join(','),
+        ...rows.map(row => header.map(key => {
+          const value = String((row as Record<string, unknown>)[key] ?? '')
+          return `"${value.replace(/"/g, '""')}"`
+        }).join(',')),
+      ].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'selected_settlements.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('CSV downloaded')
+    } else if (action === 'Email settlements') {
+      selected.forEach(id => window.open(payrollApi.getPdfUrl(id), '_blank'))
+      toast('PDFs opened. Email sending needs SMTP settings.', { icon: 'i' })
     } else {
-      toast(action+' — coming soon', { icon: 'ℹ️' })
+      toast('Unknown batch action: '+action, { icon: 'i' })
     }
   }
 

@@ -275,12 +275,21 @@ def delete_adjustment(settlement_id: int, adj_id: int, db: Session = Depends(get
 
 @router.post("/{settlement_id}/payments", status_code=201)
 def add_payment(settlement_id: int, data: SettlementPaymentCreate, db: Session = Depends(get_db)):
+    s = crud.get_settlement(db, settlement_id)
+    if not s:
+        raise HTTPException(404, "Settlement not found")
+    if _s_val(s.status) not in ("Ready", "Sent"):
+        raise HTTPException(400, "Move settlement to Ready before recording a payment.")
     p = crud.add_payment(db, settlement_id, data)
     return _ser_payment(p)
 
 
 @router.delete("/{settlement_id}/payments/{payment_id}")
 def delete_payment(settlement_id: int, payment_id: int, db: Session = Depends(get_db)):
+    s = crud.get_settlement(db, settlement_id)
+    if not s:
+        raise HTTPException(404, "Settlement not found")
+    _require_preparing(s, "delete payment")
     if not crud.delete_payment(db, settlement_id, payment_id):
         raise HTTPException(404, "Payment not found")
     return {"message": "Deleted"}
@@ -325,7 +334,7 @@ def change_status(settlement_id: int, data: dict, db: Session = Depends(get_db))
     Preparing → Ready        (requires at least one item)
     Ready → Preparing        (unlock for editing)
     Ready → Paid             (requires balance_due == 0)
-    Paid → Preparing         (requires all payments removed first)
+    Paid → Preparing         (unlock payment removal/corrections)
     Any → Void
     """
     s = db.query(Settlement).options(
@@ -344,11 +353,6 @@ def change_status(settlement_id: int, data: dict, db: Session = Depends(get_db))
 
     if new_status not in allowed:
         raise HTTPException(400, f"Cannot transition from '{current}' to '{new_status}'. Allowed: {allowed}")
-
-    # Paid → Preparing: remove payments first
-    if current == "Paid" and new_status == "Preparing":
-        if s.payments:
-            raise HTTPException(400, "Remove all settlement payments before moving Paid → Preparing")
 
     # Ready → Paid: balance must be zero
     if current == "Ready" and new_status == "Paid":
@@ -412,16 +416,25 @@ def get_candidates(
         load_q = load_q.filter(Load.load_date <= date_to)
 
     loads = load_q.order_by(Load.load_date.desc()).all()
-    available_loads = [{
-        "id": l.id,
-        "load_number": l.load_number,
-        "load_date": l.load_date.isoformat() if l.load_date else None,
-        "delivery_date": l.actual_delivery_date.isoformat() if l.actual_delivery_date else None,
-        "status": _s_val(l.status) if l.status else None,
-        "billing_status": _s_val(l.billing_status) if l.billing_status else None,
-        "rate": l.rate,
-        "amount": l.drivers_payable_snapshot if l.drivers_payable_snapshot is not None else 0.0,
-    } for l in loads]
+    available_loads = []
+    for l in loads:
+        pickup = next((s for s in (l.stops or []) if _s_val(s.stop_type) == "pickup"), None)
+        delivery = next((s for s in (l.stops or []) if _s_val(s.stop_type) == "delivery"), None)
+        available_loads.append({
+            "id": l.id,
+            "load_number": l.load_number,
+            "load_date": l.load_date.isoformat() if l.load_date else None,
+            "actual_delivery_date": l.actual_delivery_date.isoformat() if l.actual_delivery_date else None,
+            "delivery_date": l.actual_delivery_date.isoformat() if l.actual_delivery_date else None,
+            "pickup_city": pickup.city if pickup else "",
+            "pickup_state": pickup.state if pickup else "",
+            "delivery_city": delivery.city if delivery else "",
+            "delivery_state": delivery.state if delivery else "",
+            "status": _s_val(l.status) if l.status else None,
+            "billing_status": _s_val(l.billing_status) if l.billing_status else None,
+            "rate": l.rate,
+            "amount": l.drivers_payable_snapshot if l.drivers_payable_snapshot is not None else 0.0,
+        })
 
     # 2. Scheduled recurring transactions
     scheduled = db.query(DriverScheduledTransaction).filter(
@@ -481,6 +494,7 @@ def apply_advanced_payment(
         raise HTTPException(404, "Settlement not found")
     if _s_val(s.status) == "Paid":
         raise HTTPException(400, "Cannot modify Paid settlement. Move back to Preparing first.")
+    _require_preparing(s, "apply advanced payment")
 
     ap = db.query(AdvancedPayment).filter(
         AdvancedPayment.id == ap_id,
@@ -534,6 +548,7 @@ def remove_advanced_payment(settlement_id: int, adj_id: int, db: Session = Depen
         raise HTTPException(404, "Settlement not found")
     if _s_val(s.status) == "Paid":
         raise HTTPException(400, "Cannot modify Paid settlement. Move back to Preparing first.")
+    _require_preparing(s, "remove advanced payment")
 
     adj = db.query(SettlementAdjustment).filter(
         SettlementAdjustment.id == adj_id,
@@ -570,8 +585,7 @@ def apply_scheduled(settlement_id: int, tx_id: int, db: Session = Depends(get_db
     s = db.query(Settlement).filter(Settlement.id == settlement_id).first()
     if not s:
         raise HTTPException(404, "Settlement not found")
-    if _s_val(s.status) == "Paid":
-        raise HTTPException(400, "Cannot modify Paid settlement")
+    _require_preparing(s, "apply scheduled transaction")
 
     tx = db.query(DriverScheduledTransaction).filter(
         DriverScheduledTransaction.id == tx_id,

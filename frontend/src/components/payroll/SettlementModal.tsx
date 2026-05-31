@@ -210,7 +210,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                 <span className="font-bold text-gray-900 text-sm">Available Loads</span>
               </button>
               {loadsExpanded && (
-                <AvailableLoads driverId={parseInt(form.driver_id)||settlement.driver_id} currentIds={curLoadIds} onAdd={addItem}/>
+                <AvailableLoads settlementId={settlementId} driverId={parseInt(form.driver_id)||settlement.driver_id} currentIds={curLoadIds} onAdd={addItem}/>
               )}
             </section>
 
@@ -462,21 +462,21 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
 }
 
 // ── Available Loads ───────────────────────────────────────────────────────────
-function AvailableLoads({driverId,currentIds,onAdd}:{driverId:number;currentIds:number[];onAdd:(id:number)=>void}) {
+function AvailableLoads({settlementId,driverId,currentIds,onAdd}:{settlementId:number;driverId:number;currentIds:number[];onAdd:(id:number)=>void}) {
   const [loads,setLoads] = useState<any[]>([])
   const [loading,setLoading] = useState(true)
 
   useEffect(()=>{
     if (!driverId) { setLoads([]); setLoading(false); return }
     setLoading(true)
-    client.get('/api/v1/loads',{params:{driver_id:driverId,page_size:100,show_only_active:true}})
+    client.get('/api/v1/payroll/' + settlementId + '/candidates')
       .then(r=>{
-        const items=(r.data.items||r.data) as any[]
+        const items=(r.data.available_loads||[]) as any[]
         setLoads(items.filter((l:any)=>!currentIds.includes(l.id)))
       })
       .catch(()=>setLoads([]))
       .finally(()=>setLoading(false))
-  },[driverId, currentIds.join(',')])
+  },[settlementId, driverId, currentIds.join(',')])
 
   return (
     <div className="border border-gray-200 rounded overflow-hidden">
@@ -495,8 +495,10 @@ function AvailableLoads({driverId,currentIds,onAdd}:{driverId:number;currentIds:
                 const dl=(l.stops||[]).find((s:any)=>s.stop_type==='delivery')
                 const pLabel=pk?(pk.city||'')+', '+(pk.state||''):'—'
                 const dLabel=dl?(dl.city||'')+', '+(dl.state||''):'—'
-                const amt=l.drivers_payable_snapshot??l.drivers_payable??0
-                const desc='#'+l.load_number+' '+pLabel+' - '+dLabel+' / $'+(l.rate||0).toFixed(2)
+                const candidatePickup=l.pickup_city&&l.pickup_state ? l.pickup_city+', '+l.pickup_state : ''
+                const candidateDelivery=l.delivery_city&&l.delivery_state ? l.delivery_city+', '+l.delivery_state : ''
+                const amt=l.amount??l.drivers_payable_snapshot??l.drivers_payable??0
+                const desc='#'+l.load_number+' '+(candidatePickup||pLabel)+' - '+(candidateDelivery||dLabel)+' / $'+(l.rate||0).toFixed(2)
                 return (
                   <tr key={l.id} className="hover:bg-blue-50/30 group">
                     <td className="px-3 py-2 text-gray-500">{formatDate(l.load_date)}</td>
@@ -731,7 +733,12 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
   const send=()=>{
     if(!to){toast.error('Enter recipient email');return}
     setSending(true)
-    setTimeout(()=>{toast.success('Settlement email sent');onClose()},800)
+    const body = `Hello ${driverName},%0D%0A%0D%0AAttached is your payroll settlement from Silkroad llc.%0D%0A%0D%0APlease download the settlement PDF here: ${window.location.origin}${pdfUrl}%0D%0A%0D%0AThank you for your hard work.`
+    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${body}${cc ? `&cc=${encodeURIComponent(cc)}` : ''}${bcc ? `&bcc=${encodeURIComponent(bcc)}` : ''}`
+    window.open(pdfUrl, '_blank')
+    toast.success('Email draft opened with settlement PDF link')
+    setSending(false)
+    onClose()
   }
 
   return (

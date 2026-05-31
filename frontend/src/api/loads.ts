@@ -8,6 +8,22 @@ import type {
 } from '@/types'
 
 const BASE = '/api/v1/loads'
+const INVOICES_BASE = '/api/v1/invoices'
+
+export interface Invoice {
+  id: number
+  invoice_number: number
+  load_id: number
+  load_number?: number
+  broker_id?: number
+  broker_name?: string
+  invoice_date?: string
+  due_date?: string
+  status: string
+  amount: number
+  notes?: string
+  created_at?: string
+}
 
 export const loadsApi = {
   list: async (filters: LoadFilters = {}): Promise<LoadsResponse> => {
@@ -25,6 +41,8 @@ export const loadsApi = {
     if (filters.show_only_active) params.show_only_active = true
     if (filters.direct_billing !== undefined) params.direct_billing = filters.direct_billing
     if (filters.load_number) params.load_number = filters.load_number
+    if (filters.sort_by) params.sort_by = filters.sort_by
+    if (filters.sort_dir) params.sort_dir = filters.sort_dir
     params.page = filters.page || 1
     params.page_size = filters.page_size || 25
     const { data } = await client.get(BASE, { params })
@@ -87,6 +105,41 @@ export const loadsApi = {
   getInvoicePdfUrl: (loadId: number): string => {
     const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
     return `${base}/api/v1/loads/${loadId}/invoice/pdf`
+  },
+
+  getInvoiceByLoad: async (loadId: number): Promise<Invoice | null> => {
+    try {
+      const { data } = await client.get(`${INVOICES_BASE}/by-load/${loadId}`)
+      return data
+    } catch (e: any) {
+      if (e?.response?.status === 404) return null
+      throw e
+    }
+  },
+
+  createInvoiceFromLoad: async (loadId: number): Promise<Invoice> => {
+    const { data } = await client.post(`${INVOICES_BASE}/from-load/${loadId}`)
+    return data
+  },
+
+  updateInvoice: async (invoiceId: number, payload: Partial<Invoice>): Promise<Invoice> => {
+    const { data } = await client.put(`${INVOICES_BASE}/${invoiceId}`, payload)
+    return data
+  },
+
+  markInvoicePaid: async (invoiceId: number): Promise<Invoice> => {
+    const { data } = await client.post(`${INVOICES_BASE}/${invoiceId}/mark-paid`)
+    return data
+  },
+
+  getInvoiceRecordPdfUrl: (invoiceId: number): string => {
+    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+    return `${base}/api/v1/invoices/${invoiceId}/pdf`
+  },
+
+  getMergedDocumentsUrl: (loadId: number): string => {
+    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+    return `${base}/api/v1/loads/${loadId}/documents/merged`
   },
 }
 

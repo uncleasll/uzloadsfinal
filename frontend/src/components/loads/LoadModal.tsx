@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { loadsApi, loadsApiExtended } from '@/api/loads'
+import { loadsApi, loadsApiExtended, type Invoice } from '@/api/loads'
 import type { Load, LoadNote, LoadService } from '@/types'
 import { formatCurrency, formatDate, formatDateTime, STATUS_COLORS, BILLING_COLORS } from '@/utils'
 import toast from 'react-hot-toast'
@@ -223,6 +223,9 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
   const [load, setLoad] = useState<Load | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('services')
+  const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [invoiceLoading, setInvoiceLoading] = useState(false)
+  const [invoiceSaving, setInvoiceSaving] = useState(false)
 
   // New note
   const [addingNote, setAddingNote] = useState(false)
@@ -249,6 +252,19 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
     setLoading(true)
     loadsApi.get(loadId).then(setLoad).catch(e => toast.error(e.message)).finally(() => setLoading(false))
   }, [loadId])
+
+  const refetchInvoice = useCallback(async () => {
+    setInvoiceLoading(true)
+    try {
+      setInvoice(await loadsApi.getInvoiceByLoad(loadId))
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setInvoiceLoading(false)
+    }
+  }, [loadId])
+
+  useEffect(() => { refetchInvoice() }, [refetchInvoice])
 
   // Close recalc menu on outside click
   useEffect(() => {
@@ -339,6 +355,41 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
       await refetch(); onSaved()
       toast.success(`Driver pay recalculated: ${formatCurrency(data.drivers_payable)}`)
     } catch (e: any) { toast.error(e.message) }
+  }
+
+  const handleCreateInvoice = async () => {
+    setInvoiceSaving(true)
+    try {
+      const created = await loadsApi.createInvoiceFromLoad(loadId)
+      setInvoice(created)
+      await refetch()
+      onSaved()
+      toast.success(`Invoice #${created.invoice_number} created`)
+    } catch (e: any) { toast.error(e.message) } finally { setInvoiceSaving(false) }
+  }
+
+  const handleUpdateInvoice = async (payload: Partial<Invoice>) => {
+    if (!invoice) return
+    setInvoiceSaving(true)
+    try {
+      const updated = await loadsApi.updateInvoice(invoice.id, payload)
+      setInvoice(updated)
+      await refetch()
+      onSaved()
+      toast.success('Invoice updated')
+    } catch (e: any) { toast.error(e.message) } finally { setInvoiceSaving(false) }
+  }
+
+  const handleMarkInvoicePaid = async () => {
+    if (!invoice) return
+    setInvoiceSaving(true)
+    try {
+      const updated = await loadsApi.markInvoicePaid(invoice.id)
+      setInvoice(updated)
+      await refetch()
+      onSaved()
+      toast.success(`Invoice #${updated.invoice_number} marked paid`)
+    } catch (e: any) { toast.error(e.message) } finally { setInvoiceSaving(false) }
   }
 
   if (loading) return (
@@ -689,9 +740,10 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
               {activeTab === 'documents' && (
                 <div>
                   <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                    <button className="flex items-center gap-1.5 px-2.5 py-1.5 border border-gray-300 text-gray-600 text-xs rounded font-medium hover:bg-gray-50">
+                    <a href={loadsApi.getMergedDocumentsUrl(loadId)} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 border border-gray-300 text-gray-600 text-xs rounded font-medium hover:bg-gray-50">
                       Merge documents
-                    </button>
+                    </a>
                     <div className="flex gap-2 flex-wrap">
                       <UploadBtn label="Upload confirmation" docType="Confirmation" onUpload={handleUpload} uploading={uploading} />
                       <UploadBtn label="Upload BOL" docType="BOL" onUpload={handleUpload} uploading={uploading} />
@@ -743,21 +795,66 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                   <div>
                     <div className="flex items-start justify-between mb-2 flex-wrap gap-2">
                       <div>
-                        <h4 className="font-semibold text-gray-900 text-sm">Invoice: {load.load_number}</h4>
+                        <h4 className="font-semibold text-gray-900 text-sm">
+                          Invoice: {invoice ? `#${invoice.invoice_number}` : load.load_number}
+                        </h4>
                         <p className="text-xs text-gray-500">
                           To: {load.broker?.name || '—'}
                           {load.broker?.factoring && load.broker.factoring_company ? ` / ${load.broker.factoring_company}` : ''}
                         </p>
-                        <div className="flex items-center gap-3 mt-1.5">
-                          <a href={loadsApi.getInvoicePdfUrl(loadId)} target="_blank" rel="noreferrer"
-                            className="text-xs text-blue-600 hover:underline flex items-center gap-1"><Download /> Download as PDF</a>
-                          <button className="text-xs text-blue-600 hover:underline">Email</button>
-                          <button className="text-xs text-gray-400 hover:text-gray-600">Export to QB</button>
-                        </div>
+                        {invoiceLoading ? (
+                          <p className="text-xs text-gray-400 mt-1.5">Checking invoice...</p>
+                        ) : invoice ? (
+                          <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs">
+                            <span className="text-gray-500">Date: {formatDate(invoice.invoice_date)}</span>
+                            <label className="inline-flex items-center gap-1 text-gray-500">
+                              Due:
+                              <input
+                                type="date"
+                                value={invoice.due_date || ''}
+                                onChange={e => handleUpdateInvoice({ due_date: e.target.value })}
+                                disabled={invoiceSaving}
+                                className="border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500"
+                              />
+                            </label>
+                            <select
+                              value={invoice.status}
+                              onChange={e => handleUpdateInvoice({ status: e.target.value })}
+                              disabled={invoiceSaving}
+                              className="border border-gray-200 rounded px-1.5 py-0.5 text-xs bg-white focus:outline-none focus:border-blue-500"
+                            >
+                              {['Pending', 'Sent', 'Paid', 'Overdue'].map(s => <option key={s}>{s}</option>)}
+                            </select>
+                            <a href={loadsApi.getInvoiceRecordPdfUrl(invoice.id)} target="_blank" rel="noreferrer"
+                              className="text-blue-600 hover:underline flex items-center gap-1"><Download /> Download PDF</a>
+                            <button className="text-blue-600 hover:underline">Email</button>
+                            <button onClick={handleMarkInvoicePaid} disabled={invoiceSaving || invoice.status === 'Paid'}
+                              className="text-blue-600 hover:underline disabled:text-gray-300 disabled:no-underline">
+                              Mark paid
+                            </button>
+                            <button className="text-gray-400 hover:text-gray-600">Export to QB</button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <span className="text-xs text-amber-700">No invoice created yet</span>
+                            <a href={loadsApi.getInvoicePdfUrl(loadId)} target="_blank" rel="noreferrer"
+                              className="text-xs text-blue-600 hover:underline flex items-center gap-1"><Download /> Preview PDF</a>
+                          </div>
+                        )}
+                        {invoice ? (
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-gray-500">Amount: <strong>{formatCurrency(invoice.amount)}</strong></span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-gray-400">Creates invoice and moves billing status to Invoiced.</span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-2">
-                        <button className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
-                          <Plus /> Create invoice
+                        <button onClick={handleCreateInvoice} disabled={!!invoice || invoiceSaving}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">
+                          <Plus /> {invoiceSaving ? 'Saving...' : invoice ? 'Invoice created' : 'Create invoice'}
                         </button>
                         <div className="relative" ref={recalcRef}>
                           <button onClick={() => setShowRecalcMenu(v => !v)}
@@ -770,7 +867,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                                 className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
                                 Driver pay
                               </button>
-                              <button onClick={() => { setShowRecalcMenu(false); toast('QP / Factoring fee — coming soon', { icon: 'ℹ️' }) }}
+                              <button onClick={() => { setShowRecalcMenu(false); toast('QP / Factoring fee is based on broker/factoring setup.', { icon: 'i' }) }}
                                 className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
                                 QP / Factoring fee
                               </button>

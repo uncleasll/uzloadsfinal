@@ -8,7 +8,7 @@ from sqlalchemy import func
 from typing import Optional
 from datetime import date, timedelta
 from app.db.session import get_db
-from app.models.models import Invoice, Load, Broker
+from app.models.models import BillingStatus, Invoice, Load, LoadHistory
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
@@ -69,6 +69,17 @@ def list_invoices(
     }
 
 
+@router.get("/by-load/{load_id}")
+def get_invoice_by_load(load_id: int, db: Session = Depends(get_db)):
+    inv = db.query(Invoice).options(joinedload(Invoice.load), joinedload(Invoice.broker)).filter(
+        Invoice.load_id == load_id,
+        Invoice.is_active == True,
+    ).first()
+    if not inv:
+        return None
+    return _serialize(inv)
+
+
 @router.get("/{invoice_id}")
 def get_invoice(invoice_id: int, db: Session = Depends(get_db)):
     inv = db.query(Invoice).options(joinedload(Invoice.load), joinedload(Invoice.broker))\
@@ -80,7 +91,7 @@ def get_invoice(invoice_id: int, db: Session = Depends(get_db)):
 
 @router.post("/from-load/{load_id}", status_code=201)
 def create_invoice_from_load(load_id: int, db: Session = Depends(get_db)):
-    load = db.query(Load).filter(Load.id == load_id).first()
+    load = db.query(Load).options(joinedload(Load.services)).filter(Load.id == load_id).first()
     if not load:
         raise HTTPException(404, "Load not found")
     # Ensure no active invoice already
@@ -89,6 +100,10 @@ def create_invoice_from_load(load_id: int, db: Session = Depends(get_db)):
         raise HTTPException(400, f"Invoice #{existing.invoice_number} already exists for this load")
 
     today = date.today()
+    amount = (load.rate or 0.0) + sum(
+        (svc.invoice_amount or 0.0) if svc.add_deduct == "Add" else -(svc.invoice_amount or 0.0)
+        for svc in (load.services or [])
+    )
     inv = Invoice(
         invoice_number=_next_invoice_number(db),
         load_id=load.id,
@@ -96,9 +111,15 @@ def create_invoice_from_load(load_id: int, db: Session = Depends(get_db)):
         invoice_date=today,
         due_date=today + timedelta(days=30),
         status="Pending",
-        amount=load.rate or 0.0,
+        amount=round(amount, 2),
     )
     db.add(inv)
+    load.billing_status = BillingStatus.INVOICED
+    db.add(LoadHistory(
+        load_id=load.id,
+        description=f"Invoice #{inv.invoice_number} created for ${inv.amount:.2f}",
+        author="System",
+    ))
     db.commit()
     db.refresh(inv)
     return _serialize(inv)
@@ -114,6 +135,16 @@ def update_invoice(invoice_id: int, data: dict, db: Session = Depends(get_db)):
         if k in allowed:
             setattr(inv, k, v)
     db.commit()
+    if inv.load:
+        status_to_billing = {
+            "Pending": BillingStatus.INVOICED,
+            "Sent": BillingStatus.SENT_TO_FACTORING,
+            "Paid": BillingStatus.PAID,
+            "Overdue": BillingStatus.INVOICED,
+        }
+        if inv.status in status_to_billing:
+            inv.load.billing_status = status_to_billing[inv.status]
+            db.commit()
     db.refresh(inv)
     return _serialize(inv)
 

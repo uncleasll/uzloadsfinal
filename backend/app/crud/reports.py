@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import Optional, List
 from datetime import date, timedelta
-from app.models.models import Load, LoadStop, Driver, Broker, Truck, Dispatcher, LoadService, Settlement, SettlementPayment
+from app.models.models import Load, LoadStop, Driver, Broker, Truck, Dispatcher, LoadService, Settlement, SettlementPayment, Expense
+from app.services.driver_pay_service import compute_driver_pay
 
 
 def period_dates(period: str):
@@ -34,35 +35,48 @@ def period_dates(period: str):
     return today - timedelta(days=30), today
 
 
-def _base_load_query(db, period, date_from, date_to, broker_id, driver_id, truck_id, dispatcher_id, statuses, billing_statuses):
+def _base_load_query(db, period, date_from, date_to, broker_id, driver_id, truck_id, dispatcher_id, statuses, billing_statuses, date_type="pickup"):
     if not date_from or not date_to:
         df, dt = period_dates(period)
         date_from = date_from or df
         date_to = date_to or dt
+    date_col = Load.actual_delivery_date if date_type == "delivery" else Load.load_date
     q = db.query(Load).options(
         joinedload(Load.driver), joinedload(Load.broker),
         joinedload(Load.truck), joinedload(Load.dispatcher),
         joinedload(Load.stops), joinedload(Load.services),
-    ).filter(Load.is_active == True, Load.load_date >= date_from, Load.load_date <= date_to)
+    ).filter(Load.is_active == True, date_col >= date_from, date_col <= date_to)
     if broker_id: q = q.filter(Load.broker_id == broker_id)
     if driver_id: q = q.filter(Load.driver_id == driver_id)
     if truck_id:  q = q.filter(Load.truck_id == truck_id)
     if dispatcher_id: q = q.filter(Load.dispatcher_id == dispatcher_id)
     if statuses:  q = q.filter(Load.status.in_(statuses))
     if billing_statuses: q = q.filter(Load.billing_status.in_(billing_statuses))
-    return q.order_by(Load.load_date), date_from, date_to
+    return q.order_by(date_col), date_from, date_to
+
+
+def _driver_pay(load):
+    if load.drivers_payable_snapshot is not None:
+        return load.drivers_payable_snapshot
+    if load.pay_type_snapshot:
+        return compute_driver_pay(load)
+    d = load.driver
+    if not d:
+        return 0.0
+    return ((load.loaded_miles or 0) * (d.pay_rate_loaded or 0.65)) + ((load.empty_miles or 0) * (d.pay_rate_empty or 0.30))
 
 
 def _row(load):
     pickup = next((s for s in load.stops if s.stop_type.value=='pickup'), None)
     delivery = next((s for s in load.stops if s.stop_type.value=='delivery'), None)
     d = load.driver
-    pay = (load.loaded_miles*(d.pay_rate_loaded if d else 0.65))+(load.empty_miles*(d.pay_rate_empty if d else 0.30)) if d else 0.0
+    pay = _driver_pay(load)
     lumpers = sum(s.invoice_amount for s in load.services if s.service_type.value=='Lumper')
     other_add = sum((s.invoice_amount if s.add_deduct=='Add' else -s.invoice_amount) for s in load.services if s.service_type.value!='Lumper')
     qp_fee = 0.0
     gross = load.rate + lumpers + other_add - pay - qp_fee
     return {
+        "load_id": load.id,
         "load_number": load.load_number, "load_date": str(load.load_date),
         "actual_delivery_date": str(load.actual_delivery_date) if load.actual_delivery_date else None,
         "pickup_city": pickup.city if pickup else "", "pickup_state": pickup.state if pickup else "",
@@ -76,7 +90,7 @@ def _row(load):
         "truck": load.truck.unit_number if load.truck else "",
         "rate": load.rate, "total_miles": load.total_miles,
         "loaded_miles": load.loaded_miles, "empty_miles": load.empty_miles,
-        "rate_per_mile": round(load.rate/load.loaded_miles,4) if load.loaded_miles else 0,
+        "rate_per_mile": round(load.rate/load.total_miles,4) if load.total_miles else 0,
         "driver_pay": round(pay,2), "lumpers": round(lumpers,2),
         "other_add_ded": round(other_add,2), "qp_fee": qp_fee,
         "gross_profit": round(gross,2),
@@ -88,7 +102,7 @@ def _row(load):
 def get_total_revenue_report(db, period="last_30_days", date_from=None, date_to=None,
     broker_id=None, driver_id=None, truck_id=None, group_by="none", date_type="pickup",
     statuses=None, billing_statuses=None):
-    q, date_from, date_to = _base_load_query(db, period, date_from, date_to, broker_id, driver_id, truck_id, None, statuses, billing_statuses)
+    q, date_from, date_to = _base_load_query(db, period, date_from, date_to, broker_id, driver_id, truck_id, None, statuses, billing_statuses, date_type)
     loads = q.all()
     rows = [_row(l) for l in loads]
     total_revenue = sum(r["rate"] for r in rows)
@@ -102,7 +116,7 @@ def get_rate_per_mile_report(db, period="last_30_days", date_from=None, date_to=
     broker_id=None, driver_id=None, truck_id=None, dispatcher_id=None,
     group_by="none", date_type="pickup", statuses=None, billing_statuses=None,
     change_to_overridden=False):
-    q, date_from, date_to = _base_load_query(db, period, date_from, date_to, broker_id, driver_id, truck_id, dispatcher_id, statuses, billing_statuses)
+    q, date_from, date_to = _base_load_query(db, period, date_from, date_to, broker_id, driver_id, truck_id, dispatcher_id, statuses, billing_statuses, date_type)
     loads = q.all()
     rows = [_row(l) for l in loads]
     total_revenue = sum(r["rate"] for r in rows)
@@ -148,18 +162,38 @@ def get_expenses_report(db, period="last_30_days", date_from=None, date_to=None,
     if not date_from or not date_to:
         df, dt = period_dates(period)
         date_from = date_from or df; date_to = date_to or dt
-    return {"rows": [], "date_from": str(date_from), "date_to": str(date_to), "category": category,
-        "summary": {"total": 0.0}}
+    q = db.query(Expense).options(
+        joinedload(Expense.vendor), joinedload(Expense.truck), joinedload(Expense.driver),
+    ).filter(
+        Expense.is_active == True,
+        Expense.expense_date >= date_from,
+        Expense.expense_date <= date_to,
+    )
+    if category and category != "All":
+        q = q.filter(Expense.category == category)
+    expenses = q.order_by(Expense.expense_date).all()
+    rows = [{
+        "expense_date": str(e.expense_date),
+        "category": e.category,
+        "description": e.description or "",
+        "amount": e.amount or 0.0,
+        "vendor": e.vendor.company_name if e.vendor else "",
+        "truck": e.truck.unit_number if e.truck else "",
+        "driver": e.driver.name if e.driver else "",
+    } for e in expenses]
+    return {"rows": rows, "date_from": str(date_from), "date_to": str(date_to), "category": category,
+        "summary": {"total": sum(r["amount"] for r in rows)}}
 
 
 def get_gross_profit_report(db, period="last_30_days", date_from=None, date_to=None,
     driver_id=None, truck_id=None, date_type="pickup"):
-    q, date_from, date_to = _base_load_query(db, period, date_from, date_to, None, driver_id, truck_id, None, None, None)
+    q, date_from, date_to = _base_load_query(db, period, date_from, date_to, None, driver_id, truck_id, None, None, None, date_type)
     loads = q.all()
     rows = [_row(l) for l in loads]
     total_revenue = sum(r["rate"] for r in rows)
+    other_revenue = sum(r["lumpers"] + r["other_add_ded"] for r in rows)
     driver_payments = sum(r["driver_pay"] for r in rows)
-    gross_profit = total_revenue - driver_payments
+    gross_profit = sum(r["gross_profit"] for r in rows)
     driver_name = ""
     if driver_id:
         d = db.query(Driver).filter(Driver.id==driver_id).first()
@@ -170,14 +204,14 @@ def get_gross_profit_report(db, period="last_30_days", date_from=None, date_to=N
         if t: truck_unit = t.unit_number
     return {"rows": rows, "date_from": str(date_from), "date_to": str(date_to),
         "driver_name": driver_name, "truck_unit": truck_unit,
-        "summary": {"total_revenue": total_revenue, "loads_revenue": total_revenue, "other_revenue": 0.0,
+        "summary": {"total_revenue": total_revenue + other_revenue, "loads_revenue": total_revenue, "other_revenue": other_revenue,
             "driver_payments": driver_payments, "fuel": 0.0, "tolls": 0.0, "gross_profit": gross_profit}}
 
 
 def get_gross_profit_per_load_report(db, period="last_30_days", date_from=None, date_to=None,
     broker_id=None, driver_id=None, truck_id=None, group_by="none", date_type="pickup",
     statuses=None, billing_statuses=None):
-    q, date_from, date_to = _base_load_query(db, period, date_from, date_to, broker_id, driver_id, truck_id, None, statuses, billing_statuses)
+    q, date_from, date_to = _base_load_query(db, period, date_from, date_to, broker_id, driver_id, truck_id, None, statuses, billing_statuses, date_type)
     loads = q.all()
     rows = [_row(l) for l in loads]
     driver_name = ""
@@ -197,6 +231,7 @@ def get_gross_profit_per_load_report(db, period="last_30_days", date_from=None, 
 def get_profit_loss_report(db, period="last_30_days", date_from=None, date_to=None,
     driver_id=None, truck_id=None, date_type="pickup"):
     data = get_gross_profit_report(db, period, date_from, date_to, driver_id, truck_id, date_type)
-    data["summary"]["expenses"] = 0.0
+    expenses = get_expenses_report(db, period, date_from, date_to)
+    data["summary"]["expenses"] = expenses["summary"]["total"]
     data["summary"]["net_profit"] = data["summary"]["gross_profit"] - data["summary"]["expenses"]
     return data

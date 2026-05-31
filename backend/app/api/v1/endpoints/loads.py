@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
@@ -12,7 +12,7 @@ from app.schemas.schemas import (
     LoadDocumentOut, LoadHistoryOut, PaginatedResponse
 )
 from app.crud import loads as crud
-from app.models.models import LoadHistory
+from app.models.models import LoadDocument, LoadHistory
 from app.services.pdf_service import generate_invoice_pdf
 from app.core.config import settings
 
@@ -36,6 +36,8 @@ def list_loads(
     show_only_active: bool = False,
     direct_billing: Optional[bool] = None,
     load_number: Optional[int] = None,
+    sort_by: str = Query("load_number"),
+    sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db),
 ):
     result = crud.get_loads(
@@ -46,6 +48,7 @@ def list_loads(
         date_from=date_from, date_to=date_to,
         show_only_active=show_only_active,
         direct_billing=direct_billing, load_number=load_number,
+        sort_by=sort_by, sort_dir=sort_dir,
     )
     items = [LoadListOut.model_validate(l) for l in result["items"]]
     return {
@@ -55,12 +58,19 @@ def list_loads(
         "page_size": result["page_size"],
         "total_pages": result["total_pages"],
         "total_rate": result["total_rate"],
+        "total_pending_rate": result["total_pending_rate"],
+        "total_invoiced_rate": result["total_invoiced_rate"],
+        "total_paid_rate": result["total_paid_rate"],
+        "total_overdue_rate": result["total_overdue_rate"],
     }
 
 
 @router.post("", response_model=LoadOut, status_code=201)
 def create_load(load_in: LoadCreate, db: Session = Depends(get_db)):
-    return crud.create_load(db, load_in, author="System")
+    try:
+        return crud.create_load(db, load_in, author="System")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @router.get("/{load_id}", response_model=LoadOut)
@@ -73,7 +83,10 @@ def get_load(load_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{load_id}", response_model=LoadOut)
 def update_load(load_id: int, load_in: LoadUpdate, db: Session = Depends(get_db)):
-    load = crud.update_load(db, load_id, load_in)
+    try:
+        load = crud.update_load(db, load_id, load_in)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     if not load:
         raise HTTPException(404, "Load not found")
     return load
@@ -162,6 +175,76 @@ def delete_document(load_id: int, doc_id: int, db: Session = Depends(get_db)):
     if not crud.delete_document(db, doc_id):
         raise HTTPException(404, "Document not found")
     return {"message": "Document deleted"}
+
+
+@router.get("/{load_id}/documents/{doc_id}/download")
+def download_document(load_id: int, doc_id: int, db: Session = Depends(get_db)):
+    doc = db.query(LoadDocument).filter(
+        LoadDocument.id == doc_id,
+        LoadDocument.load_id == load_id,
+    ).first()
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    if not doc.file_path or not os.path.exists(doc.file_path):
+        raise HTTPException(404, "File missing on server")
+    return FileResponse(
+        doc.file_path,
+        filename=doc.original_filename or doc.filename,
+        media_type="application/octet-stream",
+    )
+
+
+@router.get("/{load_id}/documents/merged")
+def merged_documents(load_id: int, db: Session = Depends(get_db)):
+    load = crud.get_load(db, load_id)
+    if not load:
+        raise HTTPException(404, "Load not found")
+    docs = [doc for doc in (load.documents or []) if doc.file_path and os.path.exists(doc.file_path)]
+    if not docs:
+        raise HTTPException(404, "No documents to merge")
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
+    buffer = io.BytesIO()
+    pdf = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph(f"Load #{load.load_number} Document Packet", styles["Title"]),
+        Spacer(1, 12),
+        Paragraph("Uploaded document index", styles["Heading2"]),
+    ]
+    rows = [["Type", "File name", "Uploaded"]]
+    for doc in docs:
+        rows.append([
+            str(doc.document_type),
+            doc.original_filename or doc.filename,
+            doc.uploaded_at.strftime("%m/%d/%Y %I:%M %p") if doc.uploaded_at else "",
+        ])
+    table = Table(rows, colWidths=[110, 300, 110])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d1d5db")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f9fafb")]),
+    ]))
+    story.append(table)
+    story.append(Spacer(1, 12))
+    story.append(Paragraph(
+        "Non-PDF source files remain available from the Documents tab. This packet keeps the invoice workflow together even when uploads include images or office files.",
+        styles["BodyText"],
+    ))
+    pdf.build(story)
+    buffer.seek(0)
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=load_{load.load_number}_documents.pdf"},
+    )
 
 
 # ─── PDF Invoice ──────────────────────────────────────────────────────────────

@@ -31,10 +31,16 @@ export default function LoadsPage() {
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [totalRate, setTotalRate] = useState(0)
+  const [rateSummary, setRateSummary] = useState({
+    pending: 0,
+    invoiced: 0,
+    paid: 0,
+    overdue: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [showImport, setShowImport] = useState(false)
 
-  const [filters, setFilters] = useState<LoadFilters>({ page: 1, page_size: 50 })
+  const [filters, setFilters] = useState<LoadFilters>({ page: 1, page_size: 50, sort_by: 'load_number', sort_dir: 'desc' })
   const [period, setPeriod] = useState('all')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
@@ -56,6 +62,12 @@ export default function LoadsPage() {
       setTotal(res.total)
       setTotalPages(res.total_pages)
       setTotalRate(res.total_rate)
+      setRateSummary({
+        pending: res.total_pending_rate ?? 0,
+        invoiced: res.total_invoiced_rate ?? 0,
+        paid: res.total_paid_rate ?? 0,
+        overdue: res.total_overdue_rate ?? 0,
+      })
     } catch (e: unknown) {
       toast.error((e as Error).message)
     } finally {
@@ -100,7 +112,7 @@ export default function LoadsPage() {
 
   const clearAllFilters = () => {
     setActiveFilters({})
-    setFilters({ page: 1, page_size: filters.page_size || 50 })
+    setFilters({ page: 1, page_size: filters.page_size || 50, sort_by: 'load_number', sort_dir: 'desc' })
     setPeriod('all')
     setCustomFrom('')
     setCustomTo('')
@@ -110,6 +122,69 @@ export default function LoadsPage() {
   const handleLoadSaved = () => {
     setShowNewForm(false)
     fetchLoads({ ...activeFilters, ...filters })
+  }
+
+  const handleCopyLoad = async (load: LoadListItem) => {
+    const pickup = load.stops.find(s => s.stop_type === 'pickup')
+    const delivery = load.stops.find(s => s.stop_type === 'delivery')
+    try {
+      await loadsApi.create({
+        status: 'New',
+        billing_status: 'Pending',
+        load_date: new Date().toISOString().slice(0, 10),
+        rate: load.rate,
+        loaded_miles: load.loaded_miles,
+        empty_miles: load.empty_miles,
+        total_miles: load.total_miles,
+        broker_id: load.broker?.id,
+        driver_id: load.driver?.id,
+        truck_id: load.truck?.id,
+        trailer_id: load.trailer?.id,
+        dispatcher_id: load.dispatcher?.id,
+        stops: [
+          ...(pickup ? [{
+            stop_type: 'pickup' as const,
+            stop_order: 1,
+            city: pickup.city,
+            state: pickup.state,
+            zip_code: pickup.zip_code,
+            country: pickup.country || 'US',
+          }] : []),
+          ...(delivery ? [{
+            stop_type: 'delivery' as const,
+            stop_order: 2,
+            city: delivery.city,
+            state: delivery.state,
+            zip_code: delivery.zip_code,
+            country: delivery.country || 'US',
+          }] : []),
+        ],
+      })
+      toast.success(`Load #${load.load_number} copied`)
+      fetchLoads({ ...activeFilters, ...filters })
+    } catch (e: unknown) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  const handleDeleteLoad = async (load: LoadListItem) => {
+    if (!confirm(`Delete load #${load.load_number}?`)) return
+    try {
+      await loadsApi.delete(load.id)
+      toast.success(`Load #${load.load_number} deleted`)
+      fetchLoads({ ...activeFilters, ...filters })
+    } catch (e: unknown) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  const sortBy = (key: string) => {
+    setFilters(prev => ({
+      ...prev,
+      page: 1,
+      sort_by: key,
+      sort_dir: prev.sort_by === key && prev.sort_dir === 'asc' ? 'desc' : 'asc',
+    }))
   }
 
   const filterChips: { label: string; key: keyof LoadFilters }[] = []
@@ -128,54 +203,74 @@ export default function LoadsPage() {
 
   const startEntry = ((filters.page || 1) - 1) * (filters.page_size || 50) + 1
   const endEntry = Math.min((filters.page || 1) * (filters.page_size || 50), total)
-  const pendingTotal = loads.filter(l => l.billing_status === 'Pending').reduce((s, l) => s + l.rate, 0)
-  const invoicedTotal = loads.filter(l => ['Invoiced', 'Sent to factoring', 'Funded', 'Paid'].includes(l.billing_status)).reduce((s, l) => s + l.rate, 0)
+  const summaryTotal = Math.max(totalRate, 0)
+  const pct = (value: number) => summaryTotal > 0 ? `${Math.min((value / summaryTotal) * 100, 100)}%` : '0%'
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden text-[11px]">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-[11px] shadow-sm">
 
       {/* ── Top bar ── */}
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 flex-shrink-0 min-h-0">
+      <div className="flex min-h-[54px] flex-shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5">
 
-        <span className="font-bold text-gray-900 text-[13px] flex-shrink-0">Loads</span>
+        <div className="mr-1 flex-shrink-0">
+          <div className="text-[15px] font-bold leading-tight text-slate-950">Loads</div>
+          <div className="text-[10px] font-medium text-slate-400">{total} records</div>
+        </div>
 
         {/* Period */}
         <div className="relative flex items-center flex-shrink-0">
           <select
             value={period}
             onChange={e => { setPeriod(e.target.value); setFilters(p => ({ ...p, page: 1 })) }}
-            className="appearance-none bg-transparent border-0 text-gray-600 text-[11px] font-medium pr-4 pl-0 py-0 focus:outline-none cursor-pointer"
+            className="appearance-none rounded-md border border-slate-200 bg-slate-50 py-1.5 pl-2.5 pr-7 text-[11px] font-semibold text-slate-600 shadow-sm focus:outline-none focus:border-blue-400 focus:bg-white"
           >
             {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <svg className="pointer-events-none absolute right-0 w-2.5 h-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          <svg className="pointer-events-none absolute right-2 w-2.5 h-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
         </div>
 
         {period === 'custom' && (
           <div className="flex items-center gap-1 flex-shrink-0">
             <input type="date" value={customFrom}
               onChange={e => { setCustomFrom(e.target.value); setFilters(p => ({ ...p, page: 1 })) }}
-              className="border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none w-24" />
+              className="w-28 rounded-md border border-slate-200 px-2 py-1.5 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
             <span className="text-gray-300">—</span>
             <input type="date" value={customTo}
               onChange={e => { setCustomTo(e.target.value); setFilters(p => ({ ...p, page: 1 })) }}
-              className="border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none w-24" />
+              className="w-28 rounded-md border border-slate-200 px-2 py-1.5 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
           </div>
         )}
 
         {/* Total bar */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-[11px] text-gray-500 whitespace-nowrap font-semibold flex-shrink-0">
+          <span className="text-[11px] text-slate-600 whitespace-nowrap font-bold flex-shrink-0">
             TOTAL: {formatCurrency(totalRate)}
           </span>
-          <div className="relative flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className="absolute left-0 top-0 h-full bg-red-300 transition-all"
-              style={{ width: totalRate > 0 ? `${Math.min((pendingTotal / totalRate) * 100, 100)}%` : '0%' }} />
-            <div className="absolute top-0 h-full bg-blue-400 transition-all"
+          <div className="relative flex-1 h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+            <div className="absolute left-0 top-0 h-full bg-blue-500 transition-all"
+              title={`Paid: ${formatCurrency(rateSummary.paid)}`}
+              style={{ width: pct(rateSummary.paid) }} />
+            <div className="absolute top-0 h-full bg-amber-400 transition-all"
+              title={`Invoiced/funded: ${formatCurrency(rateSummary.invoiced)}`}
               style={{
-                left: totalRate > 0 ? `${Math.min((pendingTotal / totalRate) * 100, 100)}%` : '0%',
-                width: totalRate > 0 ? `${Math.min((invoicedTotal / totalRate) * 100, 100)}%` : '0%',
+                left: pct(rateSummary.paid),
+                width: pct(rateSummary.invoiced),
               }} />
+            <div className="absolute top-0 h-full bg-gray-300 transition-all"
+              title={`Pending: ${formatCurrency(rateSummary.pending)}`}
+              style={{
+                left: pct(rateSummary.paid + rateSummary.invoiced),
+                width: pct(rateSummary.pending),
+              }} />
+            <div className="absolute right-0 top-0 h-full bg-red-400 transition-all"
+              title={`Overdue unpaid: ${formatCurrency(rateSummary.overdue)}`}
+              style={{ width: pct(rateSummary.overdue) }} />
+          </div>
+          <div className="hidden xl:flex items-center gap-2 text-[10px] text-gray-500 flex-shrink-0">
+            <LegendDot color="bg-blue-500" label="Paid" />
+            <LegendDot color="bg-amber-400" label="Invoiced" />
+            <LegendDot color="bg-gray-300" label="Pending" />
+            <LegendDot color="bg-red-400" label="Overdue" />
           </div>
         </div>
 
@@ -187,7 +282,7 @@ export default function LoadsPage() {
             type="text"
             placeholder="Search..."
             onChange={handleSearch}
-            className="pl-6 pr-6 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:border-blue-400 w-36"
+            className="w-44 rounded-md border border-slate-200 py-1.5 pl-7 pr-7 text-[11px] shadow-sm focus:outline-none focus:border-blue-400"
           />
           <button onClick={() => setShowFilterDrawer(true)} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 10h10M11 16h2"/></svg>
@@ -196,14 +291,14 @@ export default function LoadsPage() {
 
         {/* Import */}
         <button onClick={() => setShowImport(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-700 text-sm font-medium rounded hover:bg-gray-50">
+          className="btn-secondary text-[12px]">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
           Import
         </button>
         {/* New Load */}
         <button
           onClick={() => setShowNewForm(v => !v)}
-          className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded transition-colors flex-shrink-0"
+          className="btn-primary flex-shrink-0 text-[12px]"
         >
           <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
           New Load
@@ -213,7 +308,7 @@ export default function LoadsPage() {
 
       {/* ── Filter chips ── */}
       {filterChips.length > 0 && (
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-white border-b border-gray-100 flex-wrap flex-shrink-0">
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2">
           <span className="text-[11px] text-gray-400">Filtered by:</span>
           {filterChips.map(chip => (
             <span key={chip.key} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-50 text-sky-600 text-[11px] rounded">
@@ -237,33 +332,28 @@ export default function LoadsPage() {
       {/* ── Table ── */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
-          <colgroup>
-            <col style={{ width: 26 }} />  {/* checkbox */}
-            <col style={{ width: 14 }} />  {/* dot */}
-            <col style={{ width: '5%' }} />   {/* load */}
-            <col style={{ width: '6%' }} />   {/* date */}
-            <col style={{ width: '11%' }} />  {/* driver */}
-            <col style={{ width: '9%' }} />   {/* broker */}
-            <col style={{ width: '6%' }} />   {/* po */}
-            <col style={{ width: '10%' }} />  {/* pickup */}
-            <col style={{ width: '10%' }} />  {/* delivery */}
-            <col style={{ width: '6%' }} />   {/* rate */}
-            <col style={{ width: '6%' }} />   {/* completed */}
-            <col style={{ width: '7%' }} />   {/* status */}
-            <col style={{ width: '6%' }} />   {/* billing */}
-            <col style={{ width: '8%' }} />   {/* notes */}
-            <col style={{ width: 24 }} />  {/* attachments */}
-            <col style={{ width: '4%' }} />   {/* actions */}
-          </colgroup>
+          <colgroup>{TABLE_COLUMNS.map((width, index) => <col key={index} style={{ width }} />)}</colgroup>
 
           <thead className="sticky top-0 z-10">
             {/* Header */}
-            <tr className="bg-gray-50 border-b border-gray-200">
+            <tr className="border-b border-slate-200 bg-slate-50/95">
               <th className="px-1 py-1.5 text-center">
                 <input type="checkbox" className="w-3 h-3 rounded" />
               </th>
               <th className="px-0 py-1.5" />
-              {[
+              {LOAD_HEADERS.map((h, i) => (
+                <th key={i} className="px-1.5 py-2 text-left font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
+                  {h.sort ? (
+                    <button onClick={() => sortBy(h.sort!)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
+                      {h.label}
+                      <span className={filters.sort_by === h.sort ? 'opacity-100 text-blue-600' : 'opacity-30'}>
+                        {filters.sort_by === h.sort && filters.sort_dir === 'asc' ? '↑' : '↓'}
+                      </span>
+                    </button>
+                  ) : <span className={h.align === 'center' ? 'block text-center' : ''}>{h.label}</span>}
+                </th>
+              ))}
+              {false && [
                 'LOAD','DATE','DRIVER','BROKER','PO #',
                 'PICKUP','DELIVERY','RATE','COMPLETED',
                 'STATUS','BILLING','NOTES','ATTACHMENTS','','ACTIONS',
@@ -275,7 +365,7 @@ export default function LoadsPage() {
             </tr>
 
             {/* Inline filters */}
-            <tr className="bg-white border-b border-gray-100">
+            <tr className="bg-white border-b border-slate-100">
               <td className="px-1 py-0.5" />
               <td className="px-0 py-0.5" />
               {/* Load # */}
@@ -363,9 +453,9 @@ export default function LoadsPage() {
 
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan={16} className="py-12 text-center text-gray-400 text-[11px]">Loading...</td></tr>
+              <tr><td colSpan={16} className="py-16 text-center text-slate-400 text-[12px]">Loading loads...</td></tr>
             ) : loads.length === 0 ? (
-              <tr><td colSpan={16} className="py-12 text-center text-gray-400 text-[11px]">No loads found</td></tr>
+              <tr><td colSpan={16} className="py-16 text-center text-slate-400 text-[12px]">No loads match the current filters</td></tr>
             ) : loads.map(load => {
               const pickup = getPickupStop(load.stops)
               const delivery = getDeliveryStop(load.stops)
@@ -374,7 +464,7 @@ export default function LoadsPage() {
 
               return (
                 <tr key={load.id} onClick={() => setSelectedLoad(load)}
-                  className="hover:bg-blue-50/40 cursor-pointer transition-colors">
+                  className="cursor-pointer transition-colors odd:bg-white even:bg-slate-50/35 hover:bg-blue-50/70">
                   <td className="px-1 py-1 text-center" onClick={e => e.stopPropagation()}>
                     <input type="checkbox" className="w-3 h-3 rounded" />
                   </td>
@@ -417,10 +507,23 @@ export default function LoadsPage() {
                       <span className="inline-block w-2 h-2 rounded-full bg-blue-500" title={`${load.documents.length} doc(s)`} />
                     )}
                   </td>
-                  <td className="px-1.5 py-1" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center gap-0.5">
+                  <td className="px-0.5 py-1" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-0.5">
                       {svcLabel && <span className="text-gray-400 truncate text-[10px]">{svcLabel}</span>}
-                      <svg className="w-2.5 h-2.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                      <button
+                        title="Copy load"
+                        onClick={() => handleCopyLoad(load)}
+                        className="inline-flex h-5 w-4 items-center justify-center rounded text-gray-400 hover:bg-blue-50 hover:text-blue-700"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 8h10v10H8z"/><path strokeLinecap="round" strokeLinejoin="round" d="M6 16H5a2 2 0 01-2-2V5a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                      </button>
+                      <button
+                        title="Delete load"
+                        onClick={() => handleDeleteLoad(load)}
+                        className="inline-flex h-5 w-4 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5h6v2m-7 3v8m4-8v8m4-8v8M8 7l1 13h6l1-13"/></svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -431,7 +534,7 @@ export default function LoadsPage() {
       </div>
 
       {/* ── Pagination ── */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-white border-t border-gray-200 flex-shrink-0">
+      <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-200 bg-white px-4 py-2.5">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-0.5">
             <PagBtn onClick={() => setFilters(p => ({ ...p, page: 1 }))} disabled={(filters.page || 1) <= 1}>
@@ -504,5 +607,50 @@ function PagBtn({ onClick, disabled, children }: { onClick: () => void; disabled
       className="w-5 h-5 flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed">
       {children}
     </button>
+  )
+}
+
+const LOAD_HEADERS: { label: string; sort?: string; align?: 'center' }[] = [
+  { label: 'LOAD', sort: 'load_number' },
+  { label: 'DATE', sort: 'date' },
+  { label: 'DRIVER' },
+  { label: 'BROKER' },
+  { label: 'PO #', sort: 'po_number' },
+  { label: 'PICKUP' },
+  { label: 'DELIVERY' },
+  { label: 'RATE', sort: 'rate' },
+  { label: 'COMPLETED', sort: 'completed' },
+  { label: 'STATUS', sort: 'status' },
+  { label: 'BILLING', sort: 'billing' },
+  { label: 'NOTES' },
+  { label: 'DOCS', align: 'center' },
+  { label: 'ACTIONS', align: 'center' },
+]
+
+const TABLE_COLUMNS: Array<number | string> = [
+  26,
+  14,
+  '5%',
+  '6%',
+  '10%',
+  '8%',
+  '5%',
+  '9%',
+  '9%',
+  '6%',
+  '6%',
+  '7%',
+  '6%',
+  '7%',
+  34,
+  42,
+]
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+      <span className={`h-2 w-2 rounded-full ${color}`} />
+      {label}
+    </span>
   )
 }
