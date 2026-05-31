@@ -265,36 +265,8 @@ def create_settlement(db: Session, data: SettlementCreate, author: str = "System
 
     _add_history(db, s.id, f"Settlement #{num} created for {payable_to}", author)
 
-    # Auto-attach open loads for this driver using SNAPSHOT values
-    settled_ids = db.query(SettlementItem.load_id).filter(SettlementItem.load_id.isnot(None)).subquery()
-    loads = db.query(Load).options(joinedload(Load.stops)).filter(
-        Load.driver_id == data.driver_id,
-        Load.is_active == True,
-        Load.id.notin_(settled_ids),
-        Load.drivers_payable_snapshot.isnot(None),
-    ).all()
-
-    for load in loads:
-        pickup_city = _stop_label(load.stops, 'pickup')
-        delivery_city = _stop_label(load.stops, 'delivery')
-        # ✅ Use snapshot — never live driver profile
-        amount = load.drivers_payable_snapshot or 0.0
-        desc = f"#{load.load_number} {pickup_city} - {delivery_city} / ${load.rate:.2f}"
-
-        item = SettlementItem(
-            settlement_id=s.id,
-            load_id=load.id,
-            item_type="load",
-            description=desc,
-            amount=amount,
-            amount_snapshot=amount,
-            load_date=load.load_date,
-            load_status=load.status.value if load.status else None,
-            load_billing_status=load.billing_status.value if load.billing_status else None,
-            load_pickup_city=pickup_city,
-            load_delivery_city=delivery_city,
-        )
-        db.add(item)
+    # Settlement starts EMPTY — user manually adds loads from the candidates list.
+    # (Auto-attaching all open loads is incorrect per workflow spec.)
 
     db.commit()
     _recalculate(db, s.id)
