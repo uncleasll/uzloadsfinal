@@ -775,7 +775,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                             <td className="px-3 py-2 text-xs text-gray-500">{doc.original_filename || doc.filename}</td>
                             <td className="px-3 py-2 text-right">
                               <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <a href={`/api/v1/loads/${loadId}/documents/${doc.id}/download`} target="_blank" rel="noreferrer"
+                                <a href={loadsApi.getDocumentDownloadUrl(loadId, doc.id)} target="_blank" rel="noreferrer"
                                   className="text-blue-600 hover:text-blue-700"><Download /></a>
                                 <button onClick={() => handleDeleteDoc(doc.id)} className="text-red-400 hover:text-red-600"><Trash /></button>
                               </div>

@@ -9,6 +9,7 @@ import type {
 
 const BASE = '/api/v1/loads'
 const INVOICES_BASE = '/api/v1/invoices'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
 
 export interface Invoice {
   id: number
@@ -103,8 +104,7 @@ export const loadsApi = {
   },
 
   getInvoicePdfUrl: (loadId: number): string => {
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-    return `${base}/api/v1/loads/${loadId}/invoice/pdf`
+    return `${API_BASE_URL}/api/v1/loads/${loadId}/invoice/pdf`
   },
 
   getInvoiceByLoad: async (loadId: number): Promise<Invoice | null> => {
@@ -133,13 +133,15 @@ export const loadsApi = {
   },
 
   getInvoiceRecordPdfUrl: (invoiceId: number): string => {
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-    return `${base}/api/v1/invoices/${invoiceId}/pdf`
+    return `${API_BASE_URL}/api/v1/invoices/${invoiceId}/pdf`
   },
 
   getMergedDocumentsUrl: (loadId: number): string => {
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-    return `${base}/api/v1/loads/${loadId}/documents/merged`
+    return `${API_BASE_URL}/api/v1/loads/${loadId}/documents/merged`
+  },
+
+  getDocumentDownloadUrl: (loadId: number, docId: number): string => {
+    return `${API_BASE_URL}/api/v1/loads/${loadId}/documents/${docId}/download`
   },
 }
 
