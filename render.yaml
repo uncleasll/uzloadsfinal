@@ -15,6 +15,6 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://uzloadsfinal-7c41.vercel.app,http://localhost:5173,http://localhost:3000
+        value: https://uzloadsfinal.vercel.app,https://uzloadsfinal-7c41.vercel.app,http://localhost:5173,http://localhost:3000
       - key: UPLOAD_DIR
         value: ./uploads

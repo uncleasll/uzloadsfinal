@@ -3,7 +3,7 @@
 Frontend is already deployed here:
 
 ```text
-https://uzloadsfinal-7c41.vercel.app/
+https://uzloadsfinal.vercel.app/
 ```
 
 ## 1. Supabase database
@@ -45,7 +45,7 @@ Environment variables:
 ```text
 DATABASE_URL=<Supabase transaction pooler URL with sslmode=require>
 SECRET_KEY=<long random secret>
-CORS_ORIGINS=https://uzloadsfinal-7c41.vercel.app,http://localhost:5173,http://localhost:3000
+CORS_ORIGINS=https://uzloadsfinal.vercel.app,https://uzloadsfinal-7c41.vercel.app,http://localhost:5173,http://localhost:3000
 UPLOAD_DIR=./uploads
 ```
 
