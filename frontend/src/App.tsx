@@ -1,7 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
 import AppLayout from '@/components/layout/AppLayout'
-import LoginPage from '@/pages/LoginPage'
 import LoadsPage from '@/pages/LoadsPage'
 import DriversPage from '@/pages/DriversPage'
 import PayrollPage from '@/pages/PayrollPage'
@@ -16,22 +14,11 @@ import ExpensesPage from '@/pages/ExpensesPage'
 import AdvancedPaymentsPage from '@/pages/AdvancedPaymentsPage'
 import PaymentsPage from '@/pages/PaymentsPage'
 
-function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth()
-  if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-white">
-      <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-  if (!isAuthenticated) return <Navigate to="/login" replace />
-  return <>{children}</>
-}
-
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/" element={<RequireAuth><AppLayout /></RequireAuth>}>
+      <Route path="/login" element={<Navigate to="/loads" replace />} />
+      <Route path="/" element={<AppLayout />}>
         <Route index element={<Navigate to="/loads" replace />} />
         <Route path="loads" element={<LoadsPage />} />
         <Route path="drivers" element={<DriversPage />} />

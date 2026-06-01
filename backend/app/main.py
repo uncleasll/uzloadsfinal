@@ -77,7 +77,13 @@ def startup_fix_snapshots():
             ("Sardor Rahimov", "sardor@silkroad.com", "Sardor123", "dispatcher"),
         ]
         for name, email, password, role in default_users:
-            if not db.query(User).filter(User.email == email).first():
+            user = db.query(User).filter(User.email == email).first()
+            if user:
+                user.name = name
+                user.hashed_password = hash_password(password)
+                user.role = role
+                user.is_active = True
+            else:
                 db.add(
                     User(
                         name=name,

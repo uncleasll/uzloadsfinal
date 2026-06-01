@@ -26,9 +26,6 @@ client.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login'
-      }
     }
     return Promise.reject(new Error(typeof msg === 'string' ? msg : JSON.stringify(msg)))
   }
