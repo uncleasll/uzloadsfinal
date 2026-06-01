@@ -65,9 +65,29 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 def startup_fix_snapshots():
     try:
         from app.db.session import SessionLocal
-        from app.models.models import Load
+        from app.models.models import Load, User
         from app.services.driver_pay_service import take_snapshot
+        from app.services.auth_service import hash_password
         db = SessionLocal()
+
+        default_users = [
+            ("Asilbek Karimov", "admin@uzloads.com", "admin123", "admin"),
+            ("Sardor Rahimov", "dispatcher@uzloads.com", "disp123", "dispatcher"),
+            ("Asilbek Karimov", "asilbekkarimov066@gmail.com", "Asilbek123", "dispatcher"),
+            ("Sardor Rahimov", "sardor@silkroad.com", "Sardor123", "dispatcher"),
+        ]
+        for name, email, password, role in default_users:
+            if not db.query(User).filter(User.email == email).first():
+                db.add(
+                    User(
+                        name=name,
+                        email=email,
+                        hashed_password=hash_password(password),
+                        role=role,
+                        is_active=True,
+                    )
+                )
+
         loads = db.query(Load).filter(
             Load.driver_id.isnot(None),
             Load.is_active == True,
@@ -79,10 +99,10 @@ def startup_fix_snapshots():
                     take_snapshot(db, load)
                 except Exception:
                     pass
-            db.commit()
+        db.commit()
         db.close()
     except Exception:
-        pass
+        traceback.print_exc()
 
 
 @app.get("/health")
