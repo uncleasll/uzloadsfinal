@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 import os
+import traceback
 
 from app.core.config import settings
 from app.db.session import engine
@@ -21,18 +22,32 @@ app = FastAPI(
 
 @app.middleware("http")
 async def handle_options(request: Request, call_next):
+    origin = request.headers.get("origin", "")
+    cors_headers = {}
+    if origin in settings.cors_origins_list:
+        cors_headers = {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+        }
+
     if request.method == "OPTIONS":
-        origin = request.headers.get("origin", "")
         return Response(
             status_code=200,
             headers={
-                "Access-Control-Allow-Origin": origin,
+                **cors_headers,
                 "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
                 "Access-Control-Allow-Headers": "*",
-                "Access-Control-Allow-Credentials": "true",
             }
         )
-    return await call_next(request)
+    try:
+        return await call_next(request)
+    except Exception:
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
+            headers=cors_headers,
+        )
 
 app.add_middleware(
     CORSMiddleware,
