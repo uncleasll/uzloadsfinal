@@ -4,7 +4,6 @@ PDF Service — two generators:
 2. generate_settlement_pdf — Driver Pay Report matching the sample image 1:1
 """
 import io
-import os
 from datetime import timedelta
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -95,11 +94,6 @@ def _first_or_self(value):
 # ═════════════════════════════════════════════════════════════════════════════
 def generate_invoice_pdf(load: Load, db=None) -> bytes:
     company  = _get_company_info(db)
-    co_name  = company["name"]
-    co_email = company["email"]
-    co_phone = company["phone"]
-    co_addr  = company_address(company)
-
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=letter,
@@ -116,44 +110,43 @@ def generate_invoice_pdf(load: Load, db=None) -> bytes:
 
     broker_name = load.broker.name if load.broker else ""
     broker_addr = f"{load.broker.city or ''}, {load.broker.state or ''}" if load.broker else ""
-    from_text = (
-        "From:<br/>"
-        + "<br/>".join(
-            f"<b>{line}</b>" if i == 0 else line
-            for i, line in enumerate(company_identity_lines(company))
-        )
+    company_lines = company_identity_lines(company)
+    company_text = "<br/>".join(
+        f"<b>{line}</b>" if i == 0 else line
+        for i, line in enumerate(company_lines)
     )
     to_text = (
-        "To:<br/>"
+        "<font color='#6b7280'><b>BILL TO</b></font><br/>"
         f"<b>{broker_name}</b><br/>"
         f"{broker_addr}<br/>"
     )
 
-    logo_cell = Table(
-        [[_logo_flowable(company, bold)]],
-        colWidths=[1.3 * inch],
+    brand_tbl = Table(
+        [[
+            _logo_flowable(company, bold, max_w=1.35 * inch, max_h=0.55 * inch),
+            P(company_text, normal),
+        ]],
+        colWidths=[1.55 * inch, 3.25 * inch],
     )
-    logo_cell.setStyle(TableStyle([
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("BOX",           (0, 0), (-1, -1), 0.5, BORDER),
-        ("TOPPADDING",    (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+    brand_tbl.setStyle(TableStyle([
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 10),
+        ("TOPPADDING",    (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
     ]))
 
     header_tbl = Table(
-        [[logo_cell, P(from_text, normal), P(to_text, normal)]],
-        colWidths=[1.4 * inch, 3.4 * inch, 2.3 * inch],
+        [[brand_tbl, P(to_text, normal)]],
+        colWidths=[4.85 * inch, 2.25 * inch],
     )
     header_tbl.setStyle(TableStyle([
         ("VALIGN",        (0, 0), (-1, -1), "TOP"),
-        ("BOX",           (0, 0), (-1, -1), 0.5, BORDER),
-        ("LINEAFTER",     (0, 0), (1,  0),  0.5, BORDER),
-        ("TOPPADDING",    (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 8),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
+        ("LINEBELOW",     (0, 0), (-1, -1), 0.75, BORDER),
+        ("TOPPADDING",    (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
     ]))
     story.append(header_tbl)
     story.append(Spacer(1, 14))

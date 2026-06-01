@@ -217,7 +217,7 @@ def merged_documents(load_id: int, db: Session = Depends(get_db)):
     if logo_file:
         try:
             logo = Image(logo_file)
-            ratio = min(110 / logo.imageWidth, 55 / logo.imageHeight)
+            ratio = min(120 / logo.imageWidth, 45 / logo.imageHeight)
             logo.drawWidth = logo.imageWidth * ratio
             logo.drawHeight = logo.imageHeight * ratio
         except Exception:

@@ -54,7 +54,7 @@ def _get_company_info() -> dict:
     }
 
 
-def _logo_flowable(company: dict, fallback_style, max_w=1.35 * inch, max_h=0.7 * inch):
+def _logo_flowable(company: dict, fallback_style, max_w=1.45 * inch, max_h=0.55 * inch):
     logo_file = resolve_logo_file(company.get("logo_path") or "")
     if logo_file:
         try:
@@ -139,7 +139,7 @@ def _header_table(story, report_title: str, meta_lines: List[str]):
             for i, line in enumerate(company_identity_lines(company))
         ), company_style),
     ]]
-    header_tbl = Table(header_data, colWidths=["50%", "50%"])
+    header_tbl = Table(header_data, colWidths=[2.0 * inch, 5.0 * inch])
     header_tbl.setStyle(TableStyle([
         ("VALIGN", (0,0), (-1,-1), "TOP"),
         ("ALIGN", (0,0), (0,0), "LEFT"),

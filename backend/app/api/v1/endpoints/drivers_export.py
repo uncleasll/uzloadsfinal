@@ -89,7 +89,7 @@ def export_drivers_pdf(db: Session = Depends(get_db)):
     if logo_file:
         try:
             logo = Image(logo_file)
-            ratio = min((1.35 * inch) / logo.imageWidth, (0.7 * inch) / logo.imageHeight)
+            ratio = min((1.45 * inch) / logo.imageWidth, (0.55 * inch) / logo.imageHeight)
             logo.drawWidth = logo.imageWidth * ratio
             logo.drawHeight = logo.imageHeight * ratio
         except Exception:
