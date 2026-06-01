@@ -4,6 +4,7 @@ PDF Service — two generators:
 2. generate_settlement_pdf — Driver Pay Report matching the sample image 1:1
 """
 import io
+import os
 from datetime import timedelta
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -12,10 +13,10 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_RIGHT, TA_CENTER
 from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle,
-    Paragraph, Spacer, HRFlowable
+    Paragraph, Spacer, HRFlowable, Image
 )
 from app.models.models import Load
-from app.services.company_service import get_company
+from app.services.company_service import company_address, company_identity_lines, get_company, resolve_logo_file
 from app.db.session import SessionLocal
 
 
@@ -56,7 +57,25 @@ def _get_company_info(db=None):
         "zip_code":  company.get("zip_code")  or "",
         "mc_number": company.get("mc_number") or "",
         "dot_number":company.get("dot_number")or "",
+        "legal_name":company.get("legal_name")or "",
+        "address":   company.get("address")   or "",
+        "website":   company.get("website")   or "",
+        "logo_path": company.get("logo_path") or "",
     }
+
+
+def _logo_flowable(company: dict, fallback_style, max_w=1.25 * inch, max_h=0.75 * inch):
+    logo_file = resolve_logo_file(company.get("logo_path") or "")
+    if logo_file:
+        try:
+            img = Image(logo_file)
+            ratio = min(max_w / img.imageWidth, max_h / img.imageHeight)
+            img.drawWidth = img.imageWidth * ratio
+            img.drawHeight = img.imageHeight * ratio
+            return img
+        except Exception:
+            pass
+    return Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", fallback_style)
 
 
 def _enum_value(v):
@@ -79,7 +98,7 @@ def generate_invoice_pdf(load: Load, db=None) -> bytes:
     co_name  = company["name"]
     co_email = company["email"]
     co_phone = company["phone"]
-    co_addr  = ", ".join(filter(None, [company["city"], company["state"], company["zip_code"]]))
+    co_addr  = company_address(company)
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -99,10 +118,10 @@ def generate_invoice_pdf(load: Load, db=None) -> bytes:
     broker_addr = f"{load.broker.city or ''}, {load.broker.state or ''}" if load.broker else ""
     from_text = (
         "From:<br/>"
-        f"<b>{co_name}</b><br/>"
-        + (f"{co_addr}<br/>"        if co_addr  else "")
-        + (f"Email: {co_email}<br/>" if co_email else "")
-        + (f"Phone: {co_phone}"      if co_phone else "")
+        + "<br/>".join(
+            f"<b>{line}</b>" if i == 0 else line
+            for i, line in enumerate(company_identity_lines(company))
+        )
     )
     to_text = (
         "To:<br/>"
@@ -111,8 +130,8 @@ def generate_invoice_pdf(load: Load, db=None) -> bytes:
     )
 
     logo_cell = Table(
-        [[P(f"<b>{co_name}</b>", bold)]],
-        colWidths=[0.7 * inch, 0.6 * inch],
+        [[_logo_flowable(company, bold)]],
+        colWidths=[1.3 * inch],
     )
     logo_cell.setStyle(TableStyle([
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
@@ -273,7 +292,7 @@ def generate_settlement_pdf(settlement, db=None) -> bytes:
     co_name  = company["name"]
     co_email = company["email"]
     co_phone = company["phone"]
-    co_addr  = ", ".join(filter(None, [company["city"], company["state"], company["zip_code"]]))
+    co_addr  = company_address(company)
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -348,10 +367,9 @@ def generate_settlement_pdf(settlement, db=None) -> bytes:
     if drv_phone: left_lines.append(P(drv_phone, sub_l))
     if drv_email: left_lines.append(P(drv_email, sub_l))
 
-    right_lines = [P(co_name, head_r)]
-    if co_addr:  right_lines.append(P(co_addr,             sub_r))
-    if co_phone: right_lines.append(P(f"Phone: {co_phone}", sub_r))
-    if co_email: right_lines.append(P(co_email,             sub_r))
+    right_lines = [_logo_flowable(company, head_r, max_w=1.5 * inch, max_h=0.55 * inch), P(co_name, head_r)]
+    for line in company_identity_lines(company)[1:]:
+        right_lines.append(P(line, sub_r))
 
     hdr_tbl = Table([[left_lines, right_lines]], colWidths=[3.6 * inch, 3.6 * inch])
     hdr_tbl.setStyle(TableStyle([

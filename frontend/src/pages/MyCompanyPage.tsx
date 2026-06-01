@@ -26,6 +26,14 @@ const empty: Company = {
   phone:'', email:'', website:'', logo_path:''
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
+
+function assetUrl(path: string) {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path) || path.startsWith('blob:')) return path
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+}
+
 export default function MyCompanyPage() {
   const [form, setForm]     = useState<Company>(empty)
   const [loading, setLoading] = useState(true)
@@ -35,7 +43,7 @@ export default function MyCompanyPage() {
 
   useEffect(() => {
     client.get('/api/v1/company')
-      .then(r => { setForm(r.data); setLogoPreview(r.data.logo_path || '') })
+      .then(r => { setForm(r.data); setLogoPreview(assetUrl(r.data.logo_path || '')) })
       .catch(e => toast.error(e.message))
       .finally(() => setLoading(false))
   }, [])
@@ -59,7 +67,11 @@ export default function MyCompanyPage() {
     const fd = new FormData()
     fd.append('file', file)
     client.post('/api/v1/company/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      .then(r => { setForm(p => ({...p, logo_path: r.data.logo_path})); toast.success('Logo uploaded') })
+      .then(r => {
+        setForm(p => ({...p, logo_path: r.data.logo_path}))
+        setLogoPreview(assetUrl(r.data.logo_path))
+        toast.success('Logo uploaded')
+      })
       .catch(e => toast.error(e.message))
   }
 

@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.models import CompanySettings
+from app.core.config import settings
 import os, shutil
 
 router = APIRouter(prefix="/company", tags=["company"])
 
-UPLOAD_DIR = "uploads/company"
+UPLOAD_DIR = os.path.join(settings.UPLOAD_DIR, "company")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
@@ -58,10 +59,12 @@ def update_company(data: dict, db: Session = Depends(get_db)):
 @router.post("/logo")
 def upload_logo(file: UploadFile = File(...), db: Session = Depends(get_db)):
     ext = os.path.splitext(file.filename or "logo.png")[1]
+    if ext.lower() not in [".png", ".jpg", ".jpeg", ".webp"]:
+        ext = ".png"
     path = os.path.join(UPLOAD_DIR, f"logo{ext}")
     with open(path, "wb") as f:
         shutil.copyfileobj(file.file, f)
     s = _get_or_create(db)
-    s.logo_path = "/" + path
+    s.logo_path = "/" + path.replace("\\", "/").lstrip("./")
     db.commit()
     return {"logo_path": s.logo_path}

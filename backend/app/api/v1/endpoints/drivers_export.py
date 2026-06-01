@@ -11,7 +11,7 @@ import io
 
 from app.db.session import get_db
 from app.models.models import Driver, DriverProfile, Truck, Trailer
-from app.services.company_service import get_company
+from app.services.company_service import company_identity_lines, get_company, resolve_logo_file
 
 router = APIRouter(tags=["drivers-export"])
 
@@ -60,7 +60,7 @@ def export_drivers_pdf(db: Session = Depends(get_db)):
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
     from reportlab.lib.units import inch
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
     from reportlab.lib.styles import ParagraphStyle
 
     rows = _get_driver_rows(db)
@@ -84,15 +84,29 @@ def export_drivers_pdf(db: Session = Depends(get_db)):
     story = []
 
     # Company header — pulled live from "My Company" settings
-    company  = get_company(db)
-    co_name  = company.get("name")  or "My Company"
-    co_email = company.get("email") or ""
-    co_phone = company.get("phone") or ""
-    header_html = f"<b>{co_name}</b>"
-    if co_email: header_html += f"<br/>Email: {co_email}"
-    if co_phone: header_html += f"<br/>Phone: {co_phone}"
-
-    story.append(Paragraph(header_html, hd_s))
+    company = get_company(db)
+    logo_file = resolve_logo_file(company.get("logo_path") or "")
+    if logo_file:
+        try:
+            logo = Image(logo_file)
+            ratio = min((1.35 * inch) / logo.imageWidth, (0.7 * inch) / logo.imageHeight)
+            logo.drawWidth = logo.imageWidth * ratio
+            logo.drawHeight = logo.imageHeight * ratio
+        except Exception:
+            logo = Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", hd_s)
+    else:
+        logo = Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", hd_s)
+    header_html = "<br/>".join(
+        f"<b>{line}</b>" if i == 0 else line
+        for i, line in enumerate(company_identity_lines(company))
+    )
+    header = Table([[logo, Paragraph(header_html, hd_s)]], colWidths=[2.0 * inch, 4.9 * inch])
+    header.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    story.append(header)
     story.append(Spacer(1, 0.2 * inch))
     story.append(Paragraph("<b>Drivers</b>", tt_s))
 

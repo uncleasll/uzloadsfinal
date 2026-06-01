@@ -19,7 +19,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle, Paragraph,
-    Spacer, HRFlowable
+    Spacer, HRFlowable, Image
 )
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 
@@ -31,7 +31,7 @@ from openpyxl.styles import (
 from openpyxl.utils import get_column_letter
 
 # ── Company settings (pulled live from DB) ────────────────────────────────────
-from app.services.company_service import get_company
+from app.services.company_service import company_address, company_identity_lines, get_company, resolve_logo_file
 from app.db.session import SessionLocal
 
 
@@ -47,15 +47,25 @@ def _get_company_info() -> dict:
     finally:
         db.close()
 
-    addr_parts = [c.get("city") or "", c.get("state") or "", c.get("zip_code") or ""]
-    addr = ", ".join(p for p in addr_parts if p)
-
     return {
-        "name":    c.get("name")  or "My Company",
-        "email":   f"Email: {c.get('email')}" if c.get("email") else "",
-        "phone":   f"Phone: {c.get('phone')}" if c.get("phone") else "",
-        "address": addr,
+        **c,
+        "name": c.get("name") or "My Company",
+        "address": company_address(c),
     }
+
+
+def _logo_flowable(company: dict, fallback_style, max_w=1.35 * inch, max_h=0.7 * inch):
+    logo_file = resolve_logo_file(company.get("logo_path") or "")
+    if logo_file:
+        try:
+            img = Image(logo_file)
+            ratio = min(max_w / img.imageWidth, max_h / img.imageHeight)
+            img.drawWidth = img.imageWidth * ratio
+            img.drawHeight = img.imageHeight * ratio
+            return img
+        except Exception:
+            pass
+    return Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", fallback_style)
 
 
 # ── Colors ────────────────────────────────────────────────────────────────────
@@ -115,18 +125,6 @@ def _header_table(story, report_title: str, meta_lines: List[str]):
     # Pull live company settings from DB ("My Company" page)
     company = _get_company_info()
 
-    # Company info (right side)
-    company_right_parts = [f"<b>{company['name']}</b>"]
-    if company["email"]: company_right_parts.append(company["email"])
-    if company["phone"]: company_right_parts.append(company["phone"])
-    company_text = "<br/>".join(company_right_parts)
-
-    # Left-side brand block — also shows the configured company name
-    logo_text = f"<b>{company['name']}</b>"
-    if company["address"]:
-        logo_text += f"<br/><font size='7'>{company['address']}</font>"
-
-    # Logo placeholder (simple truck icon text, since we can't embed the image)
     logo_style = ParagraphStyle("logo", fontSize=9, leading=11, textColor=BLACK)
     company_style = ParagraphStyle("company", fontSize=9, leading=13, textColor=BLACK)
     title_style   = ParagraphStyle("title",   fontSize=12, leading=15, textColor=BLACK, fontName="Helvetica-Bold", spaceBefore=6)
@@ -135,8 +133,11 @@ def _header_table(story, report_title: str, meta_lines: List[str]):
 
     # 2-column header: [logo | company info]
     header_data = [[
-        Paragraph(logo_text, logo_style),
-        Paragraph(company_text, company_style),
+        _logo_flowable(company, logo_style),
+        Paragraph("<br/>".join(
+            f"<b>{line}</b>" if i == 0 else line
+            for i, line in enumerate(company_identity_lines(company))
+        ), company_style),
     ]]
     header_tbl = Table(header_data, colWidths=["50%", "50%"])
     header_tbl.setStyle(TableStyle([

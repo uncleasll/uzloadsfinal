@@ -206,12 +206,31 @@ def merged_documents(load_id: int, db: Session = Depends(get_db)):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from app.services.company_service import company_identity_lines, get_company, resolve_logo_file
 
     buffer = io.BytesIO()
     pdf = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     styles = getSampleStyleSheet()
+    company = get_company(db)
+    logo_file = resolve_logo_file(company.get("logo_path") or "")
+    if logo_file:
+        try:
+            logo = Image(logo_file)
+            ratio = min(110 / logo.imageWidth, 55 / logo.imageHeight)
+            logo.drawWidth = logo.imageWidth * ratio
+            logo.drawHeight = logo.imageHeight * ratio
+        except Exception:
+            logo = Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", styles["Heading2"])
+    else:
+        logo = Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", styles["Heading2"])
+    company_text = "<br/>".join(
+        f"<b>{line}</b>" if i == 0 else line
+        for i, line in enumerate(company_identity_lines(company))
+    )
     story = [
+        Table([[logo, Paragraph(company_text, styles["BodyText"])]], colWidths=[150, 360]),
+        Spacer(1, 14),
         Paragraph(f"Load #{load.load_number} Document Packet", styles["Title"]),
         Spacer(1, 12),
         Paragraph("Uploaded document index", styles["Heading2"]),
