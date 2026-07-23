@@ -207,22 +207,51 @@ export default function LoadsPage() {
   const pct = (value: number) => summaryTotal > 0 ? `${Math.min((value / summaryTotal) * 100, 100)}%` : '0%'
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-[11px] shadow-sm">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
 
       {/* ── Top bar ── */}
-      <div className="flex min-h-[54px] flex-shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5">
+      <div className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
 
-        <div className="mr-1 flex-shrink-0">
-          <div className="text-[15px] font-bold leading-tight text-slate-950">Loads</div>
-          <div className="text-[10px] font-medium text-slate-400">{total} records</div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="mr-1 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-950">Loads</h1>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{total}</span>
+            </div>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-400">Manage, track and invoice every shipment</p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="relative order-1 min-w-[210px] flex-1 sm:flex-none">
+              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
+              <input ref={searchRef} type="search" placeholder="Search load, broker or PO..." onChange={handleSearch}
+                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64" />
+            </div>
+            <button onClick={() => setShowFilterDrawer(true)}
+              className="relative order-2 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M7 12h10M10 18h4"/></svg>
+              Filters
+              {filterChips.length > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] text-white">{filterChips.length}</span>}
+            </button>
+            <button onClick={() => setShowImport(true)} className="btn-secondary order-3 h-9 rounded-lg text-xs">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 12v9m0-9l-3 3m3-3l3 3"/></svg>
+              Import
+            </button>
+            <button onClick={() => setShowNewForm(v => !v)} className="btn-primary order-4 h-9 rounded-lg px-4 text-xs">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5"/></svg>
+              New load
+            </button>
+          </div>
         </div>
 
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 xl:flex-row xl:items-center">
+
         {/* Period */}
-        <div className="relative flex items-center flex-shrink-0">
+        <div className="relative flex flex-shrink-0 items-center">
           <select
             value={period}
             onChange={e => { setPeriod(e.target.value); setFilters(p => ({ ...p, page: 1 })) }}
-            className="appearance-none rounded-md border border-slate-200 bg-slate-50 py-1.5 pl-2.5 pr-7 text-[11px] font-semibold text-slate-600 shadow-sm focus:outline-none focus:border-blue-400 focus:bg-white"
+            className="h-8 appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-8 text-[11px] font-semibold text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -242,11 +271,12 @@ export default function LoadsPage() {
         )}
 
         {/* Total bar */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-[11px] text-slate-600 whitespace-nowrap font-bold flex-shrink-0">
-            TOTAL: {formatCurrency(totalRate)}
-          </span>
-          <div className="relative flex-1 h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex-shrink-0 whitespace-nowrap text-xs font-extrabold text-slate-700">
+              TOTAL: {formatCurrency(totalRate)}
+            </span>
+            <div className="relative h-3 min-w-[180px] flex-1 overflow-hidden rounded-full border border-slate-200 bg-slate-200/80 shadow-inner">
             <div className="absolute left-0 top-0 h-full bg-blue-500 transition-all"
               title={`Paid: ${formatCurrency(rateSummary.paid)}`}
               style={{ width: pct(rateSummary.paid) }} />
@@ -265,60 +295,31 @@ export default function LoadsPage() {
             <div className="absolute right-0 top-0 h-full bg-red-400 transition-all"
               title={`Overdue unpaid: ${formatCurrency(rateSummary.overdue)}`}
               style={{ width: pct(rateSummary.overdue) }} />
+            </div>
           </div>
-          <div className="hidden xl:flex items-center gap-2 text-[10px] text-gray-500 flex-shrink-0">
-            <LegendDot color="bg-blue-500" label="Paid" />
-            <LegendDot color="bg-amber-400" label="Invoiced" />
-            <LegendDot color="bg-gray-300" label="Pending" />
-            <LegendDot color="bg-red-400" label="Overdue" />
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[10px] text-slate-500">
+            <LegendDot color="bg-blue-500" label={`Paid ${formatCurrency(rateSummary.paid)}`} />
+            <LegendDot color="bg-amber-400" label={`Invoiced ${formatCurrency(rateSummary.invoiced)}`} />
+            <LegendDot color="bg-slate-300" label={`Pending ${formatCurrency(rateSummary.pending)}`} />
+            <LegendDot color="bg-red-400" label={`Overdue ${formatCurrency(rateSummary.overdue)}`} />
           </div>
         </div>
-
-        {/* Search */}
-        <div className="relative flex-shrink-0">
-          <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
-          <input
-            ref={searchRef}
-            type="text"
-            placeholder="Search..."
-            onChange={handleSearch}
-            className="w-44 rounded-md border border-slate-200 py-1.5 pl-7 pr-7 text-[11px] shadow-sm focus:outline-none focus:border-blue-400"
-          />
-          <button onClick={() => setShowFilterDrawer(true)} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 10h10M11 16h2"/></svg>
-          </button>
         </div>
-
-        {/* Import */}
-        <button onClick={() => setShowImport(true)}
-          className="btn-secondary text-[12px]">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-          Import
-        </button>
-        {/* New Load */}
-        <button
-          onClick={() => setShowNewForm(v => !v)}
-          className="btn-primary flex-shrink-0 text-[12px]"
-        >
-          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-          New Load
-          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </button>
       </div>
 
       {/* ── Filter chips ── */}
       {filterChips.length > 0 && (
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2">
-          <span className="text-[11px] text-gray-400">Filtered by:</span>
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-blue-100 bg-blue-50/40 px-4 py-2.5 lg:px-5">
+          <span className="mr-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Active filters</span>
           {filterChips.map(chip => (
-            <span key={chip.key} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-50 text-sky-600 text-[11px] rounded">
+            <span key={chip.key} className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-white px-2.5 py-1 text-[10px] font-semibold text-blue-700 shadow-sm">
               {chip.label}
               <button onClick={() => removeFilter(chip.key)} className="hover:text-sky-900 ml-0.5">
                 <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             </span>
           ))}
-          <button onClick={clearAllFilters} className="text-[11px] text-gray-400 hover:text-red-500 ml-1">clear all</button>
+          <button onClick={clearAllFilters} className="ml-1 rounded px-1.5 py-1 text-[10px] font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600">Clear all</button>
         </div>
       )}
 
@@ -330,13 +331,13 @@ export default function LoadsPage() {
       )}
 
       {/* ── Table ── */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
+      <div className="min-h-0 flex-1 overflow-auto bg-white">
+        <table className="w-full min-w-[1280px] border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
           <colgroup>{TABLE_COLUMNS.map((width, index) => <col key={index} style={{ width }} />)}</colgroup>
 
           <thead className="sticky top-0 z-10">
             {/* Header */}
-            <tr className="border-b border-slate-200 bg-slate-50/95">
+            <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
               <th className="px-1 py-1.5 text-center">
                 <input type="checkbox" className="w-3 h-3 rounded" />
               </th>
@@ -365,7 +366,7 @@ export default function LoadsPage() {
             </tr>
 
             {/* Inline filters */}
-            <tr className="bg-white border-b border-slate-100">
+            <tr className="border-b border-slate-100 bg-white">
               <td className="px-1 py-0.5" />
               <td className="px-0 py-0.5" />
               {/* Load # */}
@@ -453,9 +454,9 @@ export default function LoadsPage() {
 
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan={16} className="py-16 text-center text-slate-400 text-[12px]">Loading loads...</td></tr>
+              <tr><td colSpan={16} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading loads...</div></td></tr>
             ) : loads.length === 0 ? (
-              <tr><td colSpan={16} className="py-16 text-center text-slate-400 text-[12px]">No loads match the current filters</td></tr>
+              <tr><td colSpan={16} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7h13l5 5v5a2 2 0 01-2 2H5a2 2 0 01-2-2V7zM16 7v5h5M7 19a2 2 0 104 0m4 0a2 2 0 104 0"/></svg></div><div className="text-sm font-semibold text-slate-700">No loads found</div><p className="mt-1 text-xs text-slate-400">Try adjusting your search or filters.</p><button onClick={clearAllFilters} className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-700">Clear all filters</button></div></td></tr>
             ) : loads.map(load => {
               const pickup = getPickupStop(load.stops)
               const delivery = getDeliveryStop(load.stops)
@@ -464,7 +465,7 @@ export default function LoadsPage() {
 
               return (
                 <tr key={load.id} onClick={() => setSelectedLoad(load)}
-                  className="cursor-pointer transition-colors odd:bg-white even:bg-slate-50/35 hover:bg-blue-50/70">
+                  className="group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 hover:border-l-blue-500 hover:bg-blue-50/70">
                   <td className="px-1 py-1 text-center" onClick={e => e.stopPropagation()}>
                     <input type="checkbox" className="w-3 h-3 rounded" />
                   </td>
@@ -534,8 +535,8 @@ export default function LoadsPage() {
       </div>
 
       {/* ── Pagination ── */}
-      <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-200 bg-white px-4 py-2.5">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3 lg:px-5">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-0.5">
             <PagBtn onClick={() => setFilters(p => ({ ...p, page: 1 }))} disabled={(filters.page || 1) <= 1}>
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
@@ -568,20 +569,19 @@ export default function LoadsPage() {
           </span>
 
           <button onClick={() => setShowOnlyActive(p => !p)}
-            className={`text-[11px] underline ${showOnlyActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${showOnlyActive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
             {showOnlyActive ? 'Show all loads' : 'Show only active loads'}
           </button>
         </div>
 
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] text-gray-400">Show records</span>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
           {PAGE_SIZE_OPTIONS.map(n => (
             <button key={n} onClick={() => setFilters(p => ({ ...p, page: 1, page_size: n }))}
-              className={`text-[11px] px-1 rounded ${(filters.page_size || 50) === n ? 'text-blue-600 font-bold underline' : 'text-gray-400 hover:text-gray-700'}`}>
+              className={`rounded-md px-2 py-1 text-[10px] transition ${(filters.page_size || 50) === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
               {n}
             </button>
           ))}
-          <span className="text-[11px] text-gray-400">on page</span>
         </div>
       </div>
 
