@@ -9,6 +9,7 @@ import {
 import LoadModal from '@/components/loads/LoadModal'
 import LoadImportModal from '@/components/loads/LoadImportModal'
 import NewLoadModal from '@/components/loads/NewLoadModal'
+import AutoCreateLoadModal from '@/components/loads/AutoCreateLoadModal'
 import { useEntities } from '@/hooks/useEntities'
 import type { Driver, Broker, Dispatcher, Truck, Trailer } from '@/types'
 import toast from 'react-hot-toast'
@@ -39,6 +40,7 @@ export default function LoadsPage() {
   })
   const [loading, setLoading] = useState(true)
   const [showImport, setShowImport] = useState(false)
+  const [showAutoCreate, setShowAutoCreate] = useState(false)
 
   const [filters, setFilters] = useState<LoadFilters>({ page: 1, page_size: 50, sort_by: 'load_number', sort_dir: 'desc' })
   const [period, setPeriod] = useState('all')
@@ -354,6 +356,16 @@ export default function LoadsPage() {
               </button>
               {showNewMenu && (
                 <div role="menu" className="absolute right-0 top-full z-30 mt-1.5 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl shadow-slate-950/10">
+                  <button role="menuitem" onClick={() => { setShowNewMenu(false); setShowAutoCreate(true) }}
+                    className="flex w-full items-start gap-3 bg-emerald-50/70 px-3.5 py-2.5 text-left transition-colors hover:bg-emerald-50">
+                    <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.5 2.5l1.9 5.1 5.1 1.9-5.1 1.9-1.9 5.1-1.9-5.1-5.1-1.9 5.1-1.9 1.9-5.1zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9L18 15z"/></svg>
+                    </span>
+                    <span>
+                      <span className="block text-xs font-bold text-slate-800">Auto-create from document</span>
+                      <span className="block text-[10px] text-slate-500">Upload PDF, JPG, JPEG or PNG</span>
+                    </span>
+                  </button>
                   <button role="menuitem" onClick={() => { setShowNewMenu(false); setShowNewForm(true) }}
                     className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-blue-50/60">
                     <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-600">
@@ -793,6 +805,9 @@ export default function LoadsPage() {
       )}
       {showImport && (
         <LoadImportModal onClose={()=>setShowImport(false)} onImported={()=>{setShowImport(false); fetchLoads({ ...activeFilters, ...filters })}}/>
+      )}
+      {showAutoCreate && (
+        <AutoCreateLoadModal onClose={()=>setShowAutoCreate(false)} onSaved={()=>{setShowAutoCreate(false); fetchLoads({ ...activeFilters, ...filters })}} entities={entities}/>
       )}
     </div>
   )

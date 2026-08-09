@@ -16,6 +16,7 @@ import ExpensesPage from '@/pages/ExpensesPage'
 import AdvancedPaymentsPage from '@/pages/AdvancedPaymentsPage'
 import PaymentsPage from '@/pages/PaymentsPage'
 import DashboardPage from '@/pages/DashboardPage'
+import DispatchBoardPage from '@/pages/DispatchBoardPage'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { isAuthenticated, loading } = useAuth()
@@ -40,7 +41,7 @@ export default function App() {
         <Route path="trucks" element={<TrucksPage />} />
         <Route path="brokers" element={<BrokersPage />} />
         <Route path="vendors" element={<VendorsPage />} />
-        <Route path="dispatch" element={<PlaceholderPage title="Dispatch Board" />} />
+        <Route path="dispatch" element={<DispatchBoardPage />} />
         <Route path="my-company" element={<MyCompanyPage />} />
         <Route path="trailers" element={<TrailersPage />} />
         <Route path="fuel/*" element={<PlaceholderPage title="Fuel" />} />
