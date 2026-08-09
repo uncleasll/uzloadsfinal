@@ -210,6 +210,20 @@ def update_settlement(settlement_id: int, data: SettlementUpdate, db: Session = 
     s = crud.get_settlement(db, settlement_id)
     if not s:
         raise HTTPException(404, "Settlement not found")
+    # Status changes must go through the controlled /status endpoint
+    # (it enforces transitions, item and balance checks). Reject bypasses here.
+    if data.status is not None and _s_val(data.status) != _s_val(s.status):
+        raise HTTPException(
+            400,
+            "Status cannot be changed via update. Use the workflow (status endpoint) instead.",
+        )
+    # Driver / payable / date edits only while Preparing — Paid/Ready are locked
+    changing_fields = data.model_dump(exclude_unset=True, exclude={"status", "notes"})
+    if changing_fields and _s_val(s.status) != "Preparing":
+        raise HTTPException(
+            400,
+            f"Cannot edit settlement while it is '{_s_val(s.status)}'. Move it back to Preparing first.",
+        )
     updated = crud.update_settlement(db, settlement_id, data)
     if not updated:
         raise HTTPException(404, "Settlement not found")
@@ -218,6 +232,11 @@ def update_settlement(settlement_id: int, data: SettlementUpdate, db: Session = 
 
 @router.delete("/{settlement_id}")
 def delete_settlement(settlement_id: int, db: Session = Depends(get_db)):
+    s = crud.get_settlement(db, settlement_id)
+    if not s:
+        raise HTTPException(404, "Settlement not found")
+    if _s_val(s.status) == "Paid":
+        raise HTTPException(400, "Cannot delete a Paid settlement. Move it back to Preparing first.")
     if not crud.delete_settlement(db, settlement_id):
         raise HTTPException(404, "Settlement not found")
     return {"message": "Deleted"}
@@ -257,6 +276,33 @@ def add_adjustment(settlement_id: int, data: SettlementAdjustmentCreate, db: Ses
         raise HTTPException(404, "Settlement not found")
     _require_preparing(s, "add adjustment")
     adj = crud.add_adjustment(db, settlement_id, data)
+    return _ser_adj(adj)
+
+
+@router.put("/{settlement_id}/adjustments/{adj_id}")
+def update_adjustment(settlement_id: int, adj_id: int, data: dict, db: Session = Depends(get_db)):
+    s = crud.get_settlement(db, settlement_id)
+    if not s:
+        raise HTTPException(404, "Settlement not found")
+    _require_preparing(s, "edit adjustment")
+    adj = db.query(SettlementAdjustment).filter(
+        SettlementAdjustment.id == adj_id,
+        SettlementAdjustment.settlement_id == settlement_id,
+    ).first()
+    if not adj:
+        raise HTTPException(404, "Adjustment not found")
+    if data.get("amount") is not None:
+        amount = float(data["amount"])
+        if amount <= 0:
+            raise HTTPException(400, "amount must be > 0")
+        adj.amount = amount
+    for field in ("date", "category", "description"):
+        if field in data:
+            setattr(adj, field, data[field] or None)
+    db.commit()
+    crud._recalculate(db, settlement_id)
+    _add_history(db, settlement_id, f"Adjustment edited: {adj.category or adj.adj_type} (${adj.amount:.2f})")
+    db.refresh(adj)
     return _ser_adj(adj)
 
 

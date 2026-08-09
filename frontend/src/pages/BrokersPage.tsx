@@ -182,13 +182,13 @@ function DoubleChevronRight() { return <span className="text-[10px]">»</span> }
 function StatusBadge({ status }: { status: string }) {
   const s = status || 'Pending'
   const styles: Record<string, string> = {
-    Pending:  'border-[#f4b14f] bg-[#fff8ef] text-[#ef9b1f]',
-    Approved: 'border-[#93c5fd] bg-[#eff6ff] text-[#2563eb]',
-    'No buy': 'border-[#e57373] bg-[#fdecec] text-[#c0392b]',
+    Pending:  'bg-amber-100 text-amber-700',
+    Approved: 'bg-emerald-100 text-emerald-700',
+    'No buy': 'bg-red-100 text-red-600',
   }
   return (
     <span className={clsx(
-      'inline-flex items-center rounded-full border px-2.5 py-[2px] text-xs font-semibold',
+      'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
       styles[s] || styles.Pending,
     )}>
       {s}
@@ -197,19 +197,77 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function CreditBadge({ credit }: { credit?: string }) {
-  if (!credit) return <span className="text-[#94a3b8]">—</span>
+  if (!credit) return <span className="text-gray-300">—</span>
   const colors: Record<string, string> = {
-    A: 'border-[#93c5fd] text-[#4ebd72]',
-    B: 'border-[#f4b14f] text-[#ef9b1f]',
-    C: 'border-[#e57373] text-[#c0392b]',
+    A: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    B: 'border-amber-200 bg-amber-50 text-amber-700',
+    C: 'border-red-200 bg-red-50 text-red-600',
   }
   return (
     <span className={clsx(
-      'inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs font-medium',
-      colors[credit] || 'border-[#cbd5e1] text-[#64748b]',
+      'inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold',
+      colors[credit] || 'border-slate-200 bg-slate-50 text-slate-500',
     )}>
       {credit}
     </span>
+  )
+}
+
+const BROKER_COLUMN_DEFS: { key: string; label: string; sortable?: boolean; width: string }[] = [
+  { key: 'name',    label: 'NAME',       sortable: true, width: '20%' },
+  { key: 'address', label: 'ADDRESS',    sortable: true, width: '13%' },
+  { key: 'phone',   label: 'PHONE',      sortable: true, width: '11%' },
+  { key: 'mc',      label: 'MC',         sortable: true, width: '8%' },
+  { key: 'pay',     label: 'PAY METHOD', sortable: true, width: '16%' },
+  { key: 'credit',  label: 'CREDIT',     sortable: true, width: '7%' },
+  { key: 'dtp',     label: 'AVG DTP',    sortable: true, width: '7%' },
+  { key: 'status',  label: 'STATUS',     sortable: true, width: '9%' },
+]
+
+function brokerSortVal(b: Broker, key: string): string | number {
+  switch (key) {
+    case 'name':    return b.name || ''
+    case 'address': return b.city || ''
+    case 'phone':   return b.phone || ''
+    case 'mc':      return b.mc_number || ''
+    case 'pay':     return b.factoring ? 'Factoring' : 'Direct billing'
+    case 'credit':  return b.credit || ''
+    case 'dtp':     return b.avg_days_to_pay ?? -1
+    case 'status':  return b.status || ''
+    default:        return ''
+  }
+}
+
+function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel }: {
+  onEdit: () => void; onDelete: () => void; editLabel: string; deleteLabel: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative flex items-center justify-center">
+      <button onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        title="Actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={clsx('inline-flex h-6 w-6 items-center justify-center rounded transition-colors',
+          open ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-700')}>
+        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
+          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            {editLabel}
+          </button>
+          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            {deleteLabel}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -223,6 +281,13 @@ export default function BrokersPage() {
   const [perPage, setPerPage] = useState(50)
   const [page, setPage] = useState(1)
   const [showInactive, setShowInactive] = useState(false)
+  const [sortKey, setSortKey] = useState('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const sortBy = (key: string) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
 
   const [form, setForm] = useState<BrokerFormState>(INITIAL_FORM_STATE)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -265,13 +330,26 @@ export default function BrokersPage() {
     return list
   }, [brokers, activeTab, search])
 
-  const totalPages = Math.max(1, Math.ceil(filteredBrokers.length / perPage))
+  const sortedBrokers = useMemo(() => {
+    const list = [...filteredBrokers]
+    list.sort((a, b) => {
+      const va = brokerSortVal(a, sortKey)
+      const vb = brokerSortVal(b, sortKey)
+      const cmp = typeof va === 'number' && typeof vb === 'number'
+        ? va - vb
+        : String(va).localeCompare(String(vb), undefined, { sensitivity: 'base' })
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+    return list
+  }, [filteredBrokers, sortKey, sortDir])
+
+  const totalPages = Math.max(1, Math.ceil(sortedBrokers.length / perPage))
   const safePage = Math.min(page, totalPages)
 
   const paginatedBrokers = useMemo(() => {
     const start = (safePage - 1) * perPage
-    return filteredBrokers.slice(start, start + perPage)
-  }, [filteredBrokers, safePage, perPage])
+    return sortedBrokers.slice(start, start + perPage)
+  }, [sortedBrokers, safePage, perPage])
 
   const startEntry = filteredBrokers.length === 0 ? 0 : (safePage - 1) * perPage + 1
   const endEntry = Math.min(safePage * perPage, filteredBrokers.length)
@@ -344,153 +422,127 @@ export default function BrokersPage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#f5f6f8]">
-      <div className="border-b border-[#d9dee5] bg-white px-5 pt-4">
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-[#1f2937]">Customers</h1>
-            <div className="flex items-center gap-1.5 text-xs font-medium text-[#3f4954]">
-              <button className="hover:text-black hover:underline">Pdf</button>
-              <span className="text-gray-300">|</span>
-              <button className="hover:text-black hover:underline">Excel</button>
-              <span className="text-gray-300">|</span>
-              <button className="hover:text-black hover:underline">Email</button>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+
+      {/* Header */}
+      <div className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="mr-1 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-950">Customers</h1>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{filteredBrokers.length}</span>
             </div>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-400">Brokers and shippers you haul for</p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9aa4b2]">
-                <SearchIcon />
-              </span>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="relative min-w-[220px] flex-1 sm:flex-none">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><SearchIcon /></span>
               <input
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setPage(1)
-                }}
-                placeholder="Search"
-                className="h-9 w-[260px] rounded border border-[#d7dce2] bg-white pl-8 pr-3 text-sm text-[#1f2937] outline-none placeholder:text-[#b1b7c0] focus:border-[#94a3b8]"
+                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                type="search"
+                placeholder="Search customers..."
+                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64"
               />
             </div>
-
-            <button
-              onClick={openCreateModal}
-              className="inline-flex h-9 items-center gap-1.5 rounded bg-[#2563eb] px-3.5 text-sm font-semibold text-white transition hover:bg-[#4ab668]"
-            >
+            <button onClick={openCreateModal} className="btn-primary h-9 rounded-lg px-4 text-xs">
               <PlusDocIcon />
               New customer
             </button>
           </div>
         </div>
 
-        <div className="flex items-end gap-[1px]">
-          <button
-            onClick={() => { setActiveTab('brokers'); setPage(1) }}
-            className={clsx(
-              'rounded-t border border-b-0 px-5 py-2 text-sm font-semibold transition-colors',
-              activeTab === 'brokers'
-                ? 'border-[#cfd6de] bg-[#f8f9fb] text-[#2d3748]'
-                : 'border-transparent bg-transparent text-[#2563eb] hover:bg-gray-50'
-            )}
-          >
-            Brokers
-          </button>
-          <button
-            onClick={() => { setActiveTab('shippers'); setPage(1) }}
-            className={clsx(
-              'rounded-t border border-b-0 px-5 py-2 text-sm font-semibold transition-colors',
-              activeTab === 'shippers'
-                ? 'border-[#cfd6de] bg-[#f8f9fb] text-[#2d3748]'
-                : 'border-transparent bg-transparent text-[#2563eb] hover:bg-gray-50'
-            )}
-          >
-            Shippers/Receivers
-          </button>
+        {/* Tabs */}
+        <div className="flex items-center gap-1 self-start rounded-lg border border-slate-200 bg-slate-50 p-1">
+          {([['brokers', 'Brokers'], ['shippers', 'Shippers/Receivers']] as Array<[TabType, string]>).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => { setActiveTab(key); setPage(1) }}
+              className={clsx(
+                'rounded-md px-3 py-1.5 text-[11px] font-semibold transition',
+                activeTab === key
+                  ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
+                  : 'text-slate-500 hover:text-slate-700'
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-[#f5f6f8]">
-        <table className="w-full border-collapse">
-          <thead className="sticky top-0 z-10 border-y border-[#dfe4ea] bg-[#f8f9fb] shadow-sm">
-            <tr className="text-left text-xs font-semibold uppercase tracking-wider text-[#526071]">
-              {['Name', 'Address', 'Phone', 'MC', 'Pay Method', 'Credit', 'Avg DTP', 'Status', 'Actions'].map((h) => (
-                <th key={h} className="px-4 py-2.5">
-                  <div className="flex items-center gap-1">
-                    <span>{h}</span>
-                    {['Name', 'Phone', 'MC', 'Pay Method', 'Credit', 'Avg DTP', 'Status'].includes(h) && (
-                      <span className="text-[9px] text-[#9ba6b5]">↕</span>
-                    )}
-                  </div>
+      {/* Table */}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
+          <colgroup>
+            {BROKER_COLUMN_DEFS.map(c => <col key={c.key} style={{ width: c.width }} />)}
+            <col style={{ width: 76 }} />
+          </colgroup>
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
+              {BROKER_COLUMN_DEFS.map(h => (
+                <th key={h.key} className="px-1.5 py-2 text-left font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
+                  {h.sortable ? (
+                    <button onClick={() => sortBy(h.key)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
+                      {h.label}
+                      <span className={sortKey === h.key ? 'opacity-100 text-blue-600' : 'opacity-30'}>
+                        {sortKey === h.key && sortDir === 'asc' ? '↑' : '↓'}
+                      </span>
+                    </button>
+                  ) : h.label}
                 </th>
               ))}
+              <th className="px-1.5 py-2 text-center font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>ACTIONS</th>
             </tr>
           </thead>
 
-          <tbody className="bg-white">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {loading ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-sm text-[#94a3b8]">
-                  Loading...
-                </td>
-              </tr>
+              <tr><td colSpan={BROKER_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading customers...</div></td></tr>
             ) : paginatedBrokers.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-sm text-[#94a3b8]">
-                  {activeTab === 'shippers' ? 'No shippers/receivers found' : 'No customers found'}
-                </td>
-              </tr>
+              <tr><td colSpan={BROKER_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div className="text-sm font-semibold text-slate-700">{activeTab === 'shippers' ? 'No shippers/receivers found' : 'No customers found'}</div><p className="mt-1 text-xs text-slate-400">Try adjusting your search or filters.</p></div></td></tr>
             ) : (
               paginatedBrokers.map((broker) => (
                 <tr
                   key={broker.id}
                   className={clsx(
-                    'border-b border-[#f1f4f8] text-sm transition-colors hover:bg-[#fafbfd] cursor-pointer',
-                    broker.is_active ? 'text-[#1f2937]' : 'text-[#94a3b8] italic'
+                    'group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 hover:border-l-blue-500 hover:bg-blue-50/70',
+                    !broker.is_active && 'italic text-slate-400'
                   )}
                   onClick={() => openEditModal(broker)}
                 >
-                  <td className="px-4 py-2.5">
-                    <button className="font-medium text-[#1a73e8] underline-offset-2 hover:underline">
+                  <td className="px-1.5 py-1">
+                    <span className="font-semibold text-blue-600 truncate hover:underline text-[11px] block">
                       {broker.name}
-                    </button>
+                    </span>
                   </td>
-                  <td className="px-4 py-2.5 text-[#475569]">
-                    {broker.city ? `${broker.city}${broker.state ? `, ${broker.state}` : ''}` : '—'}
+                  <td className="px-1.5 py-1 text-gray-600 truncate">
+                    {broker.city ? `${broker.city}${broker.state ? `, ${broker.state}` : ''}` : <span className="text-gray-300">—</span>}
                   </td>
-                  <td className="px-4 py-2.5 text-[#475569]">{broker.phone || '—'}</td>
-                  <td className="px-4 py-2.5 text-[#475569]">{broker.mc_number || '—'}</td>
-                  <td className="px-4 py-2.5 text-[#475569]">
+                  <td className="px-1.5 py-1 text-gray-600 truncate">{broker.phone || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1 text-gray-600 truncate">{broker.mc_number || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1 text-gray-600 truncate">
                     {broker.factoring
                       ? `Factoring${broker.factoring_company ? ` · ${broker.factoring_company}` : ''}`
                       : 'Direct billing'}
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-1.5 py-1">
                     <CreditBadge credit={broker.credit} />
                   </td>
-                  <td className="px-4 py-2.5 text-[#475569]">
-                    {broker.avg_days_to_pay != null ? broker.avg_days_to_pay : '—'}
+                  <td className="px-1.5 py-1 text-gray-600">
+                    {broker.avg_days_to_pay != null ? broker.avg_days_to_pay : <span className="text-gray-300">—</span>}
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-1.5 py-1">
                     <StatusBadge status={broker.status} />
                   </td>
-                  <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openEditModal(broker)}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#59c879] text-white transition hover:bg-[#4eb96d]"
-                        title="Edit"
-                      >
-                        <EditIcon />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(broker)}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-red-500 transition hover:bg-red-200"
-                        title="Deactivate"
-                      >
-                        <TrashIcon />
-                      </button>
-                    </div>
+                  <td className="px-1 py-1" onClick={(e) => e.stopPropagation()}>
+                    <RowActionMenu
+                      onEdit={() => openEditModal(broker)}
+                      onDelete={() => handleDelete(broker)}
+                      editLabel="Edit Customer"
+                      deleteLabel="Delete Customer"
+                    />
                   </td>
                 </tr>
               ))
@@ -499,74 +551,63 @@ export default function BrokersPage() {
         </table>
       </div>
 
-      <div className="border-t border-[#dfe4ea] bg-white px-5 py-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 text-xs text-[#526071]">
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setPage(1)}
-                disabled={safePage <= 1}
-                className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100 disabled:opacity-40"
-              >
-                <DoubleChevronLeft />
+      {/* Pagination */}
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3 lg:px-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => setPage(1)} disabled={safePage <= 1}
+              className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30">
+              <DoubleChevronLeft />
+            </button>
+            <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1}
+              className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30">
+              <ChevronLeft />
+            </button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              const s = Math.max(1, Math.min(safePage - 2, totalPages - 4))
+              return s + i
+            }).map(p => (
+              <button key={p} onClick={() => setPage(p)}
+                className={clsx('w-5 h-5 rounded text-[11px] font-medium transition-colors',
+                  p === safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100')}>
+                {p}
               </button>
-              <button
-                onClick={() => setPage(Math.max(1, safePage - 1))}
-                disabled={safePage <= 1}
-                className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100 disabled:opacity-40"
-              >
-                <ChevronLeft />
-              </button>
-              <button className="inline-flex h-6 min-w-[24px] items-center justify-center rounded bg-[#2563eb] px-2 text-xs font-semibold text-white">
-                {safePage}
-              </button>
-              <button
-                onClick={() => setPage(Math.min(totalPages, safePage + 1))}
-                disabled={safePage >= totalPages}
-                className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100 disabled:opacity-40"
-              >
-                <ChevronRight />
-              </button>
-              <button
-                onClick={() => setPage(totalPages)}
-                disabled={safePage >= totalPages}
-                className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#e3e8ee] bg-[#f8fafc] text-[#a8b1bc] hover:bg-gray-100 disabled:opacity-40"
-              >
-                <DoubleChevronRight />
-              </button>
-            </div>
-
-            <span>
-              Showing {startEntry} to {endEntry} of {filteredBrokers.length} entries
-            </span>
-
-            <button
-              onClick={() => { setShowInactive((v) => !v); setPage(1) }}
-              className="font-semibold text-[#1f2937] underline underline-offset-2 hover:text-black"
-            >
-              {showInactive ? 'Hide inactive' : 'Show inactive partners'}
+            ))}
+            <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages}
+              className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30">
+              <ChevronRight />
+            </button>
+            <button onClick={() => setPage(totalPages)} disabled={safePage >= totalPages}
+              className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30">
+              <DoubleChevronRight />
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-[#526071]">
-            <span className="font-medium">Show records</span>
-            {[10, 25, 50, 100].map((size) => (
-              <button
-                key={size}
-                onClick={() => {
-                  setPerPage(size)
-                  setPage(1)
-                }}
-                className={clsx(
-                  'font-semibold',
-                  perPage === size ? 'text-[#3b82f6] underline underline-offset-2' : 'text-[#8a94a6] hover:text-[#526071]'
-                )}
-              >
-                {size}
-              </button>
-            ))}
-            <span className="font-medium">on page</span>
-          </div>
+          <span className="text-[11px] text-gray-500">
+            Showing {startEntry}–{endEntry} of {filteredBrokers.length} entries
+          </span>
+
+          <button
+            onClick={() => { setShowInactive((v) => !v); setPage(1) }}
+            className={clsx('rounded-full border px-2.5 py-1 text-[10px] font-semibold transition',
+              showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700')}
+          >
+            {showInactive ? 'Hide inactive customers' : 'Show inactive customers'}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          {[10, 25, 50, 100].map((size) => (
+            <button
+              key={size}
+              onClick={() => { setPerPage(size); setPage(1) }}
+              className={clsx('rounded-md px-2 py-1 text-[10px] transition',
+                perPage === size ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700')}
+            >
+              {size}
+            </button>
+          ))}
         </div>
       </div>
 

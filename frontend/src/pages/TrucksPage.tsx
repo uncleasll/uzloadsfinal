@@ -18,7 +18,69 @@ const IcoOk    = () => <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill
 const IcoX     = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
 const IcoCheck = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
 const IcoDn    = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
-const IcoSort  = () => <span className="ml-0.5 opacity-30 text-[10px]">⇅</span>
+
+const TRUCK_COLUMN_DEFS: { key: string; label: string; sortable?: boolean; width: string }[] = [
+  { key: 'unit',      label: 'UNIT',      sortable: true, width: '9%' },
+  { key: 'year',      label: 'YEAR',      sortable: true, width: '6%' },
+  { key: 'make',      label: 'MAKE',      sortable: true, width: '9%' },
+  { key: 'model',     label: 'MODEL',     sortable: true, width: '9%' },
+  { key: 'vin',       label: 'VIN',       sortable: true, width: '14%' },
+  { key: 'plate',     label: 'PLATE',     sortable: true, width: '9%' },
+  { key: 'driver',    label: 'DRIVER',    sortable: true, width: '13%' },
+  { key: 'eld',       label: 'ELD',       sortable: true, width: '8%' },
+  { key: 'ownership', label: 'OWNERSHIP', sortable: true, width: '8%' },
+  { key: 'status',    label: 'STATUS',    sortable: true, width: '7%' },
+  { key: 'docs',      label: 'DOCUMENTS', width: '9%' },
+]
+
+function truckSortVal(t: Truck, key: string): string | number {
+  switch (key) {
+    case 'unit':      return t.unit_number || ''
+    case 'year':      return t.year ?? 0
+    case 'make':      return t.make || ''
+    case 'model':     return t.model || ''
+    case 'vin':       return t.vin || ''
+    case 'plate':     return t.plate || ''
+    case 'driver':    return t.driver?.name || ''
+    case 'eld':       return t.eld_provider || ''
+    case 'ownership': return t.ownership || ''
+    case 'status':    return t.is_active ? 'Active' : 'Inactive'
+    default:          return ''
+  }
+}
+
+function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel }: {
+  onEdit: () => void; onDelete: () => void; editLabel: string; deleteLabel: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative flex items-center justify-center">
+      <button onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        title="Actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={'inline-flex h-6 w-6 items-center justify-center rounded transition-colors ' +
+          (open ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-700')}>
+        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
+          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            {editLabel}
+          </button>
+          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            {deleteLabel}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function emptyForm(): Partial<Truck> {
   return { unit_number:'', vin:'', eld_provider:'', eld_id:'', year: undefined, make:'', model:'', ownership:'Owned', is_active:true, driver_id:undefined, plate:'', plate_state:'', purchase_date:'', purchase_price:undefined, notes:'' }
@@ -30,6 +92,12 @@ export default function TrucksPage() {
   const [loading, setLoading]   = useState(true)
   const [editTruck, setEditTruck] = useState<Truck|null>(null)
   const [showNew, setShowNew]   = useState(false)
+  const [search, setSearch]     = useState('')
+  const [showInactive, setShowInactive] = useState(false)
+  const [page, setPage]         = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const [sortKey, setSortKey]   = useState('unit')
+  const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc')
 
   const load = () => {
     setLoading(true)
@@ -43,6 +111,13 @@ export default function TrucksPage() {
     trucksApi.get(t.id).then(full => { setEditTruck(full); setShowNew(false) }).catch(e=>toast.error(e.message))
   }
 
+  const handleDelete = (t: Truck) => {
+    if (!confirm(`Delete truck "${t.unit_number}"?\n\nThe truck will be deactivated and hidden from the list.`)) return
+    trucksApi.delete(t.id)
+      .then(() => { toast.success('Truck deleted'); load() })
+      .catch(e => toast.error(e.message))
+  }
+
   const hasDocWarning = (t: Truck) => {
     const docs = t.documents || []
     const ai = docs.find(d=>d.doc_type==='annual_inspection')
@@ -50,47 +125,157 @@ export default function TrucksPage() {
     return !ai?.exp_date || !reg?.exp_date
   }
 
+  const sortBy = (key: string) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  const q = search.trim().toLowerCase()
+  const filtered = trucks
+    .filter(t => showInactive || t.is_active)
+    .filter(t => !q || [t.unit_number, t.vin, t.make, t.model, t.plate, t.driver?.name]
+      .filter(Boolean).some(v => String(v).toLowerCase().includes(q)))
+  const sorted = [...filtered].sort((a, b) => {
+    const va = truckSortVal(a, sortKey), vb = truckSortVal(b, sortKey)
+    const cmp = typeof va === 'number' && typeof vb === 'number'
+      ? va - vb
+      : String(va).localeCompare(String(vb), undefined, { sensitivity: 'base', numeric: true })
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const paged = sorted.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const startEntry = sorted.length === 0 ? 0 : (safePage - 1) * pageSize + 1
+  const endEntry = Math.min(safePage * pageSize, sorted.length)
+
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-2.5 border-b border-gray-200 flex-shrink-0">
-        <h1 className="text-xl font-bold text-gray-900">Trucks</h1>
-        <a href="#" className="text-xs text-blue-600 hover:underline">Pdf</a>
-        <span className="text-gray-300 text-xs">|</span>
-        <a href="#" className="text-xs text-blue-600 hover:underline">Excel</a>
-        <div className="flex-1"/>
-        <button onClick={()=>{setShowNew(true);setEditTruck(null)}}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors">
-          + New Truck
-        </button>
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
+        <div className="mr-1 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-slate-950">Trucks</h1>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{filtered.length}</span>
+          </div>
+          <p className="mt-0.5 text-[11px] font-medium text-slate-400">Fleet units, documents and assignments</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="relative min-w-[220px] flex-1 sm:flex-none">
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
+            <input type="search" placeholder="Search trucks..." value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1) }}
+              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64" />
+          </div>
+          <button onClick={()=>{setShowNew(true);setEditTruck(null)}} className="btn-primary h-9 rounded-lg px-4 text-xs">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5"/></svg>
+            New truck
+          </button>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-white border-b border-gray-200 z-10">
-            <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                UNIT <IcoSort/>
-              </th>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
+          <colgroup>
+            {TRUCK_COLUMN_DEFS.map(c => <col key={c.key} style={{ width: c.width }} />)}
+            <col style={{ width: 76 }} />
+          </colgroup>
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
+              {TRUCK_COLUMN_DEFS.map(h => (
+                <th key={h.key} className="px-1.5 py-2 text-left font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
+                  {h.sortable ? (
+                    <button onClick={() => sortBy(h.key)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
+                      {h.label}
+                      <span className={sortKey === h.key ? 'opacity-100 text-blue-600' : 'opacity-30'}>
+                        {sortKey === h.key && sortDir === 'asc' ? '↑' : '↓'}
+                      </span>
+                    </button>
+                  ) : h.label}
+                </th>
+              ))}
+              <th className="px-1.5 py-2 text-center font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>ACTIONS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {loading ? (
-              <tr><td className="py-16 text-center text-gray-400">Loading...</td></tr>
-            ) : trucks.length===0 ? (
-              <tr><td className="py-16 text-center text-gray-400">No trucks found</td></tr>
-            ) : trucks.map(t=>(
-              <tr key={t.id} onClick={()=>handleRowClick(t)}
-                className="cursor-pointer hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-2.5 flex items-center gap-2">
-                  {hasDocWarning(t) ? <IcoWarn/> : <IcoOk/>}
-                  <button className="text-blue-600 hover:underline font-medium">{t.unit_number}</button>
-                </td>
-              </tr>
-            ))}
+              <tr><td colSpan={TRUCK_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading trucks...</div></td></tr>
+            ) : paged.length === 0 ? (
+              <tr><td colSpan={TRUCK_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7h13l5 5v5a2 2 0 01-2 2H5a2 2 0 01-2-2V7zM16 7v5h5M7 19a2 2 0 104 0m4 0a2 2 0 104 0"/></svg></div><div className="text-sm font-semibold text-slate-700">No trucks found</div><p className="mt-1 text-xs text-slate-400">Try adjusting your search.</p></div></td></tr>
+            ) : paged.map(t => {
+              const warn = hasDocWarning(t)
+              return (
+                <tr key={t.id} onClick={()=>handleRowClick(t)}
+                  className={'group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 ' + (warn ? 'hover:border-l-amber-400 hover:bg-amber-50/70' : 'hover:border-l-blue-500 hover:bg-blue-50/70')}>
+                  <td className="px-1.5 py-1">
+                    <div className="flex items-center gap-1 min-w-0">
+                      {warn ? <span className="flex-shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5"><IcoWarn/></span> : <span className="flex-shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5"><IcoOk/></span>}
+                      <span className="font-semibold text-blue-600 truncate hover:underline text-[11px]">
+                        {t.unit_number}
+                        {!t.is_active && <span className="ml-1 text-[10px] font-normal text-slate-400">(inactive)</span>}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-1.5 py-1 text-gray-600">{t.year || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1 text-gray-600 truncate">{t.make || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1 text-gray-600 truncate">{t.model || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1 font-mono text-gray-600 truncate">{t.vin || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1 font-mono text-gray-600 truncate">{t.plate ? `${t.plate}${t.plate_state ? ` (${t.plate_state})` : ''}` : <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1 text-gray-600 truncate">{t.driver?.name || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1 text-gray-600 truncate">{t.eld_provider || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1 text-gray-600">{t.ownership || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-1.5 py-1">
+                    <span className={'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold ' + (t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')}>
+                      {t.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-1.5 py-1">
+                    {warn
+                      ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600"><span className="h-1.5 w-1.5 rounded-full bg-current" />Docs missing</span>
+                      : <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600"><span className="h-1.5 w-1.5 rounded-full bg-current" />Complete</span>}
+                  </td>
+                  <td className="px-1 py-1" onClick={e => e.stopPropagation()}>
+                    <RowActionMenu
+                      onEdit={() => handleRowClick(t)}
+                      onDelete={() => handleDelete(t)}
+                      editLabel="Edit Truck"
+                      deleteLabel="Delete Truck"
+                    />
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3 lg:px-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => setPage(1)} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => { const s = Math.max(1, Math.min(safePage - 2, totalPages - 4)); return s + i }).map(p => (
+              <button key={p} onClick={() => setPage(p)} className={`w-5 h-5 rounded text-[11px] font-medium transition-colors ${p === safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{p}</button>
+            ))}
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+            <button onClick={() => setPage(totalPages)} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></button>
+          </div>
+          <span className="text-[11px] text-gray-500">Showing {startEntry}–{endEntry} of {sorted.length} entries</span>
+          <button onClick={() => { setShowInactive(v => !v); setPage(1) }}
+            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
+            {showInactive ? 'Hide inactive trucks' : 'Show inactive trucks'}
+          </button>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          {[10, 25, 50, 100].map(n => (
+            <button key={n} onClick={() => { setPageSize(n); setPage(1) }}
+              className={`rounded-md px-2 py-1 text-[10px] transition ${pageSize === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+              {n}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Slide panel */}

@@ -83,7 +83,7 @@ export default function MyCompanyPage() {
     <div className="flex flex-col h-full overflow-hidden bg-white">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0">
-        <h1 className="text-xl font-bold text-gray-900">My Company</h1>
+        <h1 className="text-xl font-bold text-gray-900">Karvan</h1>
         <button onClick={handleSave} disabled={saving}
           className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded disabled:opacity-50">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
@@ -129,13 +129,13 @@ export default function MyCompanyPage() {
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Company Name <span className="text-red-500">*</span></label>
                 <input value={form.name} onChange={e=>sf('name',e.target.value)}
-                  placeholder="e.g. TopTruck Company"
+                  placeholder="e.g. Karvan"
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Legal Name</label>
                 <input value={form.legal_name} onChange={e=>sf('legal_name',e.target.value)}
-                  placeholder="e.g. TopTruck Company LLC"
+                  placeholder="e.g. Karvan LLC"
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
               </div>
               <div>

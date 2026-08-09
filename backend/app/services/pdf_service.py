@@ -48,7 +48,7 @@ def _get_company_info(db=None):
         if _close and _db:
             _db.close()
     return {
-        "name":      company.get("name")      or "My Company",
+        "name":      company.get("name")      or "Karvan",
         "email":     company.get("email")     or "",
         "phone":     company.get("phone")     or "",
         "city":      company.get("city")      or "",
@@ -74,7 +74,7 @@ def _logo_flowable(company: dict, fallback_style, max_w=1.25 * inch, max_h=0.75 
             return img
         except Exception:
             pass
-    return Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", fallback_style)
+    return Paragraph(f"<b>{company.get('name') or 'Karvan'}</b>", fallback_style)
 
 
 def _enum_value(v):

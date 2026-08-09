@@ -1,4 +1,4 @@
-# uzLoads TMS — Production-Ready Transportation Management System
+# Karvan TMS — Production-Ready Transportation Management System
 
 ## Stack
 - **Backend**: FastAPI + SQLAlchemy + PostgreSQL + Alembic
@@ -26,8 +26,8 @@ python seed.py                 # optional: seed demo data
 
 ### Option B — Manual SQL
 ```bash
-psql -U postgres -c "CREATE DATABASE uzloads;"
-psql -U postgres -d uzloads -f manual_migration.sql
+psql -U postgres -c "CREATE DATABASE karvan;"
+psql -U postgres -d karvan -f manual_migration.sql
 ```
 
 ---
@@ -62,8 +62,8 @@ App: http://localhost:5173
 
 | Field    | Value                |
 |----------|----------------------|
-| Email    | admin@uzloads.com    |
-| Password | Admin1234!           |
+| Email    | admin@karvan.com    |
+| Password | admin123           |
 
 ---
 
@@ -81,7 +81,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ## Project Structure
 
 ```
-uzloads/
+karvan/
 ├── backend/
 │   ├── app/
 │   │   ├── api/v1/endpoints/   # All REST API routes

@@ -16,7 +16,7 @@ depends_on = None
 def upgrade():
     op.create_table('company_settings',
         sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('name', sa.String(200), nullable=True, server_default='My Company'),
+        sa.Column('name', sa.String(200), nullable=True, server_default='Karvan'),
         sa.Column('legal_name', sa.String(200), nullable=True),
         sa.Column('mc_number', sa.String(50), nullable=True),
         sa.Column('dot_number', sa.String(50), nullable=True),
@@ -31,7 +31,7 @@ def upgrade():
         sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now()),
     )
     # Insert default row
-    op.execute("INSERT INTO company_settings (name) VALUES ('My Company')")
+    op.execute("INSERT INTO company_settings (name) VALUES ('Karvan')")
 
 
 def downgrade():

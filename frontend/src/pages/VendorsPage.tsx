@@ -23,7 +23,65 @@ const PhoneIcon = () => <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-
 const InfoIcon = () => <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-[#3b82f6]"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/><path d="M12 11v4M12 8h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
 
 function PagBtn({ onClick, disabled, children }: { onClick: () => void; disabled: boolean; children: React.ReactNode }) {
-  return <button onClick={onClick} disabled={disabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed">{children}</button>
+  return <button onClick={onClick} disabled={disabled} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed">{children}</button>
+}
+
+const VENDOR_COLUMN_DEFS: { key: string; label: string; sortable?: boolean; width: string }[] = [
+  { key: 'company', label: 'COMPANY NAME', sortable: true, width: '18%' },
+  { key: 'type',    label: 'TYPE',         sortable: true, width: '10%' },
+  { key: 'phone',   label: 'PHONE',        sortable: true, width: '9%' },
+  { key: 'email',   label: 'EMAIL',        sortable: true, width: '14%' },
+  { key: 'address', label: 'ADDRESS',      sortable: true, width: '13%' },
+  { key: 'city',    label: 'CITY',         sortable: true, width: '8%' },
+  { key: 'state',   label: 'STATE',        sortable: true, width: '6%' },
+  { key: 'eq',      label: 'EQ. OWNER',    width: '7%' },
+  { key: 'payee',   label: 'ADD. PAYEE',   width: '7%' },
+]
+
+function vendorSortVal(v: Vendor, key: string): string {
+  switch (key) {
+    case 'company': return v.company_name || ''
+    case 'type':    return v.vendor_type || ''
+    case 'phone':   return v.phone || ''
+    case 'email':   return v.email || ''
+    case 'address': return v.address || ''
+    case 'city':    return v.city || ''
+    case 'state':   return v.state || ''
+    default:        return ''
+  }
+}
+
+function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel }: {
+  onEdit: () => void; onDelete: () => void; editLabel: string; deleteLabel: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative flex items-center justify-center">
+      <button onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        title="Actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={clsx('inline-flex h-6 w-6 items-center justify-center rounded transition-colors',
+          open ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-700')}>
+        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
+          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            {editLabel}
+          </button>
+          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            {deleteLabel}
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 type VendorForm = {
@@ -66,7 +124,14 @@ export default function VendorsPage() {
   const [showInactive, setShowInactive] = useState(false)
   const [editVendor, setEditVendor] = useState<Vendor | 'new' | null>(null)
   const [page, setPage] = useState(1)
-  const pageSize = 50
+  const [pageSize, setPageSize] = useState(50)
+  const [sortKey, setSortKey] = useState('company')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const sortBy = (key: string) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -84,7 +149,11 @@ export default function VendorsPage() {
 
   const total = vendors.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const paged = vendors.slice((page - 1) * pageSize, page * pageSize)
+  const sortedVendors = [...vendors].sort((a, b) => {
+    const cmp = vendorSortVal(a, sortKey).localeCompare(vendorSortVal(b, sortKey), undefined, { sensitivity: 'base' })
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+  const paged = sortedVendors.slice((page - 1) * pageSize, page * pageSize)
   const startEntry = total === 0 ? 0 : (page - 1) * pageSize + 1
   const endEntry = Math.min(page * pageSize, total)
 
@@ -98,86 +167,94 @@ export default function VendorsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-[#1f2937]">Vendors</h1>
-          <div className="flex items-center gap-1.5 text-xs font-medium text-[#3f4954]">
-            <button className="hover:text-black hover:underline">Pdf</button>
-            <span className="text-gray-300">|</span>
-            <button className="hover:text-black hover:underline">Excel</button>
-            <span className="text-gray-300">|</span>
-            <button className="hover:text-black hover:underline">Email</button>
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
+        <div className="mr-1 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-slate-950">Vendors</h1>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{total}</span>
           </div>
+          <p className="mt-0.5 text-[11px] font-medium text-slate-400">Repair shops, payees and other service providers</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><IcoSearch /></span>
-            <input type="text" placeholder="Search vendors..." value={search}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="relative min-w-[220px] flex-1 sm:flex-none">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><IcoSearch /></span>
+            <input type="search" placeholder="Search vendors..." value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
-              className="h-9 pl-8 pr-3 w-[260px] text-sm border border-[#d7dce2] rounded focus:outline-none focus:border-[#94a3b8] placeholder:text-[#b1b7c0]" />
+              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64" />
           </div>
-          <button onClick={() => setEditVendor('new')} className="inline-flex h-9 items-center gap-1.5 rounded bg-[#2563eb] px-3.5 text-sm font-semibold text-white transition hover:bg-[#4ab668]">
-            <IcoPlus /> New Vendor
+          <button onClick={() => setEditVendor('new')} className="btn-primary h-9 rounded-lg px-4 text-xs">
+            <IcoPlus /> New vendor
           </button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto bg-[#f5f6f8]">
-        <table className="w-full text-sm border-collapse" style={{ minWidth: 900 }}>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
           <colgroup>
-            <col style={{ width: '20%' }} /><col style={{ width: '10%' }} /><col style={{ width: '8%' }} />
-            <col style={{ width: '10%' }} /><col style={{ width: '12%' }} /><col style={{ width: '8%' }} />
-            <col style={{ width: '8%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} />
+            {VENDOR_COLUMN_DEFS.map(c => <col key={c.key} style={{ width: c.width }} />)}
+            <col style={{ width: 76 }} />
           </colgroup>
-          <thead className="sticky top-0 bg-[#f8f9fb] border-y border-[#dfe4ea] shadow-sm z-10">
-            <tr>
-              {['COMPANY NAME','TYPE','PHONE','EMAIL','ADDRESS','CITY','STATE','EQ. OWNER','ADD. PAYEE','ACTIONS'].map((h, i) => (
-                <th key={i} className="text-left text-xs font-semibold uppercase tracking-wider text-[#526071] px-4 py-2.5">{h}</th>
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
+              {VENDOR_COLUMN_DEFS.map(h => (
+                <th key={h.key} className={`px-1.5 py-2 font-bold uppercase text-slate-500 whitespace-nowrap ${h.key === 'eq' || h.key === 'payee' ? 'text-center' : 'text-left'}`} style={{ fontSize: 10 }}>
+                  {h.sortable ? (
+                    <button onClick={() => sortBy(h.key)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
+                      {h.label}
+                      <span className={sortKey === h.key ? 'opacity-100 text-blue-600' : 'opacity-30'}>
+                        {sortKey === h.key && sortDir === 'asc' ? '↑' : '↓'}
+                      </span>
+                    </button>
+                  ) : h.label}
+                </th>
               ))}
+              <th className="px-1.5 py-2 text-center font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>ACTIONS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#f1f4f8] bg-white">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {loading ? (
-              <tr><td colSpan={10} className="py-16 text-center text-[#94a3b8]">Loading...</td></tr>
+              <tr><td colSpan={VENDOR_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading vendors...</div></td></tr>
             ) : paged.length === 0 ? (
-              <tr><td colSpan={10} className="py-16 text-center text-[#94a3b8]">No vendors found</td></tr>
+              <tr><td colSpan={VENDOR_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg></div><div className="text-sm font-semibold text-slate-700">No vendors found</div><p className="mt-1 text-xs text-slate-400">Try adjusting your search.</p></div></td></tr>
             ) : paged.map(v => (
-              <tr key={v.id} className="hover:bg-[#fafbfd] transition-colors cursor-pointer" onClick={() => setEditVendor(v)}>
-                <td className="px-4 py-2.5 font-medium text-[#1a73e8] underline-offset-2 hover:underline truncate">{v.company_name}</td>
-                <td className="px-4 py-2.5 text-xs text-[#475569]">
+              <tr key={v.id}
+                className="group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 hover:border-l-blue-500 hover:bg-blue-50/70"
+                onClick={() => setEditVendor(v)}>
+                <td className="px-1.5 py-1">
+                  <span className="font-semibold text-blue-600 truncate hover:underline text-[11px] block">{v.company_name}</span>
+                </td>
+                <td className="px-1.5 py-1">
                   {v.vendor_type ? (
-                    <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100 font-medium">
+                    <span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
                       {v.vendor_type}
                     </span>
-                  ) : '—'}
+                  ) : <span className="text-gray-300">—</span>}
                 </td>
-                <td className="px-4 py-2.5 text-[#475569] truncate">{v.phone || '—'}</td>
-                <td className="px-4 py-2.5 text-[#475569] truncate">{v.email || '—'}</td>
-                <td className="px-4 py-2.5 text-[#475569] truncate">{v.address || '—'}</td>
-                <td className="px-4 py-2.5 text-[#475569]">{v.city || '—'}</td>
-                <td className="px-4 py-2.5 text-[#475569]">{v.state || '—'}</td>
-                <td className="px-4 py-2.5 text-center">
+                <td className="px-1.5 py-1 text-gray-600 truncate">{v.phone || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-gray-600 truncate">{v.email || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-gray-600 truncate">{v.address || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-gray-600 truncate">{v.city || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-gray-600">{v.state || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-center">
                   {v.is_equipment_owner
-                    ? <svg className="w-4 h-4 text-[#2563eb] mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4"/></svg>
+                    ? <svg className="mx-auto h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4"/></svg>
                     : <span className="text-gray-300">—</span>}
                 </td>
-                <td className="px-4 py-2.5 text-center">
+                <td className="px-1.5 py-1 text-center">
                   {v.is_additional_payee
-                    ? <svg className="w-4 h-4 text-[#2563eb] mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4"/></svg>
+                    ? <svg className="mx-auto h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4"/></svg>
                     : <span className="text-gray-300">—</span>}
                 </td>
-                <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setEditVendor(v)} className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#59c879] text-white transition hover:bg-[#4eb96d]">
-                      <IcoEdit />
-                    </button>
-                    <button onClick={() => handleDelete(v.id, v.company_name)} className="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-red-500 hover:bg-red-200 transition">
-                      <IcoX />
-                    </button>
-                  </div>
+                <td className="px-1 py-1" onClick={e => e.stopPropagation()}>
+                  <RowActionMenu
+                    onEdit={() => setEditVendor(v)}
+                    onDelete={() => handleDelete(v.id, v.company_name)}
+                    editLabel="Edit Vendor"
+                    deleteLabel="Delete Vendor"
+                  />
                 </td>
               </tr>
             ))}
@@ -186,22 +263,31 @@ export default function VendorsPage() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-[#dfe4ea] flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <PagBtn onClick={() => setPage(1)} disabled={page <= 1}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></PagBtn>
-            <PagBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg></PagBtn>
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3 lg:px-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-0.5">
+            <PagBtn onClick={() => setPage(1)} disabled={page <= 1}><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></PagBtn>
+            <PagBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg></PagBtn>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => { const s = Math.max(1, Math.min(page - 2, totalPages - 4)); return s + i }).map(p => (
-              <button key={p} onClick={() => setPage(p)} className={`w-6 h-6 text-xs rounded font-semibold ${p === page ? 'bg-[#2563eb] text-white' : 'text-[#a8b1bc] border border-[#e3e8ee] bg-[#f8fafc] hover:bg-gray-100'}`}>{p}</button>
+              <button key={p} onClick={() => setPage(p)} className={`w-5 h-5 rounded text-[11px] font-medium transition-colors ${p === page ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{p}</button>
             ))}
-            <PagBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></PagBtn>
-            <PagBtn onClick={() => setPage(totalPages)} disabled={page >= totalPages}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></PagBtn>
+            <PagBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></PagBtn>
+            <PagBtn onClick={() => setPage(totalPages)} disabled={page >= totalPages}><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></PagBtn>
           </div>
-          <span className="text-xs text-[#526071]">Showing {startEntry} to {endEntry} of {total} entries</span>
+          <span className="text-[11px] text-gray-500">Showing {startEntry}–{endEntry} of {total} entries</span>
           <button onClick={() => { setShowInactive(v => !v); setPage(1) }}
-            className={`text-xs font-semibold underline underline-offset-2 ${showInactive ? 'text-[#1f2937]' : 'text-[#1f2937] hover:text-black'}`}>
-            {showInactive ? 'Hide inactive' : 'Show inactive vendors'}
+            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
+            {showInactive ? 'Hide inactive vendors' : 'Show inactive vendors'}
           </button>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          {[10, 25, 50, 100].map(n => (
+            <button key={n} onClick={() => { setPageSize(n); setPage(1) }}
+              className={`rounded-md px-2 py-1 text-[10px] transition ${pageSize === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+              {n}
+            </button>
+          ))}
         </div>
       </div>
 

@@ -24,7 +24,11 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
   const [loading, setLoading]     = useState(true)
   const [creating, setCreating]   = useState<number|null>(null)
 
+  // Reference behavior: the list stays empty until a driver/payee or a date range is chosen
+  const hasFilter = Boolean(driverId || payableTo || dateFrom || dateTo)
+
   const fetchBalances = useCallback(() => {
+    if (!hasFilter) { setBalances([]); setLoading(false); return }
     setLoading(true)
     const params: Parameters<typeof payrollApi.getOpenBalances>[0] = { date_type: dateType }
     if (driverId) params.driver_id = parseInt(driverId)
@@ -34,7 +38,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
       .then(data => setBalances(data))
       .catch(e => toast.error(e.message))
       .finally(() => setLoading(false))
-  }, [driverId, dateFrom, dateTo, dateType])
+  }, [hasFilter, driverId, dateFrom, dateTo, dateType])
 
   useEffect(() => { fetchBalances() }, [fetchBalances])
 
@@ -48,6 +52,11 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
   }
 
   const updatedField = (b: any) => b.updated || b.last_load_date
+
+  // "Payable to" narrows the open-balance list client-side
+  const visibleBalances = payableTo
+    ? balances.filter(b => (b.payable_to || '').toLowerCase() === payableTo.toLowerCase())
+    : balances
 
   return (
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
@@ -70,9 +79,9 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
             </p>
           </div>
 
-          {/* Driver + Payable to */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div>
+          {/* Driver + Payable to — stacked, like the reference */}
+          <div className="mb-6 space-y-4">
+            <div className="w-72">
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Driver</label>
               <div className="relative">
                 <select value={driverId}
@@ -88,7 +97,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
                 <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
               </div>
             </div>
-            <div>
+            <div className="w-72">
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Payable to <span className="text-red-500">*</span></label>
               <div className="relative">
                 <select value={payableTo} onChange={e=>setPayableTo(e.target.value)}
@@ -145,11 +154,15 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
                     <tr><td colSpan={5} className="py-10 text-center text-gray-400 text-sm">Loading open balances…</td></tr>
-                  ) : balances.length===0 ? (
+                  ) : !hasFilter ? (
                     <tr><td colSpan={5} className="py-10 text-center text-gray-400 text-sm">
-                      No open balances found{driverId?' for this driver':''}
+                      Select a driver or payee above (or set a date range) to see open balances
                     </td></tr>
-                  ) : balances.map(b=>(
+                  ) : visibleBalances.length===0 ? (
+                    <tr><td colSpan={5} className="py-10 text-center text-gray-400 text-sm">
+                      No open balances found for this filter
+                    </td></tr>
+                  ) : visibleBalances.map(b=>(
                     <tr key={b.driver_id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium text-gray-900">{b.driver_name} [{b.driver_type}]</td>
                       <td className="px-4 py-3 text-gray-600">{b.payable_to}</td>
@@ -173,7 +186,8 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
           <button onClick={onClose} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded hover:bg-gray-900">
             <IcoX/> Close
           </button>
-          <button disabled className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-400 text-white text-sm font-medium rounded opacity-50 cursor-not-allowed">
+          <button disabled title="Settlements are created from the Open Balance rows"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-400 text-white text-sm font-medium rounded opacity-50 cursor-not-allowed">
             <IcoCheck/> Save
           </button>
         </div>

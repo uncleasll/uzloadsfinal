@@ -14,7 +14,7 @@ models.Base.metadata.create_all(bind=engine)
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(
-    title="uzLoads TMS API",
+    title="Karvan TMS API",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -71,8 +71,8 @@ def startup_fix_snapshots():
         db = SessionLocal()
 
         default_users = [
-            ("Asilbek Karimov", "admin@uzloads.com", "admin123", "admin"),
-            ("Sardor Rahimov", "dispatcher@uzloads.com", "disp123", "dispatcher"),
+            ("Asilbek Karimov", "admin@karvan.com", "admin123", "admin"),
+            ("Sardor Rahimov", "dispatcher@karvan.com", "disp123", "dispatcher"),
             ("Asilbek Karimov", "asilbekkarimov066@gmail.com", "Asilbek123", "dispatcher"),
             ("Sardor Rahimov", "sardor@silkroad.com", "Sardor123", "dispatcher"),
         ]
@@ -113,4 +113,4 @@ def startup_fix_snapshots():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "uzLoads TMS API", "version": "1.0.0"}
+    return {"status": "ok", "service": "Karvan TMS API", "version": "1.0.0"}

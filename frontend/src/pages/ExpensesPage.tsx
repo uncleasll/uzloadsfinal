@@ -22,6 +22,61 @@ interface Expense {
   driver?: { id: number; name: string }
 }
 
+const EXPENSE_COLUMN_DEFS: { key: string; label: string; sortable?: boolean; align?: 'right'; width: string }[] = [
+  { key: 'date',        label: 'DATE',        sortable: true, width: '9%' },
+  { key: 'category',    label: 'CATEGORY',    sortable: true, width: '14%' },
+  { key: 'vendor',      label: 'VENDOR',      sortable: true, width: '14%' },
+  { key: 'driver',      label: 'DRIVER',      sortable: true, width: '13%' },
+  { key: 'truck',       label: 'TRUCK',       sortable: true, width: '8%' },
+  { key: 'description', label: 'DESCRIPTION', width: '25%' },
+  { key: 'amount',      label: 'AMOUNT',      sortable: true, align: 'right', width: '10%' },
+]
+
+function expenseSortVal(e: Expense, key: string): string | number {
+  switch (key) {
+    case 'date':     return e.expense_date || ''
+    case 'category': return e.category || ''
+    case 'vendor':   return e.vendor?.name || ''
+    case 'driver':   return e.driver?.name || ''
+    case 'truck':    return e.truck?.unit_number || ''
+    case 'amount':   return e.amount ?? 0
+    default:         return ''
+  }
+}
+
+function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel }: {
+  onEdit: () => void; onDelete: () => void; editLabel: string; deleteLabel: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative flex items-center justify-center">
+      <button onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        title="Actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={'inline-flex h-6 w-6 items-center justify-center rounded transition-colors ' +
+          (open ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-700')}>
+        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
+          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            {editLabel}
+          </button>
+          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            {deleteLabel}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<string[]>([])
@@ -32,6 +87,11 @@ export default function ExpensesPage() {
   const [editId, setEditId] = useState<number|null>(null)
   const [showNew, setShowNew] = useState(false)
   const [totalAmount, setTotalAmount] = useState(0)
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const [sortKey, setSortKey] = useState('date')
+  const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc')
 
   const [filters, setFilters] = useState({ category:'', date_from:'', date_to:'' })
 
@@ -56,85 +116,171 @@ export default function ExpensesPage() {
   }, [])
 
   const handleDelete = (id: number) => {
-    if (!confirm('Delete this expense?')) return
+    if (!confirm('Delete this expense?\n\nThis action cannot be undone.')) return
     client.delete('/api/v1/expenses/' + id)
-      .then(() => { toast.success('Deleted'); load() })
+      .then(() => { toast.success('Expense deleted'); load() })
       .catch(e => toast.error(e.message))
   }
 
-  return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-200 flex-shrink-0">
-        <h1 className="text-xl font-bold text-gray-900">Expenses</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowNew(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded">
-            + New Expense
-          </button>
-        </div>
-      </div>
+  const sortBy = (key: string) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
 
-      {/* Filters */}
-      <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-end gap-3 flex-shrink-0">
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
-          <select value={filters.category} onChange={e=>setFilters(p=>({...p,category:e.target.value}))}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 w-40">
-            <option value="">All</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+  const q = search.trim().toLowerCase()
+  const filtered = expenses.filter(e => !q ||
+    [e.category, e.vendor?.name, e.driver?.name, e.truck?.unit_number, e.description]
+      .filter(Boolean).some(v => String(v).toLowerCase().includes(q)))
+  const sorted = [...filtered].sort((a, b) => {
+    const va = expenseSortVal(a, sortKey), vb = expenseSortVal(b, sortKey)
+    const cmp = typeof va === 'number' && typeof vb === 'number'
+      ? va - vb
+      : String(va).localeCompare(String(vb), undefined, { sensitivity: 'base' })
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const paged = sorted.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const startEntry = sorted.length === 0 ? 0 : (safePage - 1) * pageSize + 1
+  const endEntry = Math.min(safePage * pageSize, sorted.length)
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+
+      {/* Header */}
+      <div className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="mr-1 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-950">Expenses</h1>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{filtered.length}</span>
+            </div>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-400">Track and categorize company spending</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="relative min-w-[220px] flex-1 sm:flex-none">
+              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
+              <input type="search" placeholder="Search expenses..." value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1) }}
+                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64" />
+            </div>
+            <button onClick={() => setShowNew(true)} className="btn-primary h-9 rounded-lg px-4 text-xs">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5"/></svg>
+              New expense
+            </button>
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
-          <input type="date" value={filters.date_from} onChange={e=>setFilters(p=>({...p,date_from:e.target.value}))}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500"/>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
-          <input type="date" value={filters.date_to} onChange={e=>setFilters(p=>({...p,date_to:e.target.value}))}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500"/>
-        </div>
-        <div className="flex-1"/>
-        <div className="text-right">
-          <div className="text-xs text-gray-500">Total</div>
-          <div className="text-lg font-bold text-gray-900">{formatCurrency(totalAmount)}</div>
+
+        {/* Filters + total */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex flex-shrink-0 items-center">
+            <select value={filters.category} onChange={e=>{setFilters(p=>({...p,category:e.target.value})); setPage(1)}}
+              className="h-9 appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-8 text-[11px] font-semibold text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100">
+              <option value="">All categories</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <svg className="pointer-events-none absolute right-2 w-2.5 h-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <input type="date" value={filters.date_from}
+              onChange={e=>{setFilters(p=>({...p,date_from:e.target.value})); setPage(1)}}
+              className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
+            <span className="text-gray-300">—</span>
+            <input type="date" value={filters.date_to}
+              onChange={e=>{setFilters(p=>({...p,date_to:e.target.value})); setPage(1)}}
+              className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          {(filters.category || filters.date_from || filters.date_to) && (
+            <button onClick={() => { setFilters({ category:'', date_from:'', date_to:'' }); setPage(1) }}
+              className="rounded px-2 py-1 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600">Clear</button>
+          )}
+          <div className="flex min-w-0 flex-1 items-center justify-end">
+            <div className="flex h-9 items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 shadow-sm">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-500">Total</span>
+              <span className="whitespace-nowrap text-xs font-bold text-blue-800">{formatCurrency(totalAmount)}</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-white border-b border-gray-200 z-10">
-            <tr>
-              {['DATE','CATEGORY','VENDOR','DRIVER','TRUCK','DESCRIPTION','AMOUNT',''].map((h,i)=>(
-                <th key={i} className={'px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide '+(h==='AMOUNT'?'text-right':'')}>
-                  {h}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
+          <colgroup>
+            {EXPENSE_COLUMN_DEFS.map(c => <col key={c.key} style={{ width: c.width }} />)}
+            <col style={{ width: 76 }} />
+          </colgroup>
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
+              {EXPENSE_COLUMN_DEFS.map(h => (
+                <th key={h.key} className={`px-1.5 py-2 font-bold uppercase text-slate-500 whitespace-nowrap ${h.align === 'right' ? 'text-right' : 'text-left'}`} style={{ fontSize: 10 }}>
+                  {h.sortable ? (
+                    <button onClick={() => sortBy(h.key)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
+                      {h.label}
+                      <span className={sortKey === h.key ? 'opacity-100 text-blue-600' : 'opacity-30'}>
+                        {sortKey === h.key && sortDir === 'asc' ? '↑' : '↓'}
+                      </span>
+                    </button>
+                  ) : h.label}
                 </th>
               ))}
+              <th className="px-1.5 py-2 text-center font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>ACTIONS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {loading ? (
-              <tr><td colSpan={8} className="py-16 text-center text-gray-400">Loading…</td></tr>
-            ) : expenses.length===0 ? (
-              <tr><td colSpan={8} className="py-16 text-center text-gray-400">No expenses found</td></tr>
-            ) : expenses.map(e => (
-              <tr key={e.id} onClick={()=>setEditId(e.id)} className="cursor-pointer hover:bg-gray-50">
-                <td className="px-4 py-2.5 text-gray-600 text-xs">{formatDate(e.expense_date)}</td>
-                <td className="px-4 py-2.5 text-gray-900 font-medium">{e.category}</td>
-                <td className="px-4 py-2.5 text-gray-600">{e.vendor?.name || '—'}</td>
-                <td className="px-4 py-2.5 text-gray-600">{e.driver?.name || '—'}</td>
-                <td className="px-4 py-2.5 text-gray-600">{e.truck?.unit_number || '—'}</td>
-                <td className="px-4 py-2.5 text-gray-500 truncate max-w-[260px]">{e.description || '—'}</td>
-                <td className="px-4 py-2.5 text-right font-semibold text-gray-900">{formatCurrency(e.amount)}</td>
-                <td className="px-4 py-2.5" onClick={ev=>ev.stopPropagation()}>
-                  <button onClick={()=>handleDelete(e.id)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+              <tr><td colSpan={EXPENSE_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading expenses...</div></td></tr>
+            ) : paged.length === 0 ? (
+              <tr><td colSpan={EXPENSE_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div><div className="text-sm font-semibold text-slate-700">No expenses found</div><p className="mt-1 text-xs text-slate-400">Try adjusting your search or filters.</p></div></td></tr>
+            ) : paged.map(e => (
+              <tr key={e.id} onClick={()=>setEditId(e.id)}
+                className="group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 hover:border-l-blue-500 hover:bg-blue-50/70">
+                <td className="px-1.5 py-1 text-gray-500 truncate">{formatDate(e.expense_date)}</td>
+                <td className="px-1.5 py-1">
+                  <span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">{e.category}</span>
+                </td>
+                <td className="px-1.5 py-1 text-gray-600 truncate">{e.vendor?.name || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-gray-600 truncate">{e.driver?.name || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 font-mono text-gray-600 truncate">{e.truck?.unit_number || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-gray-500 truncate">{e.description || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-right font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(e.amount)}</td>
+                <td className="px-1 py-1" onClick={ev=>ev.stopPropagation()}>
+                  <RowActionMenu
+                    onEdit={() => setEditId(e.id)}
+                    onDelete={() => handleDelete(e.id)}
+                    editLabel="Edit Expense"
+                    deleteLabel="Delete Expense"
+                  />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3 lg:px-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => setPage(1)} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => { const s = Math.max(1, Math.min(safePage - 2, totalPages - 4)); return s + i }).map(p => (
+              <button key={p} onClick={() => setPage(p)} className={`w-5 h-5 rounded text-[11px] font-medium transition-colors ${p === safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{p}</button>
+            ))}
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+            <button onClick={() => setPage(totalPages)} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></button>
+          </div>
+          <span className="text-[11px] text-gray-500">Showing {startEntry}–{endEntry} of {sorted.length} entries</span>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          {[10, 25, 50, 100].map(n => (
+            <button key={n} onClick={() => { setPageSize(n); setPage(1) }}
+              className={`rounded-md px-2 py-1 text-[10px] transition ${pageSize === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+              {n}
+            </button>
+          ))}
+        </div>
       </div>
 
       {(showNew || editId!==null) && (

@@ -247,22 +247,22 @@ try:
         )
 
     # ── Default admin / dispatcher users ──────────────────────────────────────
-    if not db.query(User).filter(User.email == "admin@uzloads.com").first():
+    if not db.query(User).filter(User.email == "admin@karvan.com").first():
         db.add(
             User(
                 name="Asilbek Karimov",
-                email="admin@uzloads.com",
+                email="admin@karvan.com",
                 hashed_password=hash_password("admin123"),
                 role="admin",
                 is_active=True,
             )
         )
 
-    if not db.query(User).filter(User.email == "dispatcher@uzloads.com").first():
+    if not db.query(User).filter(User.email == "dispatcher@karvan.com").first():
         db.add(
             User(
                 name="Sardor Rahimov",
-                email="dispatcher@uzloads.com",
+                email="dispatcher@karvan.com",
                 hashed_password=hash_password("disp123"),
                 role="dispatcher",
                 is_active=True,
@@ -323,12 +323,12 @@ try:
     print(f"  {len(drivers)} drivers, {len(trucks)} trucks, {len(trailers)} trailers")
     print(f"  {len(brokers)} brokers, {len(disps)} dispatchers")
     print(f"  {len(loads_cfg)} loads (loads 1001–1012)")
-    print("✓ Admin user: admin@uzloads.com / admin123")
-    print("✓ Dispatcher: dispatcher@uzloads.com / disp123")
+    print("✓ Admin user: admin@karvan.com / admin123")
+    print("✓ Dispatcher: dispatcher@karvan.com / disp123")
     print("✓ Driver profiles created")
     print("\n  Auth credentials:")
-    print("  admin@uzloads.com              / admin123")
-    print("  dispatcher@uzloads.com         / disp123")
+    print("  admin@karvan.com              / admin123")
+    print("  dispatcher@karvan.com         / disp123")
     print("  asilbekkarimov066@gmail.com   / Asilbek123")
     print("  sardor@silkroad.com           / Sardor123")
 

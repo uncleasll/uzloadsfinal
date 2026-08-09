@@ -4,6 +4,8 @@ import { payrollApi } from '@/api/payroll'
 import type { Settlement, SettlementItem, SettlementAdjustment, SettlementPayment, SettlementHistory } from '@/api/payroll'
 import { formatCurrency, formatDate, formatDateTime } from '@/utils'
 import type { Driver } from '@/types'
+import LoadModal from '@/components/loads/LoadModal'
+import { useEntities } from '@/hooks/useEntities'
 import toast from 'react-hot-toast'
 
 interface Props {
@@ -45,13 +47,23 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
   const [dirty,setDirty]           = useState(false)
   const [showHistory,setShowHistory]   = useState(false)
   const [showEmail,setShowEmail]       = useState(false)
-  const [showAdj,setShowAdj]           = useState<'addition'|'deduction'|null>(null)
+  const [showAdj,setShowAdj]           = useState<{type:'addition'|'deduction'; adj?:SettlementAdjustment}|null>(null)
+  const [breakdownLoadId,setBreakdownLoadId] = useState<number|null>(null)
   const [showPay,setShowPay]           = useState(false)
   const [showCarry,setShowCarry]       = useState(false)
   const [loadsExpanded,setLoadsExpanded] = useState(true)
+  const [openLoadId,setOpenLoadId] = useState<number|null>(null)
   const [form,setForm] = useState({driver_id:'',status:'',date:'',payable_to:'',notes:''})
+  const entities = useEntities()
 
   const pdfUrl = payrollApi.getPdfUrl(settlementId)
+
+  // Video parity: opening a load while the settlement has unsaved changes is blocked
+  const openLoad = (loadId?: number|null) => {
+    if (!loadId) return
+    if (dirty) { toast.error('To edit the load, please save your settlement changes first.'); return }
+    setOpenLoadId(loadId)
+  }
 
   const refetch = useCallback(() => {
     return payrollApi.get(settlementId)
@@ -67,37 +79,20 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
 
   const setF = (k:keyof typeof form,v:string) => {setForm(p=>({...p,[k]:v}));setDirty(true)}
 
+  // Status is intentionally NOT sent here — it changes only through the
+  // controlled workflow (/status endpoint), which enforces transition rules.
+  // Outside Preparing the settlement is locked: only notes can be saved.
   const handleSave = () => {
     if (!settlement) return
     setSaving(true)
-    payrollApi.update(settlementId,{driver_id:parseInt(form.driver_id)||settlement.driver_id,status:form.status,date:form.date,payable_to:form.payable_to||undefined,notes:form.notes||undefined})
+    const payload = settlement.status === 'Preparing'
+      ? {driver_id:parseInt(form.driver_id)||settlement.driver_id,date:form.date,payable_to:form.payable_to||undefined,notes:form.notes||undefined}
+      : {notes:form.notes||undefined}
+    payrollApi.update(settlementId,payload)
       .then(()=>{toast.success('Settlement saved');setDirty(false);onSaved()})
-      .catch(e=>toast.error(e.message))
+      .catch((e: any)=>toast.error(e.response?.data?.detail || e.message))
       .finally(()=>setSaving(false))
   }
-
-  const handleMoveToReady = () => {
-    client.post('/api/v1/payroll/' + settlementId + '/status', { status: 'Ready' })
-      .then(() => { toast.success('Moved to Ready for Payment'); refetch() })
-      .catch(e => toast.error(e.response?.data?.detail || e.message))
-  }
-
-  const handleMoveToPreparing = () => {
-    if (settlement?.status === 'Paid') {
-      if (!confirm('This will unlock the settlement. Remove all payments first if you need to edit amounts.')) return
-    }
-    client.post('/api/v1/payroll/' + settlementId + '/status', { status: 'Preparing' })
-      .then(() => { toast.success('Moved back to Preparing'); refetch() })
-      .catch(e => toast.error(e.response?.data?.detail || e.message))
-  }
-
-  const handleMarkPaid = () => {
-    if (!confirm('Mark this settlement as Paid?')) return
-    client.post('/api/v1/payroll/' + settlementId + '/status', { status: 'Paid' })
-      .then(() => { toast.success('Marked Paid'); refetch() })
-      .catch(e => toast.error(e.response?.data?.detail || e.message))
-  }
-
 
   const handleStatusChange = (newStatus: string) => {
     if (!settlement) return
@@ -108,9 +103,10 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
       .catch((e: any) => toast.error(e.response?.data?.detail || e.message))
   }
 
-  const addItem    = (loadId:number)  => payrollApi.addLoadItem(settlementId,loadId).then(()=>{refetch();toast.success('Load added')}).catch(e=>toast.error(e.message))
-  const removeItem = (itemId:number)  => { if(!confirm('Remove this load?')) return; payrollApi.removeItem(settlementId,itemId).then(()=>refetch()).catch(e=>toast.error(e.message)) }
-  const deleteAdj  = (adjId:number)   => payrollApi.deleteAdjustment(settlementId,adjId).then(()=>refetch()).catch(e=>toast.error(e.message))
+  const notPreparing = () => settlement !== null && settlement.status !== 'Preparing'
+  const addItem    = (loadId:number)  => payrollApi.addLoadItem(settlementId,loadId).then(()=>{refetch();toast.success('Load added')}).catch((e:any)=>toast.error(e.response?.data?.detail || e.message))
+  const removeItem = (itemId:number)  => { if(notPreparing()){toast.error('Move back to Preparing to edit');return} if(!confirm('Remove this load?')) return; payrollApi.removeItem(settlementId,itemId).then(()=>refetch()).catch((e:any)=>toast.error(e.response?.data?.detail || e.message)) }
+  const deleteAdj  = (adjId:number)   => { if(notPreparing()){toast.error('Move back to Preparing to edit');return} payrollApi.deleteAdjustment(settlementId,adjId).then(()=>refetch()).catch((e:any)=>toast.error(e.response?.data?.detail || e.message)) }
   const deletePay  = (payId:number)   => { if(!confirm('Delete this payment?')) return; payrollApi.deletePayment(settlementId,payId).then(()=>{refetch();toast.success('Payment deleted')}).catch(e=>toast.error(e.message)) }
   const exportQB   = ()               => payrollApi.exportQB(settlementId).then(()=>{refetch();toast.success('Exported to QuickBooks')}).catch(e=>toast.error(e.message))
 
@@ -127,6 +123,11 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
   const loadItems   = settlement.items.filter(i=>i.item_type==='load')
   const payTotal    = settlement.payments.reduce((a,p)=>a+p.amount,0)
   const curLoadIds  = loadItems.map(i=>i.load_id).filter(Boolean) as number[]
+  // Server rules: items/adjustments editable only in Preparing; payments recorded in Ready/Sent,
+  // deleted only in Preparing.
+  const locked      = settlement.status !== 'Preparing'
+  const canPay      = settlement.status === 'Ready' || settlement.status === 'Sent'
+  const driverChangedUnsaved = form.driver_id !== '' && parseInt(form.driver_id) !== settlement.driver_id
 
   return (
     <>
@@ -157,39 +158,48 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
               <div className="w-60">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Driver</label>
                 <div className="relative">
-                  <select value={form.driver_id} onChange={e=>setF('driver_id',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
+                  <select value={form.driver_id} onChange={e=>setF('driver_id',e.target.value)} disabled={locked}
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none disabled:bg-gray-50 disabled:text-gray-500">
                     {drivers.map(d=><option key={d.id} value={d.id}>{d.name} [{d.driver_type}]</option>)}
                   </select>
                   <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </div>
               </div>
               <div className="w-52">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Settlement Status <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <select value={form.status} onChange={e=>setF('status',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
-                    {STATUSES.map(s=><option key={s} value={s}>{STATUS_LABEL[s]||s}</option>)}
-                  </select>
-                  <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Settlement Status</label>
+                <div className="flex h-[34px] items-center" title="Status changes through the workflow buttons below">
+                  <span className={'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ' + (
+                    settlement.status==='Paid' ? 'bg-emerald-100 text-emerald-700' :
+                    settlement.status==='Ready' ? 'bg-amber-100 text-amber-700' :
+                    settlement.status==='Sent' ? 'bg-blue-100 text-blue-700' :
+                    settlement.status==='Void' ? 'bg-red-100 text-red-600' :
+                    'bg-slate-100 text-slate-600')}>
+                    {STATUS_LABEL[settlement.status]||settlement.status}
+                  </span>
                 </div>
               </div>
               <div className="w-40">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Date <span className="text-red-500">*</span></label>
-                <input type="date" value={form.date} onChange={e=>setF('date',e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"/>
+                <input type="date" value={form.date} onChange={e=>setF('date',e.target.value)} disabled={locked}
+                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"/>
               </div>
               <div className="w-52">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Payable to <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <select value={form.payable_to} onChange={e=>setF('payable_to',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
+                  <select value={form.payable_to} onChange={e=>setF('payable_to',e.target.value)} disabled={locked}
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none disabled:bg-gray-50 disabled:text-gray-500">
                     <option value=""></option>
                     {drivers.map(d=><option key={d.id} value={d.name}>{d.name}</option>)}
                   </select>
                   <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </div>
               </div>
+              {locked && (
+                <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500" title="Move back to Preparing to edit">
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                  Locked — only notes editable
+                </span>
+              )}
             </div>
           </div>
 
@@ -203,16 +213,32 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
               </button>
             </div>
 
-            {/* Available Loads */}
-            <section>
-              <button onClick={()=>setLoadsExpanded(v=>!v)} className="flex items-center gap-2 mb-2 text-left w-full">
-                <span className={'transition-transform text-gray-500 '+(loadsExpanded?'':'rotate-[-90deg]')}><IcoExpand/></span>
-                <span className="font-bold text-gray-900 text-sm">Available Loads</span>
-              </button>
-              {loadsExpanded && (
-                <AvailableLoads settlementId={settlementId} driverId={parseInt(form.driver_id)||settlement.driver_id} currentIds={curLoadIds} onAdd={addItem}/>
-              )}
-            </section>
+            {/* Available Loads — hidden when locked (items can only change in Preparing) */}
+            {!locked && (
+              <section>
+                <button onClick={()=>setLoadsExpanded(v=>!v)} className="flex items-center gap-2 mb-2 text-left w-full">
+                  <span className={'transition-transform text-gray-500 '+(loadsExpanded?'':'rotate-[-90deg]')}><IcoExpand/></span>
+                  <span className="font-bold text-gray-900 text-sm">Available Loads</span>
+                </button>
+                {loadsExpanded && (
+                  driverChangedUnsaved ? (
+                    <div className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+                      Driver changed — press <strong>Save</strong> first to refresh available loads for the new driver.
+                    </div>
+                  ) : (
+                    <AvailableLoads settlementId={settlementId} driverId={settlement.driver_id} currentIds={curLoadIds} onAdd={addItem} onOpenLoad={openLoad} onShowBreakdown={setBreakdownLoadId}/>
+                  )
+                )}
+              </section>
+            )}
+
+            {/* Scheduled recurring charges — set up in Driver profile, applied here */}
+            <ScheduledSection
+              settlementId={settlementId}
+              driverId={settlement.driver_id}
+              canEdit={!locked}
+              onChanged={refetch}
+            />
 
             {/* Advanced Payments — separate section per spec */}
             <AdvancedPaymentsSection
@@ -236,8 +262,12 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                   <button onClick={()=>setShowHistory(v=>!v)} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><IcoHist/> History</button>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={()=>setShowAdj('addition')} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded"><IcoPlus/> Addition</button>
-                  <button onClick={()=>setShowAdj('deduction')} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded"><IcoMinus/> Deduction</button>
+                  <button onClick={()=>setShowAdj({type:'addition'})} disabled={locked}
+                    title={locked ? 'Move back to Preparing to edit' : undefined}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"><IcoPlus/> Addition</button>
+                  <button onClick={()=>setShowAdj({type:'deduction'})} disabled={locked}
+                    title={locked ? 'Move back to Preparing to edit' : undefined}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"><IcoMinus/> Deduction</button>
                 </div>
               </div>
 
@@ -248,8 +278,13 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                     <TH ch="STATUS"/><TH ch="BILLING STATUS"/><TH ch="AMOUNT" right/><th className="w-10"/>
                   </tr></thead>
                   <tbody className="divide-y divide-gray-100">
-                    {loadItems.map(item=><LoadItemRow key={item.id} item={item} onRemove={()=>removeItem(item.id)}/>)}
-                    {settlement.adjustments.map(adj=><AdjRow key={adj.id} adj={adj} onDelete={()=>deleteAdj(adj.id)}/>)}
+                    {loadItems.map(item=><LoadItemRow key={item.id} item={item} onRemove={()=>removeItem(item.id)} onOpenLoad={()=>openLoad(item.load_id)} onShowBreakdown={()=>item.load_id&&setBreakdownLoadId(item.load_id)}/>)}
+                    {settlement.adjustments.map(adj=><AdjRow key={adj.id} adj={adj} onDelete={()=>deleteAdj(adj.id)}
+                      onEdit={()=>{
+                        if(locked){toast.error('Move back to Preparing to edit');return}
+                        if(adj.adj_type==='advanced_payment'){toast.error('Applied advances are managed in the Advanced Payments section above');return}
+                        setShowAdj({type: adj.adj_type==='addition'?'addition':'deduction', adj})
+                      }}/>)}
                     {loadItems.length===0 && settlement.adjustments.length===0 && (
                       <tr><td colSpan={8} className="py-6 text-center text-gray-400">No records</td></tr>
                     )}
@@ -297,8 +332,12 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-gray-900 text-sm">Payments</h3>
                 <div className="flex gap-2">
-                  <button onClick={()=>setShowPay(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded"><IcoPencil/> New Payment</button>
-                  <button onClick={()=>setShowCarry(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded"><IcoCarry/> Create Carryover</button>
+                  <button onClick={()=>setShowPay(true)} disabled={!canPay}
+                    title={!canPay ? 'Move settlement to Ready for Payment first' : undefined}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"><IcoPencil/> New Payment</button>
+                  <button onClick={()=>setShowCarry(true)} disabled={!canPay}
+                    title={!canPay ? 'Move settlement to Ready for Payment first' : undefined}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"><IcoCarry/> Create Carryover</button>
                 </div>
               </div>
               <div className="border border-gray-200 rounded overflow-hidden">
@@ -319,7 +358,9 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                               <button className="text-blue-600 hover:underline font-semibold">{formatCurrency(p.amount)}</button>
                             </td>
                             <td className="px-3 py-2 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={()=>deletePay(p.id)} className="text-blue-500 hover:text-blue-700"><IcoPencil/></button>
+                              {settlement.status === 'Preparing' && (
+                                <button onClick={()=>deletePay(p.id)} title="Delete payment" className="text-red-400 hover:text-red-600"><IcoTrash/></button>
+                              )}
                             </td>
                           </tr>
                         ))
@@ -419,41 +460,21 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
             </div>
             <div className="flex items-center gap-2">
               {dirty && <span className="text-xs text-amber-600 font-medium">Unsaved changes</span>}
-
-              {/* Status Workflow Buttons */}
-              {settlement.status === 'Preparing' && (
-                <button onClick={handleMoveToReady}
-                  className="inline-flex items-center gap-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded">
-                  → Ready for Payment
-                </button>
-              )}
-              {settlement.status === 'Ready' && (
-                <>
-                  <button onClick={handleMoveToPreparing}
-                    className="inline-flex items-center gap-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded">
-                    ← Preparing
-                  </button>
-                  <button onClick={handleMarkPaid}
-                    className="inline-flex items-center gap-1 px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded">
-                    ✓ Mark Paid
-                  </button>
-                </>
-              )}
-              {settlement.status === 'Paid' && (
-                <button onClick={handleMoveToPreparing}
-                  className="inline-flex items-center gap-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded">
-                  ← Preparing (unlock)
-                </button>
-              )}
-
               <button onClick={onClose} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold rounded"><IcoX/> Close</button>
-              <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded disabled:opacity-50"><IcoCheck/> {saving?'Saving…':'Save'}</button>
+              <button onClick={handleSave} disabled={saving}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded disabled:opacity-50"><IcoCheck/> {saving?'Saving…':'Save'}</button>
             </div>
           </div>
         </div>
       </div>
 
-      {showAdj && <AdjModal type={showAdj} settlementId={settlementId} onClose={()=>setShowAdj(null)} onSaved={()=>{setShowAdj(null);refetch()}}/>}
+      {openLoadId !== null && (
+        <LoadModal loadId={openLoadId} entities={entities}
+          onClose={()=>setOpenLoadId(null)}
+          onSaved={()=>{setOpenLoadId(null);refetch()}}/>
+      )}
+      {breakdownLoadId !== null && <PayBreakdownModal loadId={breakdownLoadId} onClose={()=>setBreakdownLoadId(null)}/>}
+      {showAdj && <AdjModal type={showAdj.type} adj={showAdj.adj} settlementId={settlementId} onClose={()=>setShowAdj(null)} onSaved={()=>{setShowAdj(null);refetch()}}/>}
       {showPay && settlement && <PayModal settlementId={settlementId} settlement={settlement} onClose={()=>setShowPay(false)} onSaved={()=>{setShowPay(false);refetch()}}/>}
       {showCarry && settlement && <CarryModal settlementId={settlementId} balanceDue={settlement.balance_due} num={settlement.settlement_number} onClose={()=>setShowCarry(false)} onSaved={()=>{setShowCarry(false);refetch()}}/>}
       {showEmail && settlement && <EmailModal settlement={settlement} pdfUrl={pdfUrl} onClose={()=>setShowEmail(false)}/>}
@@ -462,7 +483,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
 }
 
 // ── Available Loads ───────────────────────────────────────────────────────────
-function AvailableLoads({settlementId,driverId,currentIds,onAdd}:{settlementId:number;driverId:number;currentIds:number[];onAdd:(id:number)=>void}) {
+function AvailableLoads({settlementId,driverId,currentIds,onAdd,onOpenLoad,onShowBreakdown}:{settlementId:number;driverId:number;currentIds:number[];onAdd:(id:number)=>void;onOpenLoad:(id:number)=>void;onShowBreakdown:(id:number)=>void}) {
   const [loads,setLoads] = useState<any[]>([])
   const [loading,setLoading] = useState(true)
 
@@ -503,11 +524,16 @@ function AvailableLoads({settlementId,driverId,currentIds,onAdd}:{settlementId:n
                   <tr key={l.id} className="hover:bg-blue-50/30 group">
                     <td className="px-3 py-2 text-gray-500">{formatDate(l.load_date)}</td>
                     <td className="px-3 py-2 text-gray-500">{formatDate(l.actual_delivery_date)}</td>
-                    <td className="px-3 py-2 text-blue-600 font-medium">{l.load_number}</td>
+                    <td className="px-3 py-2">
+                      <button onClick={()=>onOpenLoad(l.id)} className="text-blue-600 font-medium hover:underline">{l.load_number}</button>
+                    </td>
                     <td className="px-3 py-2 text-gray-700 truncate max-w-[200px]">{desc}</td>
                     <td className="px-3 py-2"><span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{l.status}</span></td>
                     <td className="px-3 py-2 text-gray-500">{l.billing_status}</td>
-                    <td className="px-3 py-2 text-right font-semibold text-gray-900">{formatCurrency(amt)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button onClick={()=>onShowBreakdown(l.id)} title="How was this calculated?"
+                        className="font-semibold text-gray-900 hover:text-blue-700 hover:underline">{formatCurrency(amt)}</button>
+                    </td>
                     <td className="px-3 py-2 text-center">
                       <button onClick={()=>onAdd(l.id)} className="w-6 h-6 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded font-bold text-lg leading-none transition-colors">+</button>
                     </td>
@@ -522,16 +548,23 @@ function AvailableLoads({settlementId,driverId,currentIds,onAdd}:{settlementId:n
 }
 
 // ── Rows ──────────────────────────────────────────────────────────────────────
-function LoadItemRow({item,onRemove}:{item:SettlementItem;onRemove:()=>void}) {
+function LoadItemRow({item,onRemove,onOpenLoad,onShowBreakdown}:{item:SettlementItem;onRemove:()=>void;onOpenLoad:()=>void;onShowBreakdown:()=>void}) {
   return (
     <tr className="hover:bg-gray-50 group">
       <td className="px-3 py-2 text-gray-500">{formatDate(item.load_date)}</td>
       <td className="px-3 py-2 text-gray-500">{item.load?.actual_delivery_date?formatDate(item.load.actual_delivery_date):'—'}</td>
-      <td className="px-3 py-2 text-blue-600 font-medium">{item.load?.load_number||'—'}</td>
+      <td className="px-3 py-2">
+        {item.load?.load_number
+          ? <button onClick={onOpenLoad} className="text-blue-600 font-medium hover:underline">{item.load.load_number}</button>
+          : <span className="text-gray-400">—</span>}
+      </td>
       <td className="px-3 py-2 text-gray-700 truncate max-w-[200px]">{item.description}</td>
       <td className="px-3 py-2">{item.load_status&&<span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{item.load_status}</span>}</td>
       <td className="px-3 py-2 text-gray-500">{item.load_billing_status||'—'}</td>
-      <td className="px-3 py-2 text-right font-semibold text-gray-900">{formatCurrency(item.amount)}</td>
+      <td className="px-3 py-2 text-right">
+        <button onClick={onShowBreakdown} title="How was this calculated?"
+          className="font-semibold text-gray-900 hover:text-blue-700 hover:underline">{formatCurrency(item.amount)}</button>
+      </td>
       <td className="px-3 py-2 text-center">
         <button onClick={onRemove} className="w-6 h-6 flex items-center justify-center text-blue-500 hover:text-red-600 hover:bg-red-50 rounded font-bold text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">−</button>
       </td>
@@ -539,7 +572,7 @@ function LoadItemRow({item,onRemove}:{item:SettlementItem;onRemove:()=>void}) {
   )
 }
 
-function AdjRow({adj,onDelete}:{adj:SettlementAdjustment;onDelete:()=>void}) {
+function AdjRow({adj,onDelete,onEdit}:{adj:SettlementAdjustment;onDelete:()=>void;onEdit:()=>void}) {
   const isDed=adj.adj_type==='deduction'
   return (
     <tr className="hover:bg-gray-50 group">
@@ -550,8 +583,8 @@ function AdjRow({adj,onDelete}:{adj:SettlementAdjustment;onDelete:()=>void}) {
       <td className={'px-3 py-2 text-right font-semibold '+(isDed?'text-red-600':'text-blue-700')}>{isDed?'-':'+'}{formatCurrency(adj.amount)}</td>
       <td className="px-3 py-2 text-center">
         <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button className="text-blue-500 hover:text-blue-700 p-0.5 rounded hover:bg-blue-50"><IcoPencil/></button>
-          <button onClick={onDelete} className="text-red-400 hover:text-red-600 p-0.5 rounded hover:bg-red-50">
+          <button onClick={onEdit} title="Edit" className="text-blue-500 hover:text-blue-700 p-0.5 rounded hover:bg-blue-50"><IcoPencil/></button>
+          <button onClick={onDelete} title="Remove" className="text-red-400 hover:text-red-600 p-0.5 rounded hover:bg-red-50">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4"/></svg>
           </button>
         </div>
@@ -560,21 +593,106 @@ function AdjRow({adj,onDelete}:{adj:SettlementAdjustment;onDelete:()=>void}) {
   )
 }
 
+// ── Pay Breakdown (how a load's driver pay was calculated) ────────────────────
+function PayBreakdownModal({loadId,onClose}:{loadId:number;onClose:()=>void}) {
+  const [data,setData] = useState<Awaited<ReturnType<typeof payrollApi.getPayBreakdown>>|null>(null)
+  const [error,setError] = useState('')
+
+  useEffect(()=>{
+    payrollApi.getPayBreakdown(loadId)
+      .then(setData)
+      .catch((e:any)=>setError(e.response?.data?.detail || e.message))
+  },[loadId])
+
+  const PAY_TYPE_LABEL: Record<string,string> = {
+    per_mile:'Per mile', percentage:'Freight percentage', flatpay:'Flat pay', hourly:'Hourly',
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose}/>
+      <div className="relative bg-white rounded-xl shadow-2xl w-[440px]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 className="font-bold text-gray-900">
+            Driver Pay — Load #{data?.load_number ?? '…'}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><IcoX/></button>
+        </div>
+        <div className="px-5 py-4">
+          {error ? (
+            <p className="py-6 text-center text-sm text-red-500">{error}</p>
+          ) : !data ? (
+            <p className="py-6 text-center text-sm text-gray-400">Loading calculation…</p>
+          ) : (
+            <>
+              <div className="mb-3 flex items-center gap-2 text-xs text-gray-500">
+                <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">
+                  {PAY_TYPE_LABEL[data.pay_type] || data.pay_type}
+                </span>
+                {data.snapshot_overridden && (
+                  <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700" title="The amount was manually overridden after this calculation">
+                    Manually overridden
+                  </span>
+                )}
+              </div>
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-gray-100">
+                  {data.lines.map((l,i)=>(
+                    <tr key={i}>
+                      <td className="py-2 text-gray-600">{l.label}</td>
+                      <td className={'py-2 text-right font-medium '+(l.amount<0?'text-red-600':'text-gray-900')}>{formatCurrency(l.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-200">
+                    <td className="py-2.5 font-bold text-gray-800">Driver pay</td>
+                    <td className="py-2.5 text-right font-bold text-gray-900">{formatCurrency(data.stored_total)}</td>
+                  </tr>
+                  {Math.abs(data.stored_total - data.total) > 0.01 && (
+                    <tr>
+                      <td colSpan={2} className="pb-1 text-[11px] text-amber-600">
+                        Formula gives {formatCurrency(data.total)} — the stored amount was adjusted manually.
+                      </td>
+                    </tr>
+                  )}
+                </tfoot>
+              </table>
+              <p className="mt-2 text-[11px] text-gray-400">
+                Rates are frozen on the load when the driver is assigned. Changed the driver's rates? Use <strong>Recalculate</strong> inside the load.
+              </p>
+            </>
+          )}
+        </div>
+        <div className="flex justify-end px-5 py-3 border-t border-gray-200 bg-gray-50">
+          <button onClick={onClose} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm rounded font-medium"><IcoX/> Close</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Modals ────────────────────────────────────────────────────────────────────
-function AdjModal({type,settlementId,onClose,onSaved}:{type:'addition'|'deduction';settlementId:number;onClose:()=>void;onSaved:()=>void}) {
-  const [date,setDate]       = useState(new Date().toISOString().slice(0,10))
-  const [amount,setAmount]   = useState('')
-  const [category,setCat]    = useState('Other')
-  const [notes,setNotes]     = useState('')
+function AdjModal({type,adj,settlementId,onClose,onSaved}:{type:'addition'|'deduction';adj?:SettlementAdjustment;settlementId:number;onClose:()=>void;onSaved:()=>void}) {
+  const isEdit = !!adj
+  const [date,setDate]       = useState(adj?.date || new Date().toISOString().slice(0,10))
+  const [amount,setAmount]   = useState(adj ? String(adj.amount) : '')
+  const [category,setCat]    = useState(adj?.category || 'Other')
+  const [notes,setNotes]     = useState(adj?.description || '')
   const [saving,setSaving]   = useState(false)
-  const title = type==='addition' ? 'New addition' : 'New deduction'
+  const title = isEdit
+    ? (type==='addition' ? 'Edit addition' : 'Edit deduction')
+    : (type==='addition' ? 'New addition' : 'New deduction')
 
   const save = () => {
     if (!amount) return
     setSaving(true)
-    payrollApi.addAdjustment(settlementId,{adj_type:type,date:date||undefined,category:category||undefined,description:notes||undefined,amount:parseFloat(amount)})
-      .then(()=>{toast.success((type==='addition'?'Addition':'Deduction')+' added');onSaved()})
-      .catch(e=>toast.error(e.message))
+    const req = isEdit && adj
+      ? payrollApi.updateAdjustment(settlementId,adj.id,{date:date||undefined,category:category||undefined,description:notes||undefined,amount:parseFloat(amount)})
+      : payrollApi.addAdjustment(settlementId,{adj_type:type,date:date||undefined,category:category||undefined,description:notes||undefined,amount:parseFloat(amount)})
+    req
+      .then(()=>{toast.success((type==='addition'?'Addition':'Deduction')+(isEdit?' updated':' added'));onSaved()})
+      .catch((e:any)=>toast.error(e.response?.data?.detail || e.message))
       .finally(()=>setSaving(false))
   }
 
@@ -814,6 +932,79 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Scheduled Recurring Transactions Section (within Settlement) ──────────────
+function ScheduledSection({ settlementId, driverId, canEdit, onChanged }: {
+  settlementId: number; driverId: number; canEdit: boolean; onChanged: () => void
+}) {
+  const [txs, setTxs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const loadTxs = useCallback(() => {
+    setLoading(true)
+    payrollApi.getCandidates(settlementId)
+      .then(d => setTxs(d.scheduled_transactions || []))
+      .catch(() => setTxs([]))
+      .finally(() => setLoading(false))
+  }, [settlementId])
+
+  useEffect(() => { loadTxs() }, [loadTxs, driverId])
+
+  const handleApply = (txId: number) => {
+    payrollApi.applyScheduled(settlementId, txId)
+      .then(() => { toast.success('Recurring charge applied'); loadTxs(); onChanged() })
+      .catch((e: any) => toast.error(e.response?.data?.detail || e.message))
+  }
+
+  if (loading || txs.length === 0) return null
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-bold text-gray-900 text-sm">Scheduled Deductions & Charges</h3>
+        <span className="text-xs text-gray-400">Set up in Driver profile → Scheduled</span>
+      </div>
+      <div className="border border-blue-200 bg-blue-50/30 rounded overflow-hidden">
+        <div className="px-3 py-2 bg-blue-50 border-b border-blue-200 text-xs font-semibold text-blue-800 flex items-center gap-2">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Recurring charges for this driver ({txs.length}){canEdit ? ' — click + to apply to this settlement' : ''}
+        </div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-blue-100">
+              <TH ch="TYPE"/><TH ch="CATEGORY"/><TH ch="DESCRIPTION"/><TH ch="SCHEDULE"/><TH ch="NEXT DUE"/><TH ch="AMOUNT" right/>
+              <th className="w-10"/>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-blue-100">
+            {txs.map((t: any) => (
+              <tr key={t.id} className="hover:bg-blue-50">
+                <td className="px-3 py-2">
+                  <span className={'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold ' + (t.trans_type === 'addition' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600')}>
+                    {t.trans_type}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-gray-700">{t.category || '—'}</td>
+                <td className="px-3 py-2 text-gray-700 truncate max-w-[200px]">{t.description || '—'}</td>
+                <td className="px-3 py-2 text-gray-500 capitalize">{t.schedule || '—'}</td>
+                <td className="px-3 py-2 text-gray-500">{t.next_due ? formatDate(t.next_due) : '—'}</td>
+                <td className={'px-3 py-2 text-right font-semibold ' + (t.trans_type === 'addition' ? 'text-emerald-700' : 'text-red-600')}>
+                  {t.trans_type === 'addition' ? '+' : '-'}{formatCurrency(t.amount)}
+                </td>
+                <td className="px-3 py-2 text-center">
+                  {canEdit && (
+                    <button onClick={() => handleApply(t.id)} title="Apply to this settlement"
+                      className="w-6 h-6 flex items-center justify-center text-blue-600 hover:text-white hover:bg-blue-600 rounded font-bold text-lg leading-none transition-colors">+</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }
 

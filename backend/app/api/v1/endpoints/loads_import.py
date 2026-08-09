@@ -1,5 +1,5 @@
 """
-Load CSV import - ezLoads-style import flow
+Load CSV import - Karvan-style import flow
 Template columns: load_number, broker_name, driver_name, rate,
                   pickup_city, pickup_state, pickup_date,
                   delivery_city, delivery_state, delivery_date,

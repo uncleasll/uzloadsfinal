@@ -3,7 +3,7 @@
 Frontend is already deployed here:
 
 ```text
-https://uzloadsfinal.vercel.app/
+https://karvanfinal.vercel.app/
 ```
 
 ## 1. Supabase database
@@ -45,7 +45,7 @@ Environment variables:
 ```text
 DATABASE_URL=<Supabase transaction pooler URL with sslmode=require>
 SECRET_KEY=<long random secret>
-CORS_ORIGINS=https://uzloadsfinal.vercel.app,https://uzloadsfinal-7c41.vercel.app,http://localhost:5173,http://localhost:3000
+CORS_ORIGINS=https://karvanfinal.vercel.app,https://karvanfinal-7c41.vercel.app,http://localhost:5173,http://localhost:3000
 UPLOAD_DIR=./uploads
 ```
 
@@ -73,7 +73,7 @@ https://YOUR_RENDER_BACKEND.onrender.com/docs
 Expected `/health` response:
 
 ```json
-{"status":"ok","service":"uzLoads TMS API","version":"1.0.0"}
+{"status":"ok","service":"Karvan TMS API","version":"1.0.0"}
 ```
 
 Then open the Vercel frontend and login/use the app.

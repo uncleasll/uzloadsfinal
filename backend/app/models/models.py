@@ -160,7 +160,7 @@ class CompanySettings(Base):
     __tablename__ = "company_settings"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(200), default='My Company')
+    name = Column(String(200), default='Karvan')
     legal_name = Column(String(200))
     mc_number = Column(String(50))
     dot_number = Column(String(50))

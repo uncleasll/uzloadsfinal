@@ -83,7 +83,7 @@ def export_drivers_pdf(db: Session = Depends(get_db)):
 
     story = []
 
-    # Company header — pulled live from "My Company" settings
+    # Company header — pulled live from "Karvan" settings
     company = get_company(db)
     logo_file = resolve_logo_file(company.get("logo_path") or "")
     if logo_file:
@@ -93,9 +93,9 @@ def export_drivers_pdf(db: Session = Depends(get_db)):
             logo.drawWidth = logo.imageWidth * ratio
             logo.drawHeight = logo.imageHeight * ratio
         except Exception:
-            logo = Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", hd_s)
+            logo = Paragraph(f"<b>{company.get('name') or 'Karvan'}</b>", hd_s)
     else:
-        logo = Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", hd_s)
+        logo = Paragraph(f"<b>{company.get('name') or 'Karvan'}</b>", hd_s)
     header_html = "<br/>".join(
         f"<b>{line}</b>" if i == 0 else line
         for i, line in enumerate(company_identity_lines(company))

@@ -9,7 +9,7 @@ import os
 
 
 _DEFAULT = {
-    "name": "My Company",
+    "name": "Karvan",
     "legal_name": "",
     "mc_number": "",
     "dot_number": "",
@@ -29,7 +29,7 @@ def get_company(db: Session) -> dict:
     if not s:
         return _DEFAULT.copy()
     return {
-        "name": s.name or "My Company",
+        "name": s.name or "Karvan",
         "legal_name": s.legal_name or "",
         "mc_number": s.mc_number or "",
         "dot_number": s.dot_number or "",
@@ -67,7 +67,7 @@ def company_address(company: dict) -> str:
 
 def company_identity_lines(company: dict) -> list[str]:
     lines = []
-    name = company.get("legal_name") or company.get("name") or "My Company"
+    name = company.get("legal_name") or company.get("name") or "Karvan"
     lines.append(name)
     address = company_address(company)
     if address:

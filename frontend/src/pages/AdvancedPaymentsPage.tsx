@@ -24,9 +24,75 @@ interface AdvPay {
 const CATS = ['Com check','Fuel advance','Pre-payment','Loan','Other','Repair advance','Detention advance','Escrow release']
 
 function Badge({ ap }: { ap: AdvPay }) {
-  if (ap.is_applied) return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Applied</span>
-  if (ap.applied_amount > 0) return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Partial</span>
-  return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">Unapplied</span>
+  if (ap.is_applied) return <span className="inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-blue-100 text-blue-700">Applied</span>
+  if (ap.applied_amount > 0) return <span className="inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700">Partial</span>
+  return <span className="inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-500">Unapplied</span>
+}
+
+const AP_COLUMN_DEFS: { key: string; label: string; sortable?: boolean; align?: 'right'; width: string }[] = [
+  { key: 'number',      label: '#',           sortable: true, width: '5%' },
+  { key: 'date',        label: 'DATE',        sortable: true, width: '8%' },
+  { key: 'driver',      label: 'DRIVER',      sortable: true, width: '15%' },
+  { key: 'category',    label: 'CATEGORY',    sortable: true, width: '11%' },
+  { key: 'description', label: 'DESCRIPTION', width: '20%' },
+  { key: 'amount',      label: 'AMOUNT',      sortable: true, align: 'right', width: '8%' },
+  { key: 'applied',     label: 'APPLIED',     sortable: true, align: 'right', width: '8%' },
+  { key: 'remaining',   label: 'REMAINING',   sortable: true, align: 'right', width: '8%' },
+  { key: 'status',      label: 'STATUS',      sortable: true, width: '8%' },
+]
+
+function apSortVal(ap: AdvPay, key: string): string | number {
+  switch (key) {
+    case 'number':    return ap.payment_number ?? ap.id
+    case 'date':      return ap.payment_date || ''
+    case 'driver':    return ap.driver_name || ''
+    case 'category':  return ap.category || ''
+    case 'amount':    return ap.amount ?? 0
+    case 'applied':   return ap.applied_amount ?? 0
+    case 'remaining': return ap.remaining ?? 0
+    case 'status':    return ap.is_applied ? 'Applied' : ap.applied_amount > 0 ? 'Partial' : 'Unapplied'
+    default:          return ''
+  }
+}
+
+function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel, deleteDisabled }: {
+  onEdit: () => void; onDelete: () => void; editLabel: string; deleteLabel: string; deleteDisabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative flex items-center justify-center">
+      <button onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        title="Actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={'inline-flex h-6 w-6 items-center justify-center rounded transition-colors ' +
+          (open ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-700')}>
+        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
+          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            {editLabel}
+          </button>
+          {deleteDisabled ? (
+            <div className="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-300" title="Already applied to a settlement">
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              {deleteLabel}
+            </div>
+          ) : (
+            <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              {deleteLabel}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AdvancedPaymentsPage() {
@@ -36,23 +102,30 @@ export default function AdvancedPaymentsPage() {
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem] = useState<AdvPay | null>(null)
   const [page, setPage] = useState(1)
-  const [pageSize] = useState(50)
-  const [total, setTotal] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
   const [filters, setFilters] = useState({ driver_id: '', unapplied_only: false, date_from: '', date_to: '' })
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState('number')
+  const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc')
 
+  const sortBy = (key: string) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  // Fetch the full filtered set once; search/sort/pagination happen client-side
   const load = useCallback(() => {
     setLoading(true)
-    const p: Record<string, string | number | boolean> = { page, page_size: pageSize }
+    const p: Record<string, string | number | boolean> = { page: 1, page_size: 1000 }
     if (filters.driver_id) p.driver_id = filters.driver_id
     if (filters.unapplied_only) p.unapplied_only = true
     if (filters.date_from) p.date_from = filters.date_from
     if (filters.date_to) p.date_to = filters.date_to
     client.get('/api/v1/advanced-payments', { params: p })
-      .then(r => { setItems(r.data.items || []); setTotal(r.data.total || 0); setTotalPages(r.data.total_pages || 1) })
+      .then(r => setItems(r.data.items || []))
       .catch(e => toast.error(e.message))
       .finally(() => setLoading(false))
-  }, [filters, page, pageSize])
+  }, [filters])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { driversApi.list().then(setDrivers).catch(() => {}) }, [])
@@ -65,129 +138,153 @@ export default function AdvancedPaymentsPage() {
       .catch(e => toast.error(e.response?.data?.detail || e.message))
   }
 
-  const totalAmt = items.reduce((a, i) => a + i.amount, 0)
-  const totalApp = items.reduce((a, i) => a + (i.applied_amount || 0), 0)
-  const totalRem = items.reduce((a, i) => a + i.remaining, 0)
-  const start = total === 0 ? 0 : (page - 1) * pageSize + 1
-  const end = Math.min(page * pageSize, total)
+  const q = search.trim().toLowerCase()
+  const filtered = items.filter(ap => !q ||
+    [String(ap.payment_number), ap.driver_name, ap.category, ap.description]
+      .filter(Boolean).some(v => String(v).toLowerCase().includes(q)))
+  const sortedAll = [...filtered].sort((a, b) => {
+    const va = apSortVal(a, sortKey), vb = apSortVal(b, sortKey)
+    const cmp = typeof va === 'number' && typeof vb === 'number'
+      ? va - vb
+      : String(va).localeCompare(String(vb), undefined, { sensitivity: 'base' })
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+  const total = filtered.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const sorted = sortedAll.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const totalAmt = filtered.reduce((a, i) => a + i.amount, 0)
+  const totalApp = filtered.reduce((a, i) => a + (i.applied_amount || 0), 0)
+  const totalRem = filtered.reduce((a, i) => a + i.remaining, 0)
+  const start = total === 0 ? 0 : (safePage - 1) * pageSize + 1
+  const end = Math.min(safePage * pageSize, total)
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-200 flex-shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Advanced Payments</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Pre-settlement payments (com-checks, fuel advances) applied to driver settlements</p>
-        </div>
-        <button onClick={() => { setEditItem(null); setShowModal(true) }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition-colors">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-          New Advanced Payment
-        </button>
-      </div>
-
-      {/* Summary */}
-      <div className="px-5 py-2.5 border-b border-gray-100 bg-gray-50 flex items-center gap-8 flex-shrink-0">
-        {[
-          { l: 'Total Issued', v: formatCurrency(totalAmt), c: 'text-gray-900' },
-          { l: 'Total Applied', v: formatCurrency(totalApp), c: 'text-blue-700' },
-          { l: 'Outstanding', v: formatCurrency(totalRem), c: totalRem > 0 ? 'text-amber-700' : 'text-gray-400' },
-        ].map((s, i) => (
-          <div key={i} className="flex items-center gap-6">
-            {i > 0 && <div className="w-px h-7 bg-gray-200" />}
-            <div><div className="text-xs text-gray-500 font-medium">{s.l}</div><div className={`text-base font-bold ${s.c}`}>{s.v}</div></div>
+      <div className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="mr-1 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-950">Advanced Payments</h1>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{total}</span>
+            </div>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-400">Com-checks and fuel advances applied to driver settlements</p>
           </div>
-        ))}
-      </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="relative min-w-[220px] flex-1 sm:flex-none">
+              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
+              <input type="search" placeholder="Search advances..." value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64" />
+            </div>
+            <button onClick={() => { setEditItem(null); setShowModal(true) }} className="btn-primary h-9 rounded-lg px-4 text-xs">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5"/></svg>
+              New advance
+            </button>
+          </div>
+        </div>
 
-      {/* Filters */}
-      <div className="px-5 py-2 border-b border-gray-200 flex items-end gap-3 flex-wrap flex-shrink-0">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Driver</label>
-          <select value={filters.driver_id} onChange={e => { setFilters(p => ({ ...p, driver_id: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-500 w-44">
-            <option value="">All drivers</option>
-            {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
+        {/* Filters + summary */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex flex-shrink-0 items-center">
+            <select value={filters.driver_id} onChange={e => { setFilters(p => ({ ...p, driver_id: e.target.value })); setPage(1) }}
+              className="h-9 appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-8 text-[11px] font-semibold text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100">
+              <option value="">All drivers</option>
+              {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+            <svg className="pointer-events-none absolute right-2 w-2.5 h-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <input type="date" value={filters.date_from}
+              onChange={e => { setFilters(p => ({ ...p, date_from: e.target.value })); setPage(1) }}
+              className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
+            <span className="text-gray-300">—</span>
+            <input type="date" value={filters.date_to}
+              onChange={e => { setFilters(p => ({ ...p, date_to: e.target.value })); setPage(1) }}
+              className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <button onClick={() => { setFilters(p => ({ ...p, unapplied_only: !p.unapplied_only })); setPage(1) }}
+            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${filters.unapplied_only ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
+            Unapplied only
+          </button>
+          {(filters.driver_id || filters.date_from || filters.date_to || filters.unapplied_only) && (
+            <button onClick={() => { setFilters({ driver_id: '', unapplied_only: false, date_from: '', date_to: '' }); setPage(1) }}
+              className="rounded px-2 py-1 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600">Clear</button>
+          )}
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+            <div className="flex h-9 items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 shadow-sm">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-500">Issued</span>
+              <span className="whitespace-nowrap text-xs font-bold text-blue-800">{formatCurrency(totalAmt)}</span>
+            </div>
+            <div className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 shadow-sm">
+              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Applied</span>
+              <span className="whitespace-nowrap text-xs font-bold text-slate-800">{formatCurrency(totalApp)}</span>
+            </div>
+            <div className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 shadow-sm">
+              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-amber-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Outstanding</span>
+              <span className="whitespace-nowrap text-xs font-bold text-slate-800">{formatCurrency(totalRem)}</span>
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
-          <input type="date" value={filters.date_from}
-            onChange={e => { setFilters(p => ({ ...p, date_from: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
-          <input type="date" value={filters.date_to}
-            onChange={e => { setFilters(p => ({ ...p, date_to: e.target.value })); setPage(1) }}
-            className="border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
-        </div>
-        <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer pb-1.5">
-          <input type="checkbox" checked={filters.unapplied_only}
-            onChange={e => { setFilters(p => ({ ...p, unapplied_only: e.target.checked })); setPage(1) }}
-            className="accent-blue-600 w-3.5 h-3.5" />
-          Unapplied only
-        </label>
-        {(filters.driver_id || filters.date_from || filters.date_to || filters.unapplied_only) && (
-          <button onClick={() => { setFilters({ driver_id: '', unapplied_only: false, date_from: '', date_to: '' }); setPage(1) }}
-            className="text-xs text-gray-500 hover:text-red-500 pb-1.5 underline">Clear</button>
-        )}
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-white border-b border-gray-200 z-10">
-            <tr>
-              {[['#','6%'],['Date','9%'],['Driver','18%'],['Category','11%'],['Description','22%'],
-                ['Amount','9%','r'],['Applied','9%','r'],['Remaining','9%','r'],['Status','11%'],['','4%']
-              ].map(([h,w,r]) => (
-                <th key={h} style={{ width: w }}
-                  className={`px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide ${r ? 'text-right' : 'text-left'}`}>
-                  {h}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
+          <colgroup>
+            {AP_COLUMN_DEFS.map(c => <col key={c.key} style={{ width: c.width }} />)}
+            <col style={{ width: 76 }} />
+          </colgroup>
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
+              {AP_COLUMN_DEFS.map(h => (
+                <th key={h.key} className={`px-1.5 py-2 font-bold uppercase text-slate-500 whitespace-nowrap ${h.align === 'right' ? 'text-right' : 'text-left'}`} style={{ fontSize: 10 }}>
+                  {h.sortable ? (
+                    <button onClick={() => sortBy(h.key)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
+                      {h.label}
+                      <span className={sortKey === h.key ? 'opacity-100 text-blue-600' : 'opacity-30'}>
+                        {sortKey === h.key && sortDir === 'asc' ? '↑' : '↓'}
+                      </span>
+                    </button>
+                  ) : h.label}
                 </th>
               ))}
+              <th className="px-1.5 py-2 text-center font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>ACTIONS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {loading ? (
-              <tr><td colSpan={10} className="py-16 text-center text-gray-400">
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  Loading…
-                </div>
-              </td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={10} className="py-16 text-center">
-                <div className="flex flex-col items-center gap-3 text-gray-400">
-                  <svg className="w-12 h-12 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                  <span>No advanced payments found</span>
-                  <button onClick={() => setShowModal(true)} className="text-blue-600 text-sm hover:underline font-medium">+ Create one</button>
-                </div>
-              </td></tr>
-            ) : items.map(ap => (
+              <tr><td colSpan={AP_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading advances...</div></td></tr>
+            ) : sorted.length === 0 ? (
+              <tr><td colSpan={AP_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div><div className="text-sm font-semibold text-slate-700">No advanced payments found</div><button onClick={() => setShowModal(true)} className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700">+ Create one</button></div></td></tr>
+            ) : sorted.map(ap => (
               <tr key={ap.id} onClick={() => { setEditItem(ap); setShowModal(true) }}
-                className="cursor-pointer hover:bg-gray-50 transition-colors group">
-                <td className="px-3 py-2.5 text-blue-600 font-semibold text-xs">#{ap.payment_number}</td>
-                <td className="px-3 py-2.5 text-gray-600 text-xs">{formatDate(ap.payment_date)}</td>
-                <td className="px-3 py-2.5 font-medium text-gray-900 truncate max-w-[180px]">{ap.driver_name || '—'}</td>
-                <td className="px-3 py-2.5 text-gray-600 text-xs">{ap.category || '—'}</td>
-                <td className="px-3 py-2.5 text-gray-600 text-xs truncate max-w-[240px]">{ap.description || '—'}</td>
-                <td className="px-3 py-2.5 text-right font-semibold text-gray-900">{formatCurrency(ap.amount)}</td>
-                <td className="px-3 py-2.5 text-right text-blue-700 font-medium text-xs">
-                  {ap.applied_amount > 0 ? formatCurrency(ap.applied_amount) : '—'}
+                className="group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 hover:border-l-blue-500 hover:bg-blue-50/70">
+                <td className="px-1.5 py-1 font-semibold text-blue-600">#{ap.payment_number}</td>
+                <td className="px-1.5 py-1 text-gray-500 truncate">{formatDate(ap.payment_date)}</td>
+                <td className="px-1.5 py-1 font-medium text-gray-900 truncate">{ap.driver_name || <span className="font-normal text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-gray-600 truncate">{ap.category || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-gray-500 truncate">{ap.description || <span className="text-gray-300">—</span>}</td>
+                <td className="px-1.5 py-1 text-right font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(ap.amount)}</td>
+                <td className="px-1.5 py-1 text-right font-medium text-blue-700 whitespace-nowrap">
+                  {ap.applied_amount > 0 ? formatCurrency(ap.applied_amount) : <span className="font-normal text-gray-300">—</span>}
                 </td>
-                <td className={`px-3 py-2.5 text-right font-semibold text-xs ${ap.remaining > 0 ? 'text-amber-700' : 'text-gray-400'}`}>
+                <td className={`px-1.5 py-1 text-right font-semibold whitespace-nowrap ${ap.remaining > 0 ? 'text-amber-700' : 'text-gray-400'}`}>
                   {formatCurrency(ap.remaining)}
                 </td>
-                <td className="px-3 py-2.5"><Badge ap={ap} /></td>
-                <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
-                  {!ap.is_applied && ap.applied_amount === 0 && (
-                    <button onClick={() => handleDelete(ap)}
-                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1 rounded">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                  )}
+                <td className="px-1.5 py-1"><Badge ap={ap} /></td>
+                <td className="px-1 py-1" onClick={e => e.stopPropagation()}>
+                  <RowActionMenu
+                    onEdit={() => { setEditItem(ap); setShowModal(true) }}
+                    onDelete={() => handleDelete(ap)}
+                    editLabel="Edit Advance"
+                    deleteLabel="Delete Advance"
+                    deleteDisabled={ap.is_applied || ap.applied_amount > 0}
+                  />
                 </td>
               </tr>
             ))}
@@ -196,15 +293,27 @@ export default function AdvancedPaymentsPage() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-5 py-2 border-t border-gray-200 flex-shrink-0 text-xs text-gray-500">
-        <div className="flex items-center gap-1">
-          {[1, '‹', '›', totalPages].map((p, i) => {
-            if (i === 0) return <button key="first" onClick={() => setPage(1)} disabled={page <= 1} className="w-7 h-7 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-30">«</button>
-            if (p === '‹') return <button key="prev" onClick={() => setPage(q => Math.max(1, q - 1))} disabled={page <= 1} className="w-7 h-7 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-30">‹</button>
-            if (p === '›') return <button key="next" onClick={() => setPage(q => Math.min(totalPages, q + 1))} disabled={page >= totalPages} className="w-7 h-7 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-30">›</button>
-            return <button key="last" onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="w-7 h-7 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-30">»</button>
-          })}
-          <span className="ml-2">Showing {start}–{end} of {total}</span>
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3 lg:px-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => setPage(1)} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></button>
+            <button onClick={() => setPage(v => Math.max(1, v - 1))} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => { const s = Math.max(1, Math.min(safePage - 2, totalPages - 4)); return s + i }).map(pn => (
+              <button key={pn} onClick={() => setPage(pn)} className={`w-5 h-5 rounded text-[11px] font-medium transition-colors ${pn === safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{pn}</button>
+            ))}
+            <button onClick={() => setPage(v => Math.min(totalPages, v + 1))} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+            <button onClick={() => setPage(totalPages)} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></button>
+          </div>
+          <span className="text-[11px] text-gray-500">Showing {start}–{end} of {total} entries</span>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          {[10, 25, 50, 100].map(n => (
+            <button key={n} onClick={() => { setPageSize(n); setPage(1) }}
+              className={`rounded-md px-2 py-1 text-[10px] transition ${pageSize === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+              {n}
+            </button>
+          ))}
         </div>
       </div>
 

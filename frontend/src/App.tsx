@@ -1,5 +1,7 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useAuth } from '@/hooks/useAuth'
 import AppLayout from '@/components/layout/AppLayout'
+import LoginPage from '@/pages/LoginPage'
 import LoadsPage from '@/pages/LoadsPage'
 import DriversPage from '@/pages/DriversPage'
 import PayrollPage from '@/pages/PayrollPage'
@@ -13,13 +15,23 @@ import MyCompanyPage from '@/pages/MyCompanyPage'
 import ExpensesPage from '@/pages/ExpensesPage'
 import AdvancedPaymentsPage from '@/pages/AdvancedPaymentsPage'
 import PaymentsPage from '@/pages/PaymentsPage'
+import DashboardPage from '@/pages/DashboardPage'
+
+function RequireAuth({ children }: { children: JSX.Element }) {
+  const { isAuthenticated, loading } = useAuth()
+  const location = useLocation()
+  if (loading) return null
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />
+  return children
+}
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Navigate to="/loads" replace />} />
-      <Route path="/" element={<AppLayout />}>
-        <Route index element={<Navigate to="/loads" replace />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<RequireAuth><AppLayout /></RequireAuth>}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
         <Route path="loads" element={<LoadsPage />} />
         <Route path="drivers" element={<DriversPage />} />
         <Route path="payroll" element={<PayrollPage />} />
@@ -30,7 +42,6 @@ export default function App() {
         <Route path="vendors" element={<VendorsPage />} />
         <Route path="dispatch" element={<PlaceholderPage title="Dispatch Board" />} />
         <Route path="my-company" element={<MyCompanyPage />} />
-        <Route path="loadboards" element={<PlaceholderPage title="Loadboards" />} />
         <Route path="trailers" element={<TrailersPage />} />
         <Route path="fuel/*" element={<PlaceholderPage title="Fuel" />} />
         <Route path="accounting/expenses" element={<ExpensesPage />} />
@@ -42,7 +53,7 @@ export default function App() {
         <Route path="users" element={<PlaceholderPage title="Users" />} />
         <Route path="data-library/*" element={<PlaceholderPage title="Data Library" />} />
         <Route path="docs" element={<PlaceholderPage title="Docs Exchange" />} />
-        <Route path="*" element={<Navigate to="/loads" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   )

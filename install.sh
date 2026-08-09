@@ -1,10 +1,10 @@
 #!/bin/bash
-# Installer for ezLoads TMS
+# Installer for Karvan TMS
 
 set -e
 
 echo "═══════════════════════════════════════════"
-echo "  ezLoads TMS — Production Installer"
+echo "  Karvan TMS — Production Installer"
 echo "═══════════════════════════════════════════"
 echo ""
 

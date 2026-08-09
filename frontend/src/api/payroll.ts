@@ -48,8 +48,25 @@ export const payrollApi = {
     const { data } = await client.post(`${BASE}/${settlementId}/adjustments`, payload)
     return data
   },
+  updateAdjustment: async (settlementId: number, adjId: number, payload: {
+    date?: string; category?: string; description?: string; amount?: number
+  }) => {
+    const { data } = await client.put(`${BASE}/${settlementId}/adjustments/${adjId}`, payload)
+    return data
+  },
   deleteAdjustment: async (settlementId: number, adjId: number) => {
     await client.delete(`${BASE}/${settlementId}/adjustments/${adjId}`)
+  },
+
+  // Driver pay breakdown for a load (how the amount was calculated)
+  getPayBreakdown: async (loadId: number) => {
+    const { data } = await client.get(`/api/v1/loads/${loadId}/pay-breakdown`)
+    return data as {
+      load_number: number; pay_type: string
+      lines: Array<{ label: string; amount: number }>
+      total: number; stored_total: number
+      snapshot_taken_at?: string | null; snapshot_overridden: boolean
+    }
   },
 
   // Payments

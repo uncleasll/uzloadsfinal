@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/hooks/useAuth'
+import karvanLogo from '@/assets/karvan-logo.png'
 
 interface NavItem {
   label: string
@@ -9,7 +11,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { label: 'Loadboards', icon: <GridIcon />, children: [{ label: 'All Loads', to: '/loadboards' }, { label: 'Available', to: '/loadboards/available' }] },
+  { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Dispatch board', to: '/dispatch', icon: <DispatchIcon /> },
   { label: 'Loads', to: '/loads', icon: <LoadsIcon /> },
   { label: 'Drivers', to: '/drivers', icon: <DriversIcon /> },
@@ -17,10 +19,10 @@ const NAV: NavItem[] = [
   { label: 'Equipment', icon: <EquipIcon />, children: [{ label: 'Trucks', to: '/trucks' }, { label: 'Trailers', to: '/trailers' }] },
   { label: 'Fuel', icon: <FuelIcon />, children: [{ label: 'Fuel Cards', to: '/fuel/cards' }, { label: 'Transactions', to: '/fuel/transactions' }] },
   { label: 'Driver Payroll', to: '/payroll', icon: <PayrollIcon /> },
-  { label: 'Payments', icon: <PayrollIcon />, children: [{ label: 'Advanced Payments', to: '/payments/advanced' }, { label: 'Settlement Payments', to: '/payments' }] },
+  { label: 'Payments', icon: <PaymentsIcon />, children: [{ label: 'Advanced Payments', to: '/payments/advanced' }, { label: 'Settlement Payments', to: '/payments' }] },
   { label: 'Accounting', icon: <AccountingIcon />, children: [
+      { label: 'Overview', to: '/accounting' }, { label: 'Invoices', to: '/accounting/invoices' },
       { label: 'Expenses', to: '/accounting/expenses' }, { label: 'Payments', to: '/accounting/payments' },
-      { label: 'Overview', to: '/accounting' }, { label: 'Invoices', to: '/accounting/invoices' }
     ] },
   { label: 'Reports', icon: <ReportsIcon />, children: [
     { label: 'Emails', to: '/reports/emails' },
@@ -33,21 +35,45 @@ const NAV: NavItem[] = [
     { label: 'Gross Profit per Load', to: '/reports/gross-profit-per-load' },
     { label: 'Profit & Loss', to: '/reports/profit-loss' },
   ]},
-  { label: 'Tolls', icon: <TollsIcon />, children: [{ label: 'Transactions', to: '/tolls' }] },
-  { label: 'Safety', icon: <SafetyIcon />, children: [{ label: 'Incidents', to: '/safety' }] },
-  { label: 'IFTA', icon: <IFTAIcon />, children: [{ label: 'Reports', to: '/ifta' }] },
-  { label: 'Users', to: '/users', icon: <UsersIcon /> },
-  { label: 'Data Library', icon: <DataLibIcon />, children: [{ label: 'Locations', to: '/data-library' }] },
-  { label: 'Docs Exchange', to: '/docs', icon: <DocsIcon /> },
+  { label: 'More', icon: <MoreIcon />, children: [
+    { label: 'Tolls', to: '/tolls' },
+    { label: 'Safety', to: '/safety' },
+    { label: 'IFTA', to: '/ifta' },
+    { label: 'Users', to: '/users' },
+    { label: 'Data Library', to: '/data-library' },
+    { label: 'Docs Exchange', to: '/docs' },
+  ] },
 ]
 
+const SIDEBAR_STORAGE_KEY = 'karvan.sidebar.collapsed'
+const EXPANDED_W = 188
+const COLLAPSED_W = 52
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
+
 export default function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const isMobile = useIsMobile()
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1')
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
   const [showUserMenu, setShowUserMenu] = useState(false)
   const navigate = useNavigate()
   const userMenuRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
+  const { user, logout } = useAuth()
+  const displayName = user?.name || 'User'
+  const initial = displayName.charAt(0).toUpperCase()
 
   useEffect(() => {
     function handle(e: MouseEvent) {
@@ -59,250 +85,288 @@ export default function AppLayout() {
     return () => document.removeEventListener('mousedown', handle)
   }, [])
 
+  // Auto-open the group that owns the current route
+  useEffect(() => {
+    const activeParent = NAV.find(item =>
+      item.children?.some(c => location.pathname === c.to || location.pathname.startsWith(c.to + '/'))
+    )
+    if (activeParent) {
+      setOpenMenus(p => ({ ...p, [activeParent.label]: true }))
+    }
+  }, [location.pathname])
+
+  // Close the mobile drawer on navigation
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  // Close the mobile drawer with Escape
+  useEffect(() => {
+    if (!mobileOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [mobileOpen])
+
+  const toggleSidebar = useCallback(() => {
+    if (isMobile) {
+      setMobileOpen(v => !v)
+    } else {
+      setCollapsed(v => {
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, v ? '0' : '1')
+        return !v
+      })
+    }
+  }, [isMobile])
+
   const toggleMenu = (label: string) => setOpenMenus(p => ({ ...p, [label]: !p[label] }))
 
+  const isChildActive = (to: string) => location.pathname === to || location.pathname.startsWith(to + '/')
   const isActive = (item: NavItem) => {
-    if (item.to) return location.pathname === item.to || location.pathname.startsWith(item.to + '/')
-    return item.children?.some(c => location.pathname === c.to || location.pathname.startsWith(c.to + '/'))
+    if (item.to) return isChildActive(item.to)
+    return item.children?.some(c => isChildActive(c.to)) ?? false
   }
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
+  // Expanded on mobile drawer; collapsible rail on desktop
+  const expanded = isMobile ? true : !collapsed
+  const sidebarWidth = expanded ? EXPANDED_W : COLLAPSED_W
 
-      {/* ── Sidebar ── */}
-      <aside
-        style={{
-          width: sidebarOpen ? 216 : 0,
-          background: 'linear-gradient(180deg, #0f172a 0%, #111827 52%, #0b1120 100%)',
-          transition: 'width 0.25s ease',
-          flexShrink: 0,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-        }}
-      >
-        {/* Logo */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)',
-          flexShrink: 0,
-        }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 8,
-            background: 'linear-gradient(135deg, #2563eb, #0ea5e9)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <svg style={{ width: 18, height: 18, color: '#fff' }} fill="currentColor" viewBox="0 0 24 24">
-              <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 008 20C19 20 22 3 22 3c-1 2-8 2-13 6 0 0 3-2 8-2 0 0-5 2-5 7 0 0 1.5-2 5-2-5 3-4.5 9-4.5 9"/>
-            </svg>
-          </div>
-          <div style={{ overflow: 'hidden' }}>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, lineHeight: 1.2, whiteSpace: 'nowrap', letterSpacing: 0 }}>uzLoads</div>
-            <div style={{ color: 'rgba(255,255,255,0.48)', fontSize: 11, lineHeight: 1.2, whiteSpace: 'nowrap' }}>Fleet operations</div>
-          </div>
+  const handleGroupClick = (item: NavItem) => {
+    if (!expanded) {
+      // Collapsed rail: expand and reveal this group
+      setCollapsed(false)
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, '0')
+      setOpenMenus(p => ({ ...p, [item.label]: true }))
+      return
+    }
+    toggleMenu(item.label)
+  }
+
+  // Labels stay mounted and fade via opacity, so nothing snaps while the width animates.
+  const labelCls = `whitespace-nowrap transition-opacity duration-200 ${expanded ? 'opacity-100' : 'opacity-0'}`
+
+  const sidebarContent = (
+    <>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-600/[0.12] to-transparent" />
+
+      {/* Brand — logo keeps a fixed position in both states */}
+      <div className="relative flex h-[52px] shrink-0 items-center border-b border-white/[0.08] px-[13px]">
+        <div className="shrink-0" style={{ width: 26, height: 26 }}>
+          <img src={karvanLogo} alt="Karvan" className="h-full w-full object-contain" />
         </div>
+        <div className={`ml-2 min-w-0 ${labelCls} ${expanded ? '' : 'pointer-events-none'}`}>
+          <div className="text-[13px] font-bold leading-tight tracking-tight text-white">Karvan</div>
+          <div className="text-[9.5px] font-medium leading-tight text-slate-400">Fleet operations</div>
+        </div>
+        {isMobile && (
+          <button
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+            className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        )}
+      </div>
 
-        {/* Nav */}
-        <nav className="scrollbar-thin" style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 14px' }}>
-          {NAV.map(item => {
-            const active = isActive(item)
-            const open = openMenus[item.label]
+      {/* Navigation — icons never move; only labels fade */}
+      <nav className="scrollbar-thin relative flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-1.5 py-2.5" aria-label="Main navigation">
+        {NAV.map(item => {
+          const active = isActive(item)
+          const open = !!openMenus[item.label]
+          const iconWrap = `grid h-6 w-6 shrink-0 place-items-center transition-colors duration-150 [&>svg]:h-[10px] [&>svg]:w-[10px] ${
+            active ? 'text-white' : 'text-slate-400 group-hover:text-slate-100'
+          }`
 
-            if (!item.children) {
-              return (
-                <NavLink
-                  key={item.label}
-                  to={item.to!}
-                  title={item.label}
-                  style={({ isActive: ia }) => ({
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '8px 10px',
-                    borderRadius: 7,
-                    marginBottom: 2,
-                    fontSize: 12, fontWeight: ia ? 700 : 500,
-                    color: ia ? '#fff' : 'rgba(255,255,255,0.65)',
-                    background: ia ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : 'transparent',
-                    boxShadow: ia ? '0 8px 18px rgba(37,99,235,0.22)' : 'none',
-                    textDecoration: 'none',
-                    whiteSpace: 'nowrap', overflow: 'hidden',
-                    transition: 'background 0.15s, color 0.15s',
-                  })}
-                >
-                  <span style={{ width: 16, height: 16, flexShrink: 0, display: 'flex' }}>{item.icon}</span>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
-                </NavLink>
-              )
-            }
-
+          if (!item.children) {
             return (
-              <div key={item.label}>
-                <button
-                  onClick={() => toggleMenu(item.label)}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px 10px',
-                    borderRadius: 7,
-                    marginBottom: 2,
-                    fontSize: 12, fontWeight: active ? 700 : 500,
-                    color: active ? '#fff' : 'rgba(255,255,255,0.65)',
-                    background: active ? 'rgba(37,99,235,0.14)' : 'transparent', border: 'none', cursor: 'pointer',
-                    overflow: 'hidden',
-                    transition: 'color 0.15s',
-                  }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <span style={{ width: 16, height: 16, flexShrink: 0, display: 'flex' }}>{item.icon}</span>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
-                  </span>
-                  <svg
-                    style={{
-                      width: 12, height: 12, flexShrink: 0,
-                      color: 'rgba(255,255,255,0.35)',
-                      transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s',
-                    }}
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
-                  </svg>
-                </button>
+              <NavLink
+                key={item.label}
+                to={item.to!}
+                title={expanded ? undefined : item.label}
+                className={({ isActive: ia }) =>
+                  `group relative flex h-8 items-center rounded-md px-2 text-[9.5px] transition-colors duration-150 ${
+                    ia
+                      ? 'bg-brand-600 font-semibold text-white shadow-sm shadow-blue-950/30'
+                      : 'font-medium text-slate-300 hover:bg-white/[0.07] hover:text-white'
+                  }`
+                }
+              >
+                {!expanded && active && (
+                  <span className="absolute -left-1.5 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-full bg-blue-400" />
+                )}
+                <span className={iconWrap}>{item.icon}</span>
+                <span className={`ml-2 min-w-0 truncate ${labelCls}`}>{item.label}</span>
+              </NavLink>
+            )
+          }
 
-                {open && (
-                  <div style={{ background: 'rgba(0,0,0,0.18)', borderRadius: 7, margin: '0 0 4px' }}>
+          return (
+            <div key={item.label}>
+              <button
+                onClick={() => handleGroupClick(item)}
+                title={expanded ? undefined : item.label}
+                aria-expanded={open}
+                className={`group relative flex h-8 w-full items-center rounded-md px-2 text-[9.5px] transition-colors duration-150 ${
+                  active
+                    ? 'bg-white/[0.08] font-semibold text-white'
+                    : 'font-medium text-slate-300 hover:bg-white/[0.07] hover:text-white'
+                }`}
+              >
+                {!expanded && active && (
+                  <span className="absolute -left-1.5 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-full bg-blue-400" />
+                )}
+                <span className={iconWrap}>{item.icon}</span>
+                <span className={`ml-2 min-w-0 flex-1 truncate text-left ${labelCls}`}>{item.label}</span>
+                <svg
+                  className={`h-3 w-3 shrink-0 text-slate-500 transition-[transform,opacity] duration-200 ease-out ${open ? 'rotate-180' : ''} ${expanded ? 'opacity-100' : 'opacity-0'}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+
+              {/* Smoothly animated submenu; folds shut when the rail collapses */}
+              <div className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${open && expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                <div className="overflow-hidden">
+                  <div className="relative ml-5 mt-0.5 space-y-px border-l border-white/[0.08] py-0.5 pl-2.5 pr-1">
                     {item.children.map(child => (
                       <NavLink
                         key={child.to}
                         to={child.to}
-                        style={({ isActive: ia }) => ({
-                          display: 'flex', alignItems: 'center',
-                          paddingLeft: 38, paddingRight: 10, paddingTop: 6, paddingBottom: 6,
-                          fontSize: 11,
-                          color: ia ? '#bfdbfe' : 'rgba(255,255,255,0.52)',
-                          fontWeight: ia ? 600 : 400,
-                          textDecoration: 'none',
-                          whiteSpace: 'nowrap', overflow: 'hidden',
-                          transition: 'color 0.15s',
-                        })}
+                        tabIndex={open && expanded ? 0 : -1}
+                        className={({ isActive: ia }) =>
+                          `relative flex h-7 items-center rounded-md px-2 text-[9px] transition-colors duration-150 ${
+                            ia
+                              ? 'bg-blue-500/[0.15] font-semibold text-blue-200'
+                              : 'font-medium text-slate-400 hover:bg-white/[0.05] hover:text-slate-100'
+                          }`
+                        }
                       >
-                        {child.label}
+                        {isChildActive(child.to) && (
+                          <span className="absolute -left-[11px] top-1/2 h-3.5 w-[2px] -translate-y-1/2 rounded-full bg-blue-400" />
+                        )}
+                        <span className="truncate">{child.label}</span>
                       </NavLink>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
-            )
-          })}
+            </div>
+          )
+        })}
+      </nav>
 
-          {/* Live Support */}
-          {/* <div style={{ padding: '8px 10px', marginTop: 4 }}>
-            <button style={{
-              width: '100%', padding: '8px 0',
-              background: 'transparent',
-              border: '1.5px solid rgba(255,255,255,0.2)',
-              borderRadius: 6, color: '#fff',
-              fontSize: 12, fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'border-color 0.15s',
-            }}>
-              Live Support
-            </button>
-          </div> */}
-        </nav>
-      </aside>
+    </>
+  )
 
-      {/* ── Main area ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+  return (
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
 
-        {/* Topbar */}
-        <header style={{
-          height: 52, background: '#fff',
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 18px', flexShrink: 0, zIndex: 20,
-          borderBottom: '1px solid #e5e7eb',
-          boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
-        }}>
-          {/* Hamburger */}
-          <button
-            onClick={() => setSidebarOpen(v => !v)}
-            style={{
-              color: '#475569', background: '#f8fafc',
-              border: 'none', cursor: 'pointer', padding: 6, borderRadius: 4,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
+      {/* Desktop sidebar */}
+      {!isMobile && (
+        <aside
+          className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-slate-200/10 bg-[#07111f] text-white shadow-lg shadow-slate-950/10 transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          style={{ width: sidebarWidth }}
+        >
+          {sidebarContent}
+        </aside>
+      )}
+
+      {/* Mobile drawer + backdrop */}
+      {isMobile && (
+        <>
+          <div
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+            className={`fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[2px] transition-opacity duration-300 ${
+              mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+          />
+          <aside
+            className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden bg-[#07111f] text-white shadow-2xl shadow-slate-950/40 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+              mobileOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+            style={{ width: Math.min(EXPANDED_W + 32, 300) }}
+            aria-hidden={!mobileOpen}
           >
-            <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
-            </svg>
+            {sidebarContent}
+          </aside>
+        </>
+      )}
+
+      {/* Main area */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+
+        <header className="z-20 flex h-[52px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-4">
+          <button
+            onClick={toggleSidebar}
+            title={isMobile ? 'Open menu' : expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-label={isMobile ? 'Open menu' : 'Toggle sidebar'}
+            className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
+          >
+            {isMobile ? (
+              <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+              </svg>
+            ) : (
+              <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <rect x="3" y="4" width="18" height="16" rx="2"/>
+                <path strokeLinecap="round" d="M9 4v16"/>
+              </svg>
+            )}
           </button>
 
           {/* User menu */}
-          <div style={{ position: 'relative' }} ref={userMenuRef}>
+          <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setShowUserMenu(v => !v)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: '#f8fafc', border: '1px solid #e5e7eb', cursor: 'pointer',
-                borderRadius: 999, padding: '3px 4px 3px 10px',
-              }}
+              aria-expanded={showUserMenu}
+              aria-haspopup="menu"
+              className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-[3px] pl-2.5 pr-1 transition-colors hover:border-slate-300 hover:bg-slate-100"
             >
-              <span style={{ color: '#334155', fontSize: 12, fontWeight: 600 }}>
-                Asilbek Karimov
+              <span className="hidden text-xs font-semibold text-slate-700 sm:block">
+                {displayName}
               </span>
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%',
-                overflow: 'hidden', flexShrink: 0,
-                background: '#2563eb',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>A</span>
-              </div>
+              <span className="grid h-[30px] w-[30px] shrink-0 place-items-center overflow-hidden rounded-full bg-brand-600">
+                <span className="text-xs font-bold text-white">{initial}</span>
+              </span>
             </button>
 
             {showUserMenu && (
-              <div style={{
-                position: 'absolute', right: 0, top: '100%', marginTop: 8,
-                width: 200, background: '#fff',
-                borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                border: '1px solid #e5e7eb', overflow: 'hidden', zIndex: 50,
-              }}>
-                <div style={{ padding: '10px 16px', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>Account</span>
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-50 mt-2 w-52 origin-top-right overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-950/10"
+              >
+                <div className="border-b border-slate-100 px-4 py-2.5">
+                  <div className="text-xs font-bold text-slate-900">{displayName}</div>
+                  <div className="truncate text-[11px] text-slate-500">{user?.email || 'Karvan · Fleet operations'}</div>
                 </div>
-                {[
-                  { label: 'Billing', icon: <BillingIcon /> },
-                  { label: 'My Company', icon: <CompanyIcon />, to: '/my-company' },
-                  { label: 'My Profile', icon: <ProfileIcon /> },
-                  { label: 'Settings', icon: <SettingsMenuIcon /> },
-                  { label: 'Logout', icon: <LogoutIcon /> },
-                ].map(item => (
+                <button
+                  role="menuitem"
+                  onClick={() => { setShowUserMenu(false); navigate('/my-company') }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  <span className="flex h-4 w-4 text-slate-400"><CompanyIcon /></span>
+                  My Company
+                </button>
+                <div className="border-t border-slate-100">
                   <button
-                    key={item.label}
-                    onClick={() => { setShowUserMenu(false); if ((item as any).to) navigate((item as any).to) }}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '9px 16px', fontSize: 12, color: '#374151',
-                      background: 'transparent', border: 'none',
-                      borderBottom: '1px solid #f9fafb',
-                      cursor: 'pointer', textAlign: 'left',
-                      transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    role="menuitem"
+                    onClick={() => { setShowUserMenu(false); logout(); navigate('/login', { replace: true }) }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
                   >
-                    <span style={{ width: 16, height: 16, color: '#6b7280', display: 'flex' }}>{item.icon}</span>
-                    {item.label}
+                    <span className="flex h-4 w-4">{<LogoutIcon />}</span>
+                    Logout
                   </button>
-                ))}
+                </div>
               </div>
             )}
           </div>
         </header>
 
         {/* Page content */}
-        <main style={{ flex: 1, overflow: 'hidden', background: '#f8fafc', padding: 12 }}>
+        <main className="flex-1 overflow-hidden bg-slate-50 p-2 sm:p-3">
           <Outlet />
         </main>
       </div>
@@ -311,24 +375,17 @@ export default function AppLayout() {
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
-function GridIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> }
-function DispatchIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg> }
-function LoadsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zm10 0a2 2 0 11-4 0 2 2 0 014 0zM3 5h11l3 5 2 1v4h-2m-6 0H5"/></svg> }
-function DriversIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg> }
-function PartnersIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg> }
-function EquipIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><circle cx="12" cy="12" r="3"/><path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> }
-function FuelIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h12v13a2 2 0 01-2 2H5a2 2 0 01-2-2V3zm9 0v6h5l1 1v4a1 1 0 01-1 1h-1"/></svg> }
-function PayrollIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg> }
-function AccountingIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg> }
-function ReportsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg> }
-function TollsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><circle cx="12" cy="12" r="9"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6M12 9v6"/></svg> }
-function SafetyIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg> }
-function IFTAIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> }
-function UsersIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg> }
-function DataLibIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><ellipse cx="12" cy="5" rx="9" ry="3"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path strokeLinecap="round" strokeLinejoin="round" d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> }
-function DocsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: '100%', height: '100%' }}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> }
-function BillingIcon() { return <svg style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> }
+function DashboardIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> }
+function DispatchIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></svg> }
+function LoadsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><path d="M14 18V6a2 2 0 00-2-2H4a2 2 0 00-2 2v11a1 1 0 001 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 001-1v-3.65a1 1 0 00-.22-.62l-3.48-4.35A1 1 0 0017.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg> }
+function DriversIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><path d="M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> }
+function PartnersIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> }
+function EquipIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><rect x="2" y="6" width="14" height="9" rx="1.5"/><circle cx="7" cy="18" r="1.8"/><circle cx="13" cy="18" r="1.8"/><path d="M16 11h6"/></svg> }
+function FuelIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><path d="M3 22h12"/><path d="M4 9h10"/><path d="M14 22V4a2 2 0 00-2-2H6a2 2 0 00-2 2v18"/><path d="M14 13h2a2 2 0 012 2v2a2 2 0 002 2 2 2 0 002-2V9.83a2 2 0 00-.59-1.42L18 5"/></svg> }
+function PayrollIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><path d="M19 7V4a1 1 0 00-1-1H5a2 2 0 000 4h15a1 1 0 011 1v4h-3a2 2 0 000 4h3a1 1 0 001-1v-2"/><path d="M3 5v14a2 2 0 002 2h15a1 1 0 001-1v-4"/></svg> }
+function PaymentsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg> }
+function AccountingIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8"/><path d="M16 14v4"/><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/></svg> }
+function ReportsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><path d="M3 3v16a2 2 0 002 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> }
+function MoreIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> }
 function CompanyIcon() { return <svg style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg> }
-function ProfileIcon() { return <svg style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0M3 15h18"/></svg> }
-function SettingsMenuIcon() { return <svg style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3"/><path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> }
 function LogoutIcon() { return <svg style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg> }

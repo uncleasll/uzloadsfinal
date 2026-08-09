@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
+import karvanLogo from '@/assets/karvan-logo.png'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -28,14 +29,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-brand-600 rounded-xl flex items-center justify-center">
-              <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 008 20C19 20 22 3 22 3c-1 2-8 2-13 6 0 0 3-2 8-2 0 0-5 2-5 7 0 0 1.5-2 5-2-5 3-4.5 9-4.5 9"/>
-              </svg>
+            <div className="h-12 w-12 shrink-0">
+              <img src={karvanLogo} alt="Karvan" className="h-full w-full object-contain" />
             </div>
             <div className="text-left">
-              <div className="text-white font-bold text-2xl leading-tight">uzLoads</div>
-              <div className="text-white/40 text-xs uppercase tracking-widest">easy loads</div>
+              <div className="text-white font-bold text-2xl leading-tight">Karvan</div>
+              <div className="text-white/40 text-xs uppercase tracking-widest">karvan</div>
             </div>
           </div>
           <p className="text-white/40 text-sm">Transportation Management System</p>
@@ -77,7 +76,7 @@ export default function LoginPage() {
             <p className="text-xs text-gray-400 text-center mb-2">Quick login (demo)</p>
             <div className="space-y-1">
               {[
-                { label: 'Admin', email: 'admin@uzloads.com', pass: 'admin123' },
+                { label: 'Admin', email: 'admin@karvan.com', pass: 'admin123' },
                 { label: 'Asilbek Karimov', email: 'asilbekkarimov066@gmail.com', pass: 'Asilbek123' },
               ].map(c => (
                 <button key={c.email} onClick={() => { setEmail(c.email); setPassword(c.pass) }}
@@ -89,7 +88,7 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
-        <p className="text-center text-white/20 text-xs mt-5">&copy; 2026 uzLoads TMS</p>
+        <p className="text-center text-white/20 text-xs mt-5">&copy; 2026 Karvan TMS</p>
       </div>
     </div>
   )

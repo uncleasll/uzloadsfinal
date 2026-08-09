@@ -14,7 +14,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def _get_or_create(db: Session) -> CompanySettings:
     s = db.query(CompanySettings).first()
     if not s:
-        s = CompanySettings(name="My Company")
+        s = CompanySettings(name="Karvan")
         db.add(s)
         db.commit()
         db.refresh(s)

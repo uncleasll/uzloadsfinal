@@ -10,18 +10,6 @@ import toast from 'react-hot-toast'
 const ALL_STATUSES = ['New','Canceled','TONU','Dispatched','En Route','Picked-up','Delivered','Closed']
 const ALL_BILLING  = ['Pending','Canceled','BOL received','Invoiced','Sent to factoring','Funded','Paid']
 
-const REPORT_NAV = [
-  { label: 'Emails',                 to: '/reports/emails' },
-  { label: 'Total Revenue',          to: '/reports/total-revenue' },
-  { label: 'Rate per Mile',          to: '/reports/rate-per-mile' },
-  { label: 'Revenue by Dispatcher',  to: '/reports/revenue-by-dispatcher' },
-  { label: 'Payment Summary',        to: '/reports/payment-summary' },
-  { label: 'Expenses',               to: '/reports/expenses' },
-  { label: 'Gross Profit',           to: '/reports/gross-profit' },
-  { label: 'Gross Profit per Load',  to: '/reports/gross-profit-per-load' },
-  { label: 'Profit & Loss',          to: '/reports/profit-loss' },
-]
-
 // ─── Download helper ───────────────────────────────────────────────────────────
 function buildApiUrl(path: string, params: Record<string, unknown>): string {
   const base = (import.meta.env.VITE_API_BASE_URL || '') + '/api/v1/reports' + path
@@ -90,14 +78,27 @@ function ReportCard({
   pdfUrl: string
   xlsxUrl: string
 }) {
+  const exportBtn = 'inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700'
   return (
-    <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden mt-5">
-      <div className="flex justify-end gap-4 px-5 py-2.5 bg-white border-b border-gray-100">
-        <button onClick={() => downloadFile(pdfUrl)}  className="text-sm text-brand-600 hover:underline font-medium">PDF</button>
-        <button onClick={() => downloadFile(xlsxUrl)} className="text-sm text-brand-600 hover:underline font-medium">Excel</button>
-        <button onClick={() => emailReport(pdfUrl, xlsxUrl)} className="text-sm text-brand-600 hover:underline font-medium">Email</button>
+    <div className="mt-5 overflow-hidden rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-5 py-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Report results</span>
+        <div className="flex gap-1.5">
+          <button onClick={() => downloadFile(pdfUrl)} className={exportBtn}>
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            PDF
+          </button>
+          <button onClick={() => downloadFile(xlsxUrl)} className={exportBtn}>
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M10 3v18M14 3v18M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+            Excel
+          </button>
+          <button onClick={() => emailReport(pdfUrl, xlsxUrl)} className={exportBtn}>
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Email
+          </button>
+        </div>
       </div>
-      <div className="px-6 py-5 bg-white">
+      <div className="bg-white px-6 py-5 [&_.table-td]:py-1.5 [&_.table-td]:text-xs [&_.table-th]:py-2 [&_.table-th]:text-[10px]">
         {/* Company header */}
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -126,15 +127,17 @@ function ReportCard({
 // ─── Shared filter widgets ─────────────────────────────────────────────────────
 function RunSetButtons({ onRun, onReset, running }: { onRun:()=>void; onReset:()=>void; running:boolean }) {
   return (
-    <div className="flex gap-3 mt-5">
+    <div className="mt-5 flex gap-2">
       <button onClick={onRun} disabled={running}
-        className="inline-flex items-center gap-1.5 px-5 py-2 bg-brand-600 text-white text-sm font-medium rounded hover:bg-brand-700 disabled:opacity-60 transition-colors">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-4 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+        {running
+          ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-300 border-t-white" />
+          : <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
         {running ? 'Running...' : 'Run report'}
       </button>
       <button onClick={onReset}
-        className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded hover:bg-gray-900 transition-colors">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         Set to default
       </button>
     </div>
@@ -225,7 +228,7 @@ function TotalRevenue() {
 
   return (
     <div className="px-6 py-5">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Total Revenue Report</h1>
+      <h1 className="mb-5 text-xl font-bold tracking-tight text-slate-950">Total Revenue Report</h1>
       <div className="grid grid-cols-5 gap-5">
         <div className="space-y-4">
           <div><p className="text-xs font-semibold text-gray-600 mb-1">Period</p>
@@ -286,9 +289,12 @@ function TotalRevenue() {
             `Status: ${cfg.statuses.join(', ')}`,
             `Billing status: ${cfg.billing_statuses.join(', ')}`,
           ]} />
-          <div className="grid grid-cols-4 gap-3 mb-5">
-            {[{l:'Total Revenue',v:formatCurrency(summary.total_revenue||0)},{l:'Total Miles',v:(summary.total_miles||0).toLocaleString()+' mi'},{l:'Total Loads',v:String(summary.total_loads||0)},{l:'Rate/Mile',v:'$'+(summary.rate_per_mile||0).toFixed(2)+'/mi'}].map(s=>(
-              <div key={s.l} className="bg-gray-50 rounded p-3 border border-gray-200"><p className="text-xs text-gray-500 mb-0.5">{s.l}</p><p className="font-bold">{s.v}</p></div>
+          <div className="mb-5 grid grid-cols-2 gap-2 md:grid-cols-4">
+            {[{l:'Total Revenue',v:formatCurrency(summary.total_revenue||0),strong:true},{l:'Total Miles',v:(summary.total_miles||0).toLocaleString()+' mi'},{l:'Total Loads',v:String(summary.total_loads||0)},{l:'Rate/Mile',v:'$'+(summary.rate_per_mile||0).toFixed(2)+'/mi'}].map(s=>(
+              <div key={s.l} className={`flex h-11 items-center justify-between gap-2 rounded-lg border px-3 shadow-sm ${s.strong ? 'border-blue-100 bg-blue-50' : 'border-slate-200 bg-white'}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wide ${s.strong ? 'text-blue-500' : 'text-slate-400'}`}>{s.l}</span>
+                <span className={`whitespace-nowrap text-sm font-bold ${s.strong ? 'text-blue-800' : 'text-slate-800'}`}>{s.v}</span>
+              </div>
             ))}
           </div>
           <div className="overflow-x-auto">
@@ -376,7 +382,7 @@ function RatePerMile() {
 
   return (
     <div className="px-6 py-5">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Rate per Mile Report</h1>
+      <h1 className="mb-5 text-xl font-bold tracking-tight text-slate-950">Rate per Mile Report</h1>
       <div className="grid grid-cols-4 gap-5">
         <div className="space-y-4">
           <div><p className="text-xs font-semibold text-gray-600 mb-1">Period</p>
@@ -471,7 +477,7 @@ function RatePerMile() {
               </tbody>
               {rows.length>0&&<tfoot><tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-xs">
                 <td colSpan={7} className="table-td text-right">Total:</td>
-                <td className="table-td text-right">0</td>
+                <td className="table-td text-right">{rows.reduce((s,r)=>s+(r.empty_miles as number||0),0).toLocaleString()}</td>
                 <td className="table-td text-right">{rows.reduce((s,r)=>s+(r.loaded_miles as number||0),0).toLocaleString()}</td>
                 <td className="table-td text-right">{(summary.total_miles||0).toLocaleString()}</td>
                 <td className="table-td text-right">{formatCurrency(summary.total_revenue||0)}</td>
@@ -501,7 +507,7 @@ function RevenueByDispatcher() {
   const summary=(results?.summary as Record<string,number>)||{}
   return (
     <div className="px-6 py-5">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Revenue by Dispatcher Report</h1>
+      <h1 className="mb-5 text-xl font-bold tracking-tight text-slate-950">Revenue by Dispatcher Report</h1>
       <div className="grid grid-cols-3 gap-5 items-start">
         <div className="space-y-3">
           <div><p className="text-xs font-semibold text-gray-600 mb-1">Period</p>
@@ -558,7 +564,7 @@ function PaymentSummary() {
   const rows=(results?.rows as Record<string,unknown>[])||[]; const summary=(results?.summary as Record<string,number>)||{}
   return (
     <div className="px-6 py-5">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Driver Payments Summary</h1>
+      <h1 className="mb-5 text-xl font-bold tracking-tight text-slate-950">Driver Payments Summary</h1>
       <div className="flex items-end gap-5"><div><p className="text-xs font-semibold text-gray-600 mb-1">Period</p>
         <select value={period} onChange={e=>setPeriod(e.target.value)} className="select-base text-sm w-48">
           {PERIOD_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
@@ -600,7 +606,7 @@ function Expenses() {
   const rows=(results?.rows as Record<string,unknown>[])||[]; const summary=(results?.summary as Record<string,number>)||{}
   return (
     <div className="px-6 py-5">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Expenses Report</h1>
+      <h1 className="mb-5 text-xl font-bold tracking-tight text-slate-950">Expenses Report</h1>
       <div className="flex items-end gap-5">
         <div><p className="text-xs font-semibold text-gray-600 mb-1">Period</p><select value={cfg.period} onChange={e=>setCfg(c=>({...c,period:e.target.value}))} className="select-base text-sm w-48">{PERIOD_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
         <div><p className="text-xs font-semibold text-gray-600 mb-1">Category</p><select value={cfg.category} onChange={e=>setCfg(c=>({...c,category:e.target.value}))} className="select-base text-sm w-52">{CATS.map(c=><option key={c}>{c}</option>)}</select></div>
@@ -644,7 +650,7 @@ function GrossProfit() {
   const driver=drivers.find(d=>String(d.id)===cfg.driver_id); const truck=trucks.find(t=>String(t.id)===cfg.truck_id)
   return (
     <div className="px-6 py-5">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Gross Profit Report</h1>
+      <h1 className="mb-5 text-xl font-bold tracking-tight text-slate-950">Gross Profit Report</h1>
       <div className="grid grid-cols-4 gap-5 items-start">
         <div><p className="text-xs font-semibold text-gray-600 mb-1">Period</p><select value={cfg.period} onChange={e=>setCfg(c=>({...c,period:e.target.value}))} className="select-base text-sm">{PERIOD_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
           <div className="mt-2"><Radios name="gp_dt" opts={[{v:'pickup',l:'by pickup date'},{v:'delivery',l:'by delivery date'}]} val={cfg.date_type} set={v=>setCfg(c=>({...c,date_type:v}))} /></div>
@@ -685,7 +691,7 @@ function GrossProfitPerLoad() {
   const driver=drivers.find(d=>String(d.id)===cfg.driver_id); const truck=trucks.find(t=>String(t.id)===cfg.truck_id)
   return (
     <div className="px-6 py-5">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Gross Profit per Load Report</h1>
+      <h1 className="mb-5 text-xl font-bold tracking-tight text-slate-950">Gross Profit per Load Report</h1>
       <div className="grid grid-cols-4 gap-5 items-start">
         <div className="space-y-3"><div><p className="text-xs font-semibold text-gray-600 mb-1">Period</p><select value={cfg.period} onChange={e=>setCfg(c=>({...c,period:e.target.value}))} className="select-base text-xs">{PERIOD_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
           <Radios name="gppl_dt" opts={[{v:'pickup',l:'by pickup date'},{v:'delivery',l:'by delivery date'}]} val={cfg.date_type} set={v=>setCfg(c=>({...c,date_type:v}))} />
@@ -717,7 +723,7 @@ function GrossProfitPerLoad() {
                   </tr>
                 ))}
               </tbody>
-              {rows.length>0&&<tfoot><tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-xs"><td colSpan={6} className="table-td text-right">Total:</td><td className="table-td text-right">{rows.reduce((s,r)=>s+(r.total_miles as number||0),0)}</td><td className="table-td text-right">{formatCurrency(summary.total_revenue||0)}</td><td className="table-td text-right">$0.00</td><td className="table-td text-right">$0.00</td><td className="table-td text-right">{formatCurrency(summary.total_driver_pay||0)}</td><td className="table-td text-right">{formatCurrency(summary.total_gross_profit||0)}</td></tr></tfoot>}
+              {rows.length>0&&<tfoot><tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-xs"><td colSpan={6} className="table-td text-right">Total:</td><td className="table-td text-right">{rows.reduce((s,r)=>s+(r.total_miles as number||0),0)}</td><td className="table-td text-right">{formatCurrency(summary.total_revenue||0)}</td><td className="table-td text-right">{formatCurrency(rows.reduce((s,r)=>s+(r.qp_fee as number||0),0))}</td><td className="table-td text-right">{formatCurrency(rows.reduce((s,r)=>s+((r.lumpers as number||0)+(r.other_add_ded as number||0)),0))}</td><td className="table-td text-right">{formatCurrency(summary.total_driver_pay||0)}</td><td className="table-td text-right">{formatCurrency(summary.total_gross_profit||0)}</td></tr></tfoot>}
             </table>
           </div>
         </ReportCard>
@@ -739,7 +745,7 @@ function ProfitLoss() {
   const driver=drivers.find(d=>String(d.id)===cfg.driver_id); const truck=trucks.find(t=>String(t.id)===cfg.truck_id)
   return (
     <div className="px-6 py-5">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Profit & Loss Report</h1>
+      <h1 className="mb-5 text-xl font-bold tracking-tight text-slate-950">Profit & Loss Report</h1>
       <div className="grid grid-cols-4 gap-5 items-start">
         <div><p className="text-xs font-semibold text-gray-600 mb-1">Period</p><select value={cfg.period} onChange={e=>setCfg(c=>({...c,period:e.target.value}))} className="select-base text-sm">{PERIOD_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select><div className="mt-2"><Radios name="pl_dt" opts={[{v:'pickup',l:'by pickup date'},{v:'delivery',l:'by delivery date'}]} val={cfg.date_type} set={v=>setCfg(c=>({...c,date_type:v}))} /></div></div>
         <div><p className="text-xs font-semibold text-gray-600 mb-1">Driver</p><select value={cfg.driver_id} onChange={e=>setCfg(c=>({...c,driver_id:e.target.value}))} className="select-base text-sm"><option value=""></option>{drivers.map(d=><option key={d.id} value={d.id}>{d.name} [{d.driver_type}]</option>)}</select></div>
@@ -773,16 +779,23 @@ function EmailReports() {
     ['Profit & Loss', 'profit-loss'],
   ]
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold text-gray-900 mb-4">Email Reports</h1>
-      <div className="border border-gray-200 rounded bg-white divide-y divide-gray-100 max-w-2xl">
+    <div className="px-6 py-5">
+      <h1 className="mb-1 text-xl font-bold tracking-tight text-slate-950">Email Reports</h1>
+      <p className="mb-4 text-[11px] font-medium text-slate-400">Export any report as PDF or Excel and send it through your email client</p>
+      <div className="max-w-2xl divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         {templates.map(([label, path]) => (
-          <div key={path} className="flex items-center justify-between px-4 py-3">
-            <div>
-              <div className="text-sm font-semibold text-gray-900">{label}</div>
-              <div className="text-xs text-gray-500">Open report, export PDF/XLSX, then attach it through your email client.</div>
+          <div key={path} className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-slate-50/60">
+            <div className="flex items-center gap-3">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-600">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </span>
+              <div>
+                <div className="text-xs font-bold text-slate-800">{label}</div>
+                <div className="text-[10px] text-slate-400">Open report, export PDF/XLSX, then attach it through your email client.</div>
+              </div>
             </div>
-            <NavLink to={`../${path}`} className="px-3 py-1.5 text-sm rounded bg-brand-600 text-white hover:bg-brand-700">
+            <NavLink to={`../${path}`}
+              className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
               Open
             </NavLink>
           </div>
@@ -800,21 +813,11 @@ export default function ReportsPage() {
     window.addEventListener('reports:open-load', handler)
     return () => window.removeEventListener('reports:open-load', handler)
   }, [])
+  // Navigation between reports lives in the app sidebar (Reports submenu) —
+  // no inner nav here to avoid duplicate menus.
   return (
-    <div className="flex h-full overflow-hidden">
-      <aside className="w-52 flex-shrink-0 bg-gray-50 border-r border-gray-200 overflow-y-auto">
-        <nav className="py-2">
-          {REPORT_NAV.map(item => (
-            <NavLink key={item.to} to={item.to}
-              className={({ isActive }) =>
-                `block px-4 py-2 text-sm transition-colors ${isActive ? 'text-brand-600 font-semibold bg-brand-50 border-r-2 border-brand-600' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
-              }>
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
-      <div className="flex-1 overflow-auto">
+    <div className="flex h-full min-h-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+      <div className="flex-1 overflow-auto bg-white">
         <Routes>
           <Route index element={<Navigate to="total-revenue" replace />} />
           <Route path="total-revenue" element={<TotalRevenue />} />

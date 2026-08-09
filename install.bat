@@ -1,6 +1,6 @@
 @echo off
 echo =========================================
-echo   ezLoads TMS - Production Installer
+echo   Karvan TMS - Production Installer
 echo =========================================
 echo.
 

@@ -38,7 +38,7 @@ from app.db.session import SessionLocal
 def _get_company_info() -> dict:
     """
     Pull the latest company settings from the database so every generated
-    report / export uses the exact values saved on the "My Company" page.
+    report / export uses the exact values saved on the "Karvan" page.
     Returns a dict with keys: name, email, phone, address.
     """
     db = SessionLocal()
@@ -49,7 +49,7 @@ def _get_company_info() -> dict:
 
     return {
         **c,
-        "name": c.get("name") or "My Company",
+        "name": c.get("name") or "Karvan",
         "address": company_address(c),
     }
 
@@ -65,7 +65,7 @@ def _logo_flowable(company: dict, fallback_style, max_w=1.45 * inch, max_h=0.55 
             return img
         except Exception:
             pass
-    return Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", fallback_style)
+    return Paragraph(f"<b>{company.get('name') or 'Karvan'}</b>", fallback_style)
 
 
 # ── Colors ────────────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ def _pdf_doc(buffer, landscape_mode=False):
 def _header_table(story, report_title: str, meta_lines: List[str]):
     """Build the company header + report title + meta block matching sample PDF."""
 
-    # Pull live company settings from DB ("My Company" page)
+    # Pull live company settings from DB ("Karvan" page)
     company = _get_company_info()
 
     logo_style = ParagraphStyle("logo", fontSize=9, leading=11, textColor=BLACK)
@@ -266,7 +266,7 @@ def _xlsx_workbook(report_title: str, meta_lines: List[str], headers: List[str],
 
     row_num = 1
 
-    # Pull live company settings from DB ("My Company" page)
+    # Pull live company settings from DB ("Karvan" page)
     company = _get_company_info()
 
     # Company header

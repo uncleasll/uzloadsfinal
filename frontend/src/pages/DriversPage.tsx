@@ -17,6 +17,39 @@ const STATES = [
   'VA','WA','WV','WI','WY',
 ]
 const PAGE_SIZES = [10, 25, 50, 100]
+
+const HIDDEN_COLS_KEY = 'karvan.drivers.hiddenCols'
+
+const DRIVER_COLUMN_DEFS: { key: string; label: string; sortable?: boolean; width: string }[] = [
+  { key: 'name',     label: 'NAME',       sortable: true, width: '15%' },
+  { key: 'type',     label: 'TYPE',       sortable: true, width: '4%' },
+  { key: 'status',   label: 'STATUS',     sortable: true, width: '7%' },
+  { key: 'hire',     label: 'HIRE DATE',  sortable: true, width: '6%' },
+  { key: 'term',     label: 'TERM DATE',  sortable: true, width: '6%' },
+  { key: 'phone',    label: 'PHONE',      sortable: true, width: '8%' },
+  { key: 'email',    label: 'EMAIL',      sortable: true, width: '13%' },
+  { key: 'truck',    label: 'TRUCK',      sortable: true, width: '5%' },
+  { key: 'trailer',  label: 'TRAILER',    sortable: true, width: '5%' },
+  { key: 'payable',  label: 'PAYABLE TO', sortable: true, width: '10%' },
+  { key: 'warnings', label: 'WARNINGS',   width: '9%' },
+  { key: 'app',      label: 'DRIVER APP', width: '6%' },
+]
+
+function driverSortVal(d: ExtDriver, key: string): string {
+  switch (key) {
+    case 'name':    return d.name
+    case 'type':    return d.driver_type
+    case 'status':  return d.profile?.driver_status || ''
+    case 'hire':    return d.profile?.hire_date || ''
+    case 'term':    return d.profile?.termination_date || ''
+    case 'phone':   return d.phone || ''
+    case 'email':   return d.email || ''
+    case 'truck':   return d.profile?.truck_unit || ''
+    case 'trailer': return d.profile?.trailer_unit || ''
+    case 'payable': return d.profile?.payable_to || d.name
+    default:        return ''
+  }
+}
 const DOC_TYPES = [
   { key: 'application',             label: 'Application' },
   { key: 'cdl',                     label: 'CDL' },
@@ -28,6 +61,13 @@ const DOC_TYPES = [
   { key: 'other',                   label: 'Other' },
 ]
 const DRIVER_STATUSES = ['Applicant','Hired','On Leave','Terminated','Inactive']
+const DRIVER_STATUS_STYLE: Record<string, string> = {
+  'Applicant':  'bg-blue-100 text-blue-700',
+  'Hired':      'bg-emerald-100 text-emerald-700',
+  'On Leave':   'bg-amber-100 text-amber-700',
+  'Terminated': 'bg-red-100 text-red-600',
+  'Inactive':   'bg-slate-100 text-slate-500',
+}
 const PAY_TYPES = [
   { v: 'per_mile',           l: 'Per mile' },
   { v: 'freight_percentage', l: 'Freight %' },
@@ -358,6 +398,45 @@ function FileUploadLabel({ label, onFile }: { label: string; onFile: (f: File) =
   )
 }
 
+// ── ExportMenu ────────────────────────────────────────────────────────────────
+function ExportMenu({ onPdf, onExcel, onEmail }: { onPdf: () => void; onExcel: () => void; onEmail: () => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const item = (icon: React.ReactNode, label: string, sub: string, fn: () => void) => (
+    <button role="menuitem" onClick={() => { setOpen(false); fn() }}
+      className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-blue-50/60">
+      <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">{icon}</span>
+      <span>
+        <span className="block text-xs font-bold text-slate-800">{label}</span>
+        <span className="block text-[10px] text-slate-400">{sub}</span>
+      </span>
+    </button>
+  )
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(v => !v)} aria-haspopup="menu" aria-expanded={open}
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Export
+        <svg className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-30 mt-1.5 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl shadow-slate-950/10">
+          {item(<IcoPDF />, 'Export as PDF', 'Printable driver roster', onPdf)}
+          {item(<IcoXLS />, 'Export as Excel', 'Spreadsheet for further analysis', onExcel)}
+          {item(<IcoMail />, 'Email list', 'Send the roster by email', onEmail)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── DriverActionMenu ──────────────────────────────────────────────────────────
 function DriverActionMenu({ onEdit, onDelete }: { onEdit: ()=>void; onDelete: ()=>void }) {
   const [open, setOpen] = useState(false)
@@ -368,25 +447,25 @@ function DriverActionMenu({ onEdit, onDelete }: { onEdit: ()=>void; onDelete: ()
     return () => document.removeEventListener('mousedown', h)
   }, [])
   return (
-    <div ref={ref} className="relative flex items-center">
-      <button onClick={(e)=>{e.stopPropagation();onEdit()}}
-        className="inline-flex items-center justify-center w-7 h-7 rounded bg-[#2563eb] text-white hover:bg-[#4ab668] transition-colors"
-        title="Edit Driver">
-        <IcoEdit />
-      </button>
+    <div ref={ref} className="relative flex items-center justify-center">
       <button onClick={(e)=>{e.stopPropagation();setOpen(v=>!v)}}
-        className="inline-flex items-center justify-center w-5 h-7 text-gray-400 hover:text-gray-700">
-        <IcoDown />
+        title="Driver actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`inline-flex h-6 w-6 items-center justify-center rounded transition-colors ${open ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-700'}`}>
+        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[140px]">
-          <button onClick={(e)=>{e.stopPropagation();setOpen(false);onEdit()}}
-            className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-            <IcoEdit /> Edit Driver
+        <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
+          <button role="menuitem" onClick={(e)=>{e.stopPropagation();setOpen(false);onEdit()}}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            Edit Driver
           </button>
-          <button onClick={(e)=>{e.stopPropagation();setOpen(false);onDelete()}}
-            className="w-full text-left px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-100">
-            <IcoTrash /> Delete Driver
+          <button role="menuitem" onClick={(e)=>{e.stopPropagation();setOpen(false);onDelete()}}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Delete Driver
           </button>
         </div>
       )}
@@ -408,16 +487,69 @@ export default function DriversPage() {
   const [pageSize, setPageSize]     = useState(50)
   const [page, setPage]             = useState(1)
   const [total, setTotal]           = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
   const [showFilter, setShowFilter] = useState(false)
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [editDriver, setEditDriver] = useState<ExtDriver | 'new' | null>(null)
   const [showEmail, setShowEmail]   = useState(false)
 
+  // Sorting + column customization (matches LoadsPage behavior)
+  const [sortKey, setSortKey] = useState('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [showActionsMenu, setShowActionsMenu] = useState(false)
+  const [showCustomize, setShowCustomize] = useState(false)
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => {
+    try { return new Set<string>(JSON.parse(localStorage.getItem(HIDDEN_COLS_KEY) || '[]')) } catch { return new Set<string>() }
+  })
+  const actionsMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showActionsMenu) return
+    const handle = (e: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false)
+        setShowCustomize(false)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [showActionsMenu])
+
+  const visible = (key: string) => !hiddenCols.has(key)
+  const visibleDefs = DRIVER_COLUMN_DEFS.filter(c => visible(c.key))
+
+  const toggleCol = (key: string) => {
+    setHiddenCols(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      localStorage.setItem(HIDDEN_COLS_KEY, JSON.stringify([...next]))
+      return next
+    })
+  }
+
+  const sortBy = (key: string) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  const clearAllFilters = () => {
+    setSearch(''); setFilterType(''); setFilterStatus(''); setPage(1)
+  }
+
+  const applyDefaults = () => {
+    clearAllFilters()
+    setSortKey('name'); setSortDir('asc')
+    setPageSize(50); setShowInactive(false)
+    setHiddenCols(new Set())
+    localStorage.removeItem(HIDDEN_COLS_KEY)
+    toast.success('Driver list reset to default settings')
+  }
+
+  // Fetch the full filtered set once (backend caps at 200); sort/pagination happen client-side
   const load = useCallback(() => {
     setLoading(true)
-    const params: Record<string, unknown> = { page, page_size: pageSize }
+    const params: Record<string, unknown> = { page: 1, page_size: 200 }
     if (search) params.search = search
     if (!showInactive) params.is_active = true
     if (filterType)   params.driver_type   = filterType
@@ -432,52 +564,59 @@ export default function DriversPage() {
         const items = res.items || res
         setDrivers(items)
         setTotal(res.total ?? items.length)
-        setTotalPages(res.total_pages ?? Math.max(1, Math.ceil((res.total ?? items.length) / pageSize)))
         setTrucks(t); setTrailers(tr); setAllDrivers(d)
       })
       .catch(e => toast.error(e.message))
       .finally(() => setLoading(false))
-  }, [search, showInactive, filterType, filterStatus, page, pageSize])
+  }, [search, showInactive, filterType, filterStatus])
 
   useEffect(() => { load() }, [load])
 
-  const start = total === 0 ? 0 : (page - 1) * pageSize + 1
-  const end   = Math.min(page * pageSize, total)
+  const sortedAll = [...drivers].sort((a, b) => {
+    const cmp = driverSortVal(a, sortKey).localeCompare(driverSortVal(b, sortKey), undefined, { sensitivity: 'base' })
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+  const totalPages = Math.max(1, Math.ceil(drivers.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const sortedDrivers = sortedAll.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const start = drivers.length === 0 ? 0 : (safePage - 1) * pageSize + 1
+  const end   = Math.min(safePage * pageSize, drivers.length)
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 flex-shrink-0 bg-white">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-bold text-gray-900">Drivers</h1>
-          <div className="flex items-center gap-1 text-sm">
-            <button onClick={() => window.open(API_BASE + '/api/v1/drivers/export/pdf', '_blank')}
-              className="text-xs text-gray-500 hover:text-gray-800 hover:underline">Pdf</button>
-            <span className="text-gray-300">|</span>
-            <button onClick={() => window.open(API_BASE + '/api/v1/drivers/export/xlsx', '_blank')}
-              className="text-xs text-gray-500 hover:text-gray-800 hover:underline">Excel</button>
-            <span className="text-gray-300">|</span>
-            <button onClick={() => setShowEmail(true)}
-              className="text-xs text-gray-500 hover:text-gray-800 hover:underline">Email</button>
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-5 py-4">
+        <div className="mr-1 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-slate-950">Drivers</h1>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{total}</span>
           </div>
+          <p className="mt-0.5 text-[11px] font-medium text-slate-400">Manage driver profiles, documents and pay</p>
         </div>
-        <div className="flex items-center gap-2">
-         <div className="relative flex items-center">
-  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><IcoSearch /></span>
-  <input type="text" placeholder="Search" value={search}
-    onChange={e => { setSearch(e.target.value); setPage(1) }}
-    className="pl-8 pr-8 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-brand-500 w-48 transition-colors" />
-  <button onClick={() => setShowFilter(v => !v)}
-    className={'absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 ' + (showFilter ? 'text-brand-600' : '')}>
-    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 10h10M11 16h2"/>
-    </svg>
-  </button>
-</div>
-          <button onClick={() => setEditDriver('new')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#2563eb] text-white text-sm font-semibold rounded hover:bg-[#4ab668] transition-colors">
-            <IcoPlus /> New
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="relative min-w-[220px] flex-1 sm:flex-none">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><IcoSearch /></span>
+            <input type="search" placeholder="Search drivers..." value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1) }}
+              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-10 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64" />
+            <button onClick={() => setShowFilter(v => !v)}
+              title="Filters"
+              aria-expanded={showFilter}
+              className={`absolute right-1.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md transition-colors ${showFilter || filterType || filterStatus ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-slate-200/70 hover:text-slate-600'}`}>
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M7 12h10M10 18h4"/></svg>
+              {(Number(!!filterType) + Number(!!filterStatus)) > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[8px] font-bold text-white">{Number(!!filterType) + Number(!!filterStatus)}</span>
+              )}
+            </button>
+          </div>
+          <ExportMenu
+            onPdf={() => window.open(API_BASE + '/api/v1/drivers/export/pdf', '_blank')}
+            onExcel={() => window.open(API_BASE + '/api/v1/drivers/export/xlsx', '_blank')}
+            onEmail={() => setShowEmail(true)}
+          />
+          <button onClick={() => setEditDriver('new')} className="btn-primary h-9 rounded-lg px-4 text-xs">
+            <IcoPlus /> New driver
           </button>
         </div>
       </div>
@@ -485,55 +624,88 @@ export default function DriversPage() {
       {/* No separate filter bar — filters are in the table header gear dropdown */}
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
           <colgroup>
-            <col style={{width:'18%'}} /><col style={{width:'5%'}} /><col style={{width:'7%'}} />
-            <col style={{width:'7%'}} /><col style={{width:'7%'}} /><col style={{width:'8%'}} />
-            <col style={{width:'11%'}} /><col style={{width:'5%'}} /><col style={{width:'6%'}} />
-            <col style={{width:'10%'}} /><col style={{width:'8%'}} /><col style={{width:'5%'}} /><col style={{width:'3%'}} />
+            {visibleDefs.map(c => <col key={c.key} style={{ width: c.width }} />)}
+            <col style={{ width: 76 }} />
           </colgroup>
           <thead className="sticky top-0 z-10">
-            <tr className="bg-gray-50 border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-              <th className="px-4 py-2.5">Name <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Type <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Status <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Hire Date <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Term Date <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Phone <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Email <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Truck <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Trailer <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Payable To <span className="text-gray-300">↕</span></th>
-              <th className="px-4 py-2.5">Warnings</th>
-              <th className="px-4 py-2.5">Driver App</th>
-              <th className="px-4 py-2.5">
-                <button onClick={() => setShowFilter(v => !v)}
-                  className={'p-1 rounded transition-colors ' + (showFilter ? 'text-brand-600 bg-brand-50' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100')}>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
+            <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
+              {visibleDefs.map(h => (
+                <th key={h.key} className="px-1.5 py-2 text-left font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
+                  {h.sortable ? (
+                    <button onClick={() => sortBy(h.key)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
+                      {h.label}
+                      <span className={sortKey === h.key ? 'opacity-100 text-blue-600' : 'opacity-30'}>
+                        {sortKey === h.key && sortDir === 'asc' ? '↑' : '↓'}
+                      </span>
+                    </button>
+                  ) : h.label}
+                </th>
+              ))}
+              <th className="relative px-1.5 py-2 text-center font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
+                <div ref={actionsMenuRef} className="inline-flex items-center justify-center gap-1">
+                  ACTIONS
+                  <button
+                    onClick={() => { setShowActionsMenu(v => !v); setShowCustomize(false) }}
+                    title="Table settings"
+                    aria-expanded={showActionsMenu}
+                    aria-haspopup="menu"
+                    className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-700"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                  {showActionsMenu && (
+                    <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white text-left font-medium normal-case tracking-normal shadow-xl shadow-slate-950/10">
+                      {showCustomize ? (
+                        <div>
+                          <div className="border-b border-slate-100 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Customize driver list</div>
+                          <div className="max-h-56 overflow-auto py-1">
+                            {DRIVER_COLUMN_DEFS.map(c => (
+                              <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50">
+                                <input type="checkbox" checked={visible(c.key)} onChange={() => toggleCol(c.key)} className="h-3 w-3 rounded" />
+                                {c.label}
+                              </label>
+                            ))}
+                          </div>
+                          <button onClick={() => setShowCustomize(false)} className="block w-full border-t border-slate-100 px-3 py-2 text-left text-[11px] font-bold text-blue-600 hover:bg-blue-50">Done</button>
+                        </div>
+                      ) : (
+                        <div className="py-1">
+                          <button role="menuitem" onClick={() => { setShowFilter(v => !v); setShowActionsMenu(false) }}
+                            className="block w-full px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">Show Filters</button>
+                          <button role="menuitem" onClick={() => { clearAllFilters(); setShowActionsMenu(false) }}
+                            className="block w-full px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">Clear All Filters</button>
+                          <button role="menuitem" onClick={() => { applyDefaults(); setShowActionsMenu(false) }}
+                            className="block w-full px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">Default Settings</button>
+                          <button role="menuitem" onClick={() => setShowCustomize(true)}
+                            className="block w-full px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">Customize Driver List</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </th>
             </tr>
             {showFilter && (
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <td colSpan={13} className="px-4 py-2">
-                  <div className="flex items-center gap-3">
+              <tr className="border-b border-slate-100 bg-white">
+                <td colSpan={visibleDefs.length + 1} className="px-4 py-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1) }}
-                      className="h-7 text-xs border border-gray-300 rounded px-2 bg-white text-gray-700">
+                      className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200">
                       <option value="">All Types</option>
                       <option value="Drv">Company Driver</option>
                       <option value="OO">Owner Operator</option>
                     </select>
                     <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
-                      className="h-7 text-xs border border-gray-300 rounded px-2 bg-white text-gray-700">
+                      className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200">
                       <option value="">All Statuses</option>
-                      <option value="Applicant">Applicant</option>
-                      <option value="Hired">Hired</option>
-                      <option value="Terminated">Terminated</option>
+                      {DRIVER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                     {(filterType || filterStatus) && (
                       <button onClick={() => { setFilterType(''); setFilterStatus(''); setPage(1) }}
-                        className="text-xs text-gray-500 hover:text-red-600 underline">Clear</button>
+                        className="rounded px-2 py-1 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600">Clear</button>
                     )}
                   </div>
                 </td>
@@ -542,76 +714,75 @@ export default function DriversPage() {
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {loading ? (
-              <tr><td colSpan={13} className="py-20 text-center">
-                <div className="flex flex-col items-center gap-2 text-gray-400">
-                  <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-sm">Loading drivers...</span>
-                </div>
-              </td></tr>
-            ) : drivers.length === 0 ? (
-              <tr><td colSpan={13} className="py-20 text-center text-gray-400 text-sm">No drivers found</td></tr>
-            ) : drivers.map(d => {
+              <tr><td colSpan={visibleDefs.length + 1} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading drivers...</div></td></tr>
+            ) : sortedDrivers.length === 0 ? (
+              <tr><td colSpan={visibleDefs.length + 1} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div><div className="text-sm font-semibold text-slate-700">No drivers found</div><p className="mt-1 text-xs text-slate-400">Try adjusting your search or filters.</p></div></td></tr>
+            ) : sortedDrivers.map(d => {
               const warns = getDriverWarnings(d.documents || [])
               const hasExpired = warns.some(w => w.type === 'expired')
               const rowWarn = warns.length > 0
               return (
                 <tr key={d.id}
                   onClick={() => setEditDriver(d)}
-                  className={'cursor-pointer transition-colors ' + (rowWarn ? 'hover:bg-amber-50' : 'hover:bg-gray-50')}>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {rowWarn && <span className={hasExpired ? 'text-red-500 flex-shrink-0' : 'text-amber-500 flex-shrink-0'}><IcoWarn /></span>}
-                      <span className="font-medium text-blue-600 truncate hover:underline text-sm">
-                        {d.name} [{d.driver_type}]
-                        {!d.is_active && <span className="ml-1 text-xs text-gray-400 font-normal">(inactive)</span>}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-sm text-gray-600">{d.driver_type === 'OO' ? 'O/O' : 'Drv'}</td>
-                  <td className="px-4 py-2">
-                    {d.profile?.driver_status === 'Hired' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">● Hired</span>
-                    ) : d.profile?.driver_status === 'Terminated' ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">Terminated</span>
-                    ) : (
-                      <span className="text-xs text-gray-500">{d.profile?.driver_status || '—'}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-xs text-gray-500">{fmtDate(d.profile?.hire_date) || '—'}</td>
-                  <td className="px-4 py-2 text-xs text-gray-500">{fmtDate(d.profile?.termination_date) || '—'}</td>
-                  <td className="px-4 py-2 text-xs text-gray-600 truncate">{d.phone || '—'}</td>
-                  <td className="px-4 py-2 text-xs text-gray-600 truncate">{d.email || '—'}</td>
-                  <td className="px-4 py-2 text-xs font-mono text-gray-600">{d.profile?.truck_unit || '—'}</td>
-                  <td className="px-4 py-2 text-xs font-mono text-gray-600">{d.profile?.trailer_unit || '—'}</td>
-                  <td className="px-4 py-2 text-xs text-gray-600 truncate">{d.profile?.payable_to || d.name}</td>
-                  <td className="px-4 py-2">
-                    {warns.length === 0 ? (
-                      <span className="text-brand-500"><IcoOK /></span>
-                    ) : (
-                      <div className="space-y-0.5">
-                        {warns.slice(0,2).map((w,i) => (
-                          <div key={i} className={'text-xs flex items-center gap-1 ' + (w.type==='expired'?'text-red-600':w.type==='soon'?'text-amber-600':'text-gray-500')}>
-                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 inline-block bg-current"></span>
-                            <span className="truncate">{w.label}</span>
-                          </div>
-                        ))}
-                        {warns.length > 2 && <div className="text-xs text-gray-400">+{warns.length-2}</div>}
+                  className={'group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 ' + (rowWarn ? 'hover:border-l-amber-400 hover:bg-amber-50/70' : 'hover:border-l-blue-500 hover:bg-blue-50/70')}>
+                  {visible('name') && (
+                    <td className="px-1.5 py-1">
+                      <div className="flex items-center gap-1 min-w-0">
+                        {rowWarn && <span className={(hasExpired ? 'text-red-500' : 'text-amber-500') + ' flex-shrink-0'}><IcoWarn /></span>}
+                        <span className="font-semibold text-blue-600 truncate hover:underline text-[11px]">
+                          {d.name} [{d.driver_type}]
+                          {!d.is_active && <span className="ml-1 text-[10px] font-normal text-slate-400">(inactive)</span>}
+                        </span>
                       </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-xs text-gray-400">—</td>
-                  <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
-                    <DriverActionMenu
-                      onEdit={() => setEditDriver(d)}
-                      onDelete={async () => {
-                        if (!confirm(`Deactivate driver "${d.name}"?`)) return
-                        try {
-                          await driversExtApi.update(d.id, { is_active: false } as any)
-                          toast.success('Driver deactivated')
-                          load()
-                        } catch(e: any) { toast.error(e.message) }
-                      }}
-                    />
+                    </td>
+                  )}
+                  {visible('type') && <td className="px-1.5 py-1 text-gray-600">{d.driver_type === 'OO' ? 'O/O' : 'Drv'}</td>}
+                  {visible('status') && (
+                    <td className="px-1.5 py-1">
+                      <span className={`inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${DRIVER_STATUS_STYLE[d.profile?.driver_status || ''] || 'bg-slate-100 text-slate-500'}`}>
+                        {d.profile?.driver_status || '—'}
+                      </span>
+                    </td>
+                  )}
+                  {visible('hire') && <td className="px-1.5 py-1 text-gray-500 truncate">{fmtDate(d.profile?.hire_date) || '—'}</td>}
+                  {visible('term') && <td className="px-1.5 py-1 text-gray-500 truncate">{fmtDate(d.profile?.termination_date) || '—'}</td>}
+                  {visible('phone') && <td className="px-1.5 py-1 text-gray-600 truncate">{d.phone || '—'}</td>}
+                  {visible('email') && <td className="px-1.5 py-1 text-gray-600 truncate">{d.email || '—'}</td>}
+                  {visible('truck') && <td className="px-1.5 py-1 font-mono text-gray-600 truncate">{d.profile?.truck_unit || '—'}</td>}
+                  {visible('trailer') && <td className="px-1.5 py-1 font-mono text-gray-600 truncate">{d.profile?.trailer_unit || '—'}</td>}
+                  {visible('payable') && <td className="px-1.5 py-1 text-gray-600 truncate">{d.profile?.payable_to || d.name}</td>}
+                  {visible('warnings') && (
+                    <td className="px-1.5 py-1">
+                      {warns.length === 0 ? (
+                        <span className="text-brand-500"><IcoOK /></span>
+                      ) : (
+                        <div className="space-y-0.5">
+                          {warns.slice(0,2).map((w,i) => (
+                            <div key={i} className={'text-[10px] flex items-center gap-1 ' + (w.type==='expired'?'text-red-600':w.type==='soon'?'text-amber-600':'text-gray-500')}>
+                              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 inline-block bg-current"></span>
+                              <span className="truncate">{w.label}</span>
+                            </div>
+                          ))}
+                          {warns.length > 2 && <div className="text-[10px] text-gray-400">+{warns.length-2}</div>}
+                        </div>
+                      )}
+                    </td>
+                  )}
+                  {visible('app') && <td className="px-1.5 py-1 text-gray-400">—</td>}
+                  <td className="px-1 py-1" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-1">
+                      <DriverActionMenu
+                        onEdit={() => setEditDriver(d)}
+                        onDelete={async () => {
+                          if (!confirm(`Delete driver "${d.name}"?\n\nThe driver will be deactivated and hidden from the list.`)) return
+                          try {
+                            await driversExtApi.update(d.id, { is_active: false } as any)
+                            toast.success('Driver deleted')
+                            load()
+                          } catch(e: any) { toast.error(e.message) }
+                        }}
+                      />
+                    </div>
                   </td>
                 </tr>
               )
@@ -621,47 +792,47 @@ export default function DriversPage() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-5 py-2.5 bg-white border-t border-gray-200 flex-shrink-0">
+      <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50/50 px-5 py-2.5">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-0.5">
-            <PBtn onClick={() => setPage(1)} disabled={page<=1}>
+            <PBtn onClick={() => setPage(1)} disabled={safePage<=1}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
             </PBtn>
-            <PBtn onClick={() => setPage(p => Math.max(1,p-1))} disabled={page<=1}>
+            <PBtn onClick={() => setPage(p => Math.max(1,p-1))} disabled={safePage<=1}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
             </PBtn>
             {Array.from({length:Math.min(totalPages,5)}, (_,i) => {
-              const s = Math.max(1, Math.min(page-2, totalPages-4))
+              const s = Math.max(1, Math.min(safePage-2, totalPages-4))
               return s + i
             }).map(p => (
               <button key={p} onClick={() => setPage(p)}
-                className={'w-8 h-8 text-xs rounded-lg font-medium transition-colors ' +
-                  (p===page ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100')}>
+                className={'w-5 h-5 rounded text-[11px] font-medium transition-colors ' +
+                  (p===safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100')}>
                 {p}
               </button>
             ))}
-            <PBtn onClick={() => setPage(p => Math.min(totalPages,p+1))} disabled={page>=totalPages}>
+            <PBtn onClick={() => setPage(p => Math.min(totalPages,p+1))} disabled={safePage>=totalPages}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
             </PBtn>
-            <PBtn onClick={() => setPage(totalPages)} disabled={page>=totalPages}>
+            <PBtn onClick={() => setPage(totalPages)} disabled={safePage>=totalPages}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
             </PBtn>
           </div>
-          <span className="text-xs text-gray-500">
-            {total === 0 ? 'No entries' : 'Showing ' + start + '–' + end + ' of ' + total}
+          <span className="text-[11px] text-gray-500">
+            {total === 0 ? 'No entries' : 'Showing ' + start + '–' + end + ' of ' + total + ' entries'}
           </span>
           <button onClick={() => { setShowInactive(v=>!v); setPage(1) }}
-            className={'text-xs px-2 py-1 rounded-lg transition-colors ' +
-              (showInactive ? 'text-brand-600 bg-brand-50 font-medium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100')}>
-            {showInactive ? '● Showing inactive' : 'Show inactive'}
+            className={'rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ' +
+              (showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700')}>
+            {showInactive ? 'Hide inactive drivers' : 'Show inactive drivers'}
           </button>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-500">Per page:</span>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
           {PAGE_SIZES.map(n => (
             <button key={n} onClick={() => { setPageSize(n); setPage(1) }}
-              className={'text-xs px-2 py-1 rounded-lg transition-colors ' +
-                (pageSize===n ? 'bg-brand-600 text-white font-medium' : 'text-gray-500 hover:bg-gray-100')}>
+              className={'rounded-md px-2 py-1 text-[10px] transition ' +
+                (pageSize===n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700')}>
               {n}
             </button>
           ))}
@@ -716,6 +887,12 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
   const [showPayableDropdown, setShowPayableDropdown] = useState(false)
   const [showTerminateDropdown, setShowTerminateDropdown] = useState(false)
   const photoRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const sf = (k: keyof DForm, v: string|boolean) => setForm(f => ({...f,[k]:v}))
 
@@ -829,8 +1006,8 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-[980px] bg-white flex flex-col h-full shadow-2xl">
+      <div className="flex-1 bg-slate-950/40" style={{ animation: 'drawer-fade 0.2s ease-out' }} onClick={onClose} />
+      <div className="flex h-full w-[980px] flex-col overflow-hidden rounded-l-2xl bg-white shadow-2xl shadow-slate-950/30" style={{ animation: 'drawer-slide 0.3s cubic-bezier(0.32, 0.72, 0, 1)' }}>
 
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0 bg-white">
@@ -1705,10 +1882,19 @@ function EmailModal({ drivers, onClose }: { drivers: ExtDriver[]; onClose: () =>
   const [subject, setSubject] = useState('Drivers list — ' + new Date().toLocaleDateString('en-US'))
   const [sending, setSending] = useState(false)
 
+  // No SMTP on the backend — open the user's email client with export links instead
   const send = () => {
     if (!to.trim()) { toast.error('Enter recipient email'); return }
     setSending(true)
-    setTimeout(() => { toast.success('Email sent successfully'); onClose() }, 1000)
+    const base = window.location.origin
+    const pdfUrl  = API_BASE + '/api/v1/drivers/export/pdf'
+    const xlsxUrl = API_BASE + '/api/v1/drivers/export/xlsx'
+    const body = `Hello,%0D%0A%0D%0APlease find the driver roster (${drivers.length} drivers):%0D%0A%0D%0APDF: ${pdfUrl.startsWith('http') ? pdfUrl : base + pdfUrl}%0D%0AExcel: ${xlsxUrl.startsWith('http') ? xlsxUrl : base + xlsxUrl}%0D%0A`
+    const ccPart = cc.trim() ? `&cc=${encodeURIComponent(cc.trim())}` : ''
+    window.location.href = `mailto:${encodeURIComponent(to.trim())}?subject=${encodeURIComponent(subject)}${ccPart}&body=${body}`
+    toast.success('Opening your email app...')
+    setSending(false)
+    onClose()
   }
 
   return (
@@ -2235,6 +2421,9 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
   const [startDate,     setStartDate]     = useState(tx?.start_date || '')
   const [repeatType,    setRepeatType]    = useState(tx?.repeat_type || 'always')
   const [repeatTimes,   setRepeatTimes]   = useState(String(tx?.repeat_times || ''))
+  const [customCategory, setCustomCategory] = useState(
+    () => !!tx?.category && !TX_CATEGORIES.includes(tx.category)
+  )
   const [endDate,       setEndDate]       = useState(tx?.end_date || '')
   const [periodEndDate, setPeriodEndDate] = useState('')
   const [customDesc,    setCustomDesc]    = useState(tx?.notes || '')
@@ -2341,11 +2530,25 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
             )}
             <div>
               <label className="block text-sm text-gray-700 mb-1">Category</label>
-              <select value={category} onChange={e=>setCategory(e.target.value)}
-                className={'input-base text-sm w-full ' + (!category ? 'border-red-400 ring-1 ring-red-300' : '')}>
-                <option value=""></option>
-                {TX_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              {customCategory ? (
+                <div className="flex items-center gap-2">
+                  <input autoFocus value={category} onChange={e=>setCategory(e.target.value)} placeholder="New category name"
+                    className={'input-base text-sm flex-1 ' + (!category ? 'border-red-400 ring-1 ring-red-300' : '')} />
+                  <button type="button" onClick={()=>{setCustomCategory(false);setCategory('')}}
+                    className="text-xs text-gray-500 hover:text-gray-700 whitespace-nowrap">← back to list</button>
+                </div>
+              ) : (
+                <select value={category}
+                  onChange={e=>{
+                    if (e.target.value === '__new__') { setCustomCategory(true); setCategory('') }
+                    else setCategory(e.target.value)
+                  }}
+                  className={'input-base text-sm w-full ' + (!category ? 'border-red-400 ring-1 ring-red-300' : '')}>
+                  <option value=""></option>
+                  {TX_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="__new__">+ New category…</option>
+                </select>
+              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-2">Schedule</label>

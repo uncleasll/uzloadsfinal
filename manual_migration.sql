@@ -1,4 +1,4 @@
--- uzLoads TMS — Complete Manual Migration
+-- Karvan TMS — Complete Manual Migration
 -- Run this against your PostgreSQL database to create all tables
 -- Usage: psql -U <user> -d <dbname> -f manual_migration.sql
 
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS trailer_documents (
 
 CREATE TABLE IF NOT EXISTS company_settings (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(200) DEFAULT 'My Company',
+    name VARCHAR(200) DEFAULT 'Karvan',
     legal_name VARCHAR(200),
     mc_number VARCHAR(50),
     dot_number VARCHAR(50),
@@ -502,14 +502,14 @@ CREATE INDEX IF NOT EXISTS idx_driver_docs_driver ON driver_documents(driver_id)
 
 -- Default admin user (password: Admin1234!)
 INSERT INTO users (name, email, hashed_password, role, is_active)
-SELECT 'Admin', 'admin@uzloads.com',
+SELECT 'Admin', 'admin@karvan.com',
   '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW',
   'admin', TRUE
-WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@uzloads.com');
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@karvan.com');
 
 -- Default company settings
 INSERT INTO company_settings (name, legal_name)
-SELECT 'My Company', 'My Company LLC'
+SELECT 'Karvan', 'Karvan LLC'
 WHERE NOT EXISTS (SELECT 1 FROM company_settings LIMIT 1);
 
 COMMIT;

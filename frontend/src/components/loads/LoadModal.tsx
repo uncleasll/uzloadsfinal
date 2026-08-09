@@ -17,53 +17,68 @@ interface Props {
 
 // ─── Icon components ───────────────────────────────────────────────────────────
 const X = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-const Pencil = ({ size = 'sm' }: { size?: 'sm' | 'xs' }) => (
-  <svg className={size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-  </svg>
-)
-const Check = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
 const ArrowRight = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
 const MapPin = ({ color }: { color: string }) => <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill={color}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>
 const Clock = () => <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2"/></svg>
 const MapIcon = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
 const Plus = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-const Refresh = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
 const Send = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
 const FileText = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
 const Download = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
 const Upload = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
 const Trash = () => <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
 const ChevronDown = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
-const Info = () => <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
 
 // ─── Shared inline-edit primitives ─────────────────────────────────────────────
+// Click the value → it becomes an input. Enter or clicking away saves; Esc cancels.
+// No pencil/check/cross clutter — the value itself is the control.
+
+const editableCls = 'group inline-flex max-w-full cursor-text items-center gap-1.5 rounded-md border border-dashed border-transparent px-1.5 py-0.5 -mx-1.5 text-left transition-colors hover:border-slate-300 hover:bg-slate-50'
+const editInputCls = 'rounded-md border border-blue-400 bg-white px-1.5 py-0.5 text-xs shadow-sm outline-none ring-2 ring-blue-100'
+
+function EditHint() {
+  return (
+    <svg className="h-3 w-3 flex-shrink-0 text-slate-300 transition-colors group-hover:text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+    </svg>
+  )
+}
+
+function Spinner() {
+  return <span className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 align-middle" />
+}
+
 function InlineText({
-  value, onSave, placeholder = '—', width = 'w-28',
+  value, onSave, placeholder = '—',
 }: { value: string; onSave: (v: string) => Promise<void>; placeholder?: string; width?: string }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value)
   const [saving, setSaving] = useState(false)
+  const cancelled = useRef(false)
   const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (editing) ref.current?.focus() }, [editing])
+  useEffect(() => { if (editing) { cancelled.current = false; ref.current?.focus(); ref.current?.select() } }, [editing])
   const save = async () => {
+    if (cancelled.current) return
+    if (val === value) { setEditing(false); return }
     setSaving(true)
-    try { await onSave(val); setEditing(false) } catch { setVal(value) } finally { setSaving(false) }
+    try { await onSave(val); setEditing(false) } catch { setVal(value); setEditing(false) } finally { setSaving(false) }
   }
-  if (editing) return (
-    <span className="inline-flex items-center gap-1">
-      <input ref={ref} className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white" style={{ width: 100 }}
-        value={val} onChange={e => setVal(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setVal(value) } }} />
-      <button onClick={save} disabled={saving} className="text-blue-600 hover:text-blue-700 disabled:opacity-40"><Check /></button>
-      <button onClick={() => { setEditing(false); setVal(value) }} className="text-gray-400 hover:text-gray-600"><X /></button>
+  if (editing || saving) return (
+    <span className="inline-flex items-center">
+      <input ref={ref} className={editInputCls} style={{ width: 110 }} disabled={saving}
+        value={val} onChange={e => setVal(e.target.value)} onBlur={save}
+        onKeyDown={e => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+          if (e.key === 'Escape') { cancelled.current = true; setVal(value); setEditing(false) }
+        }} />
+      {saving && <Spinner />}
     </span>
   )
   return (
-    <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
-      <span className="text-gray-800">{value || placeholder}</span>
-      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
-    </span>
+    <button type="button" className={editableCls} onClick={() => setEditing(true)} title="Click to edit">
+      <span className={value ? 'text-gray-800' : 'text-gray-400'}>{value || placeholder}</span>
+      <EditHint />
+    </button>
   )
 }
 
@@ -73,26 +88,32 @@ function InlineNumber({
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(String(value))
   const [saving, setSaving] = useState(false)
+  const cancelled = useRef(false)
   const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (editing) ref.current?.focus() }, [editing])
+  useEffect(() => { if (editing) { cancelled.current = false; ref.current?.focus(); ref.current?.select() } }, [editing])
   const save = async () => {
+    if (cancelled.current) return
+    const parsed = parseFloat(val) || 0
+    if (parsed === value) { setEditing(false); return }
     setSaving(true)
-    try { await onSave(parseFloat(val) || 0); setEditing(false) } catch { setVal(String(value)) } finally { setSaving(false) }
+    try { await onSave(parsed); setEditing(false) } catch { setVal(String(value)); setEditing(false) } finally { setSaving(false) }
   }
-  if (editing) return (
-    <span className="inline-flex items-center gap-1">
-      <input ref={ref} type="number" step="0.01" className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white w-24"
-        value={val} onChange={e => setVal(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setVal(String(value)) } }} />
-      <button onClick={save} disabled={saving} className="text-blue-600 hover:text-blue-700 disabled:opacity-40"><Check /></button>
-      <button onClick={() => { setEditing(false); setVal(String(value)) }} className="text-gray-400 hover:text-gray-600"><X /></button>
+  if (editing || saving) return (
+    <span className="inline-flex items-center">
+      <input ref={ref} type="number" step="0.01" className={`${editInputCls} w-24`} disabled={saving}
+        value={val} onChange={e => setVal(e.target.value)} onBlur={save}
+        onKeyDown={e => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+          if (e.key === 'Escape') { cancelled.current = true; setVal(String(value)); setEditing(false) }
+        }} />
+      {saving && <Spinner />}
     </span>
   )
   return (
-    <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
+    <button type="button" className={editableCls} onClick={() => setEditing(true)} title="Click to edit">
       <span className="text-gray-800">{prefix}{value.toFixed(2)}</span>
-      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
-    </span>
+      <EditHint />
+    </button>
   )
 }
 
@@ -102,25 +123,27 @@ function InlineSelect({
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const save = async (v: string) => {
+    if (v === value) { setEditing(false); return }
     setSaving(true)
-    try { await onSave(v); setEditing(false) } catch {} finally { setSaving(false) }
+    try { await onSave(v) } catch {} finally { setSaving(false); setEditing(false) }
   }
-  if (editing) return (
-    <span className="inline-flex items-center gap-1">
-      <select autoFocus className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white"
-        defaultValue={value} onChange={e => save(e.target.value)} disabled={saving}>
+  if (editing || saving) return (
+    <span className="inline-flex items-center">
+      <select autoFocus className={editInputCls} disabled={saving}
+        defaultValue={value} onChange={e => save(e.target.value)} onBlur={() => { if (!saving) setEditing(false) }}
+        onKeyDown={e => { if (e.key === 'Escape') setEditing(false) }}>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
-      <button onClick={() => setEditing(false)} className="text-gray-400 hover:text-gray-600"><X /></button>
+      {saving && <Spinner />}
     </span>
   )
   const cls = colors?.[value] || ''
   return (
-    <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
-      {cls ? <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${cls}`}>{value}</span>
+    <button type="button" className={`${editableCls} cursor-pointer`} onClick={() => setEditing(true)} title="Click to change">
+      {cls ? <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{value}</span>
            : <span className="text-gray-800">{value}</span>}
-      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
-    </span>
+      <EditHint />
+    </button>
   )
 }
 
@@ -128,27 +151,32 @@ function InlineDate({ value, onSave }: { value: string; onSave: (v: string) => P
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value)
   const [saving, setSaving] = useState(false)
+  const cancelled = useRef(false)
   const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (editing) ref.current?.focus() }, [editing])
+  useEffect(() => { if (editing) { cancelled.current = false; ref.current?.focus() } }, [editing])
   const save = async () => {
+    if (cancelled.current) return
+    if (val === value) { setEditing(false); return }
     setSaving(true)
-    try { await onSave(val); setEditing(false) } catch { setVal(value) } finally { setSaving(false) }
+    try { await onSave(val); setEditing(false) } catch { setVal(value); setEditing(false) } finally { setSaving(false) }
   }
-  if (editing) return (
-    <span className="inline-flex items-center gap-1">
-      <input ref={ref} type="date" className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white"
-        value={val} onChange={e => setVal(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setVal(value) } }} />
-      <button onClick={save} disabled={saving} className="text-blue-600 hover:text-blue-700 disabled:opacity-40"><Check /></button>
-      <button onClick={() => { setEditing(false); setVal(value) }} className="text-gray-400 hover:text-gray-600"><X /></button>
+  if (editing || saving) return (
+    <span className="inline-flex items-center">
+      <input ref={ref} type="date" className={editInputCls} disabled={saving}
+        value={val} onChange={e => setVal(e.target.value)} onBlur={save}
+        onKeyDown={e => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+          if (e.key === 'Escape') { cancelled.current = true; setVal(value); setEditing(false) }
+        }} />
+      {saving && <Spinner />}
     </span>
   )
   const display = value ? new Date(value + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '—'
   return (
-    <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
-      <span className="text-gray-800">{display}</span>
-      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
-    </span>
+    <button type="button" className={editableCls} onClick={() => setEditing(true)} title="Click to edit">
+      <span className={value ? 'text-gray-800' : 'text-gray-400'}>{display}</span>
+      <EditHint />
+    </button>
   )
 }
 
@@ -158,24 +186,27 @@ function InlineEntitySelect({
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const save = async (v: string) => {
+    const parsed = v ? parseInt(v) : null
+    if (parsed === value) { setEditing(false); return }
     setSaving(true)
-    try { await onSave(v ? parseInt(v) : null); setEditing(false) } catch {} finally { setSaving(false) }
+    try { await onSave(parsed) } catch {} finally { setSaving(false); setEditing(false) }
   }
-  if (editing) return (
-    <span className="inline-flex items-center gap-1">
-      <select autoFocus className="border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 bg-white max-w-[160px]"
-        defaultValue={value ?? ''} onChange={e => save(e.target.value)} disabled={saving}>
+  if (editing || saving) return (
+    <span className="inline-flex items-center">
+      <select autoFocus className={`${editInputCls} max-w-[170px]`} disabled={saving}
+        defaultValue={value ?? ''} onChange={e => save(e.target.value)} onBlur={() => { if (!saving) setEditing(false) }}
+        onKeyDown={e => { if (e.key === 'Escape') setEditing(false) }}>
         <option value="">— none —</option>
         {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
       </select>
-      <button onClick={() => setEditing(false)} className="text-gray-400 hover:text-gray-600"><X /></button>
+      {saving && <Spinner />}
     </span>
   )
   return (
-    <span className="inline-flex items-center gap-1 group cursor-pointer" onClick={() => setEditing(true)}>
-      <span className={label ? 'text-blue-600 font-medium' : 'text-gray-400'}>{label || '[not set]'}</span>
-      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size="xs" /></span>
-    </span>
+    <button type="button" className={`${editableCls} cursor-pointer`} onClick={() => setEditing(true)} title="Click to change">
+      <span className={`${label ? 'font-medium text-blue-600' : 'whitespace-nowrap text-gray-400'}`}>{label || 'Not set'}</span>
+      <EditHint />
+    </button>
   )
 }
 
@@ -274,6 +305,13 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const quickUpdate = async (field: string, value: unknown) => {
     await loadsApi.update(loadId, { [field]: value } as any)
@@ -393,11 +431,15 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
   }
 
   if (loading) return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" style={{ maxWidth: 1100 }} onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-center h-64 text-gray-400 text-sm">Loading load #{loadId}…</div>
+    <>
+      <div className="drawer-overlay" onClick={onClose} />
+      <div className="drawer-panel" style={{ maxWidth: 1150 }}>
+        <div className="flex h-full items-center justify-center text-sm text-gray-400">
+          <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
+          Loading load #{loadId}…
+        </div>
       </div>
-    </div>
+    </>
   )
   if (!load) return null
 
@@ -427,84 +469,100 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
   const BILLING_OPTIONS = ['Pending', 'Canceled', 'BOL received', 'Invoiced', 'Sent to factoring', 'Funded', 'Paid']
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-container w-full overflow-hidden flex flex-col"
-        style={{ maxWidth: 1100, maxHeight: 'calc(100vh - 32px)', marginTop: 16, marginBottom: 16 }}
-        onClick={e => e.stopPropagation()}
-      >
+    <>
+      <div className="drawer-overlay" onClick={onClose} />
+      <div className="drawer-panel" style={{ maxWidth: 1150 }}>
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 flex-shrink-0">
-          <h2 className="font-semibold text-gray-900 text-sm">Edit Load</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"><X /></button>
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-5 py-3 flex-shrink-0">
+          <div className="flex min-w-0 items-center gap-3">
+            <h2 className="whitespace-nowrap text-sm font-bold text-slate-900">Load #{load.load_number}</h2>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[load.status] || 'bg-slate-100 text-slate-500'}`}>{load.status}</span>
+            <span className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-slate-500 sm:flex">
+              <span className="truncate font-medium">{pickupLabel}</span>
+              <ArrowRight />
+              <span className="truncate font-medium">{deliveryLabel}</span>
+            </span>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-3">
+            <span className="hidden text-xs text-slate-400 md:block">Rate <span className="font-bold text-slate-800">{formatCurrency(load.rate)}</span></span>
+            <button onClick={onClose} aria-label="Close" className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-600"><X /></button>
+          </div>
         </div>
 
         {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 min-h-0">
 
-          {/* ── Stop header ── */}
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            {/* Driver position */}
-            <div className="flex flex-col items-start flex-shrink-0">
-              <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-                <span>Driver position</span><Info />
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-gray-400"><ArrowRight /></span>
-                <span className="text-xs text-gray-400">0mi</span>
-              </div>
-              <button className="text-xs text-red-500 font-medium flex items-center gap-0.5 mt-0.5">
-                <MapPin color="#ef4444" />Add
-              </button>
-            </div>
-
-            {/* Stop cards */}
-            {stops.map((stop, idx) => (
-              <div key={stop.id} className="flex items-center gap-1.5">
-                {idx > 0 && (
-                  <div className="flex items-center gap-1 text-gray-400 flex-shrink-0">
-                    <ArrowRight />
-                    <span className="text-xs">{load.loaded_miles}mi</span>
-                  </div>
-                )}
-                <div className="border-2 border-gray-200 rounded-lg px-3 py-1.5 text-center bg-white hover:border-gray-300 transition-colors cursor-default" style={{ minWidth: 130 }}>
-                  <div className="text-xs text-gray-400 font-medium mb-0.5">#{stop.stop_order} {stop.stop_type}</div>
-                  <div className="flex items-center justify-center gap-1">
-                    <MapPin color={stop.stop_type === 'pickup' ? '#1d4ed8' : '#2563eb'} />
-                    <span className="text-sm font-bold text-gray-900 uppercase truncate max-w-[120px]">
-                      {stop.city}, {stop.state}
-                    </span>
-                  </div>
-                  {(stop.stop_time || stop.stop_date) && (
-                    <div className="flex items-center justify-center gap-1 mt-0.5">
-                      <Clock />
-                      <span className="text-xs text-gray-500">
-                        {stop.stop_time && `${stop.stop_time} `}{formatDate(stop.stop_date)}
-                      </span>
+          {/* ── Route ── */}
+          <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {stops.map((stop, idx) => (
+                <div key={stop.id} className="flex items-center gap-2">
+                  {idx > 0 && (
+                    <div className="flex flex-col items-center px-1 text-slate-400">
+                      <ArrowRight />
+                      <span className="text-[10px] font-medium">{load.loaded_miles} mi</span>
                     </div>
                   )}
+                  <div className={`rounded-lg border bg-white px-3.5 py-2 text-center shadow-sm ${stop.stop_type === 'pickup' ? 'border-blue-200' : 'border-emerald-200'}`} style={{ minWidth: 140 }}>
+                    <div className={`mb-0.5 text-[10px] font-bold uppercase tracking-wide ${stop.stop_type === 'pickup' ? 'text-blue-500' : 'text-emerald-600'}`}>
+                      #{stop.stop_order} {stop.stop_type}
+                    </div>
+                    <div className="flex items-center justify-center gap-1">
+                      <MapPin color={stop.stop_type === 'pickup' ? '#2563eb' : '#059669'} />
+                      <span className="max-w-[130px] truncate text-sm font-bold uppercase text-slate-900">
+                        {stop.city}, {stop.state}
+                      </span>
+                    </div>
+                    {(stop.stop_time || stop.stop_date) && (
+                      <div className="mt-0.5 flex items-center justify-center gap-1">
+                        <Clock />
+                        <span className="text-[11px] text-slate-500">
+                          {stop.stop_time && `${stop.stop_time} `}{formatDate(stop.stop_date)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
 
-          {/* ── Route actions ── */}
-          <div className="flex items-center gap-4 mb-4 text-xs">
-            <button className="flex items-center gap-1 text-blue-700 hover:text-blue-800 font-medium"><MapIcon /> Map</button>
-            <button className="flex items-center gap-1 text-blue-700 hover:text-blue-800 font-medium"><Plus /> Add stop</button>
-            <button className="flex items-center gap-1 text-blue-700 hover:text-blue-800 font-medium"><Refresh /> Recalculate distance</button>
-            <button className="flex items-center gap-1 text-blue-700 hover:text-blue-800 font-medium"><Send /> Dispatch info to the driver</button>
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (!pickup || !delivery) { toast.error('Route is incomplete'); return }
+                    window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickupLabel)}&destination=${encodeURIComponent(deliveryLabel)}`, '_blank', 'noopener')
+                  }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <MapIcon /> View on map
+                </button>
+                <button
+                  onClick={() => {
+                    const lines = [
+                      `Load #${load.load_number}`,
+                      `Pickup: ${pickupLabel}${pickup?.stop_date ? ` — ${formatDate(pickup.stop_date)}` : ''}${pickup?.stop_time ? ` ${pickup.stop_time}` : ''}`,
+                      `Delivery: ${deliveryLabel}${delivery?.stop_date ? ` — ${formatDate(delivery.stop_date)}` : ''}${delivery?.stop_time ? ` ${delivery.stop_time}` : ''}`,
+                      `Miles: ${load.total_miles || load.loaded_miles} total`,
+                      load.po_number ? `PO #: ${load.po_number}` : '',
+                      load.broker?.name ? `Broker: ${load.broker.name}` : '',
+                    ].filter(Boolean).join('\n')
+                    navigator.clipboard.writeText(lines)
+                      .then(() => toast.success('Dispatch info copied — paste it to the driver'))
+                      .catch(() => toast.error('Could not copy to clipboard'))
+                  }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <Send /> Copy dispatch info
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* ── 4-col info grid ── */}
-          <div className="grid gap-5 mb-4" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+          <div className="mb-4 grid grid-cols-2 gap-5 xl:grid-cols-4">
 
             {/* Load info */}
             <div>
-              <h3 className="font-bold text-gray-900 text-sm mb-2.5 flex items-center gap-1">
-                Load #{load.load_number}
-                <span className="text-blue-600 cursor-pointer"><Pencil size="xs" /></span>
-              </h3>
+              <h3 className="font-bold text-gray-900 text-sm mb-2.5">Load #{load.load_number}</h3>
               <div className="space-y-1.5">
                 <Field label="Status:">
                   <InlineSelect value={load.status} options={STATUS_OPTIONS}
@@ -827,12 +885,10 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                             </select>
                             <a href={loadsApi.getInvoiceRecordPdfUrl(invoice.id)} target="_blank" rel="noreferrer"
                               className="text-blue-600 hover:underline flex items-center gap-1"><Download /> Download PDF</a>
-                            <button className="text-blue-600 hover:underline">Email</button>
                             <button onClick={handleMarkInvoicePaid} disabled={invoiceSaving || invoice.status === 'Paid'}
                               className="text-blue-600 hover:underline disabled:text-gray-300 disabled:no-underline">
                               Mark paid
                             </button>
-                            <button className="text-gray-400 hover:text-gray-600">Export to QB</button>
                           </div>
                         ) : (
                           <div className="flex items-center gap-3 mt-1.5">
@@ -903,10 +959,10 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                   {/* Drivers Payable */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-gray-900 text-sm flex items-center gap-1">
-                        Drivers Payable <span className="text-blue-600 cursor-pointer"><Pencil size="xs" /></span>
-                      </h4>
-                      <button className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
+                      <h4 className="font-semibold text-gray-900 text-sm">Drivers Payable</h4>
+                      <button
+                        onClick={() => { setActiveTab('services'); setShowSvcForm('other'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
                         <Plus /> Additions/Deductions
                       </button>
                     </div>
@@ -945,9 +1001,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
 
                   {/* Other Payable */}
                   <div>
-                    <h4 className="font-semibold text-gray-900 text-sm flex items-center gap-1 mb-2">
-                      Other Payable <span className="text-blue-600 cursor-pointer"><Pencil size="xs" /></span>
-                    </h4>
+                    <h4 className="font-semibold text-gray-900 text-sm mb-2">Other Payable</h4>
                     <table className="w-full border border-gray-200 rounded overflow-hidden text-xs">
                       <thead>
                         <tr className="border-b border-gray-200 bg-gray-50">
@@ -995,14 +1049,19 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
         </div>
 
         {/* ── Footer ── */}
-        <div className="flex justify-end px-5 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+        <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-3 flex-shrink-0">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+            <span>Total invoice: <span className="font-bold text-slate-800">{formatCurrency(totalInvoice)}</span></span>
+            <span>Driver pay: <span className="font-bold text-slate-800">{formatCurrency(driversPayable)}</span></span>
+            <span className="hidden sm:inline">Margin: <span className={`font-bold ${totalInvoice - driversPayable < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{formatCurrency(totalInvoice - driversPayable)}</span></span>
+          </div>
           <button onClick={onClose}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-900 text-white text-xs font-medium rounded transition-colors">
+            className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-900">
             <X /> Close
           </button>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

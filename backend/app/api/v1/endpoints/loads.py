@@ -221,9 +221,9 @@ def merged_documents(load_id: int, db: Session = Depends(get_db)):
             logo.drawWidth = logo.imageWidth * ratio
             logo.drawHeight = logo.imageHeight * ratio
         except Exception:
-            logo = Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", styles["Heading2"])
+            logo = Paragraph(f"<b>{company.get('name') or 'Karvan'}</b>", styles["Heading2"])
     else:
-        logo = Paragraph(f"<b>{company.get('name') or 'My Company'}</b>", styles["Heading2"])
+        logo = Paragraph(f"<b>{company.get('name') or 'Karvan'}</b>", styles["Heading2"])
     company_text = "<br/>".join(
         f"<b>{line}</b>" if i == 0 else line
         for i, line in enumerate(company_identity_lines(company))
@@ -279,6 +279,61 @@ def download_invoice_pdf(load_id: int, db: Session = Depends(get_db)):
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=invoice_{load.load_number}.pdf"}
     )
+
+
+# ─── Driver Pay Breakdown ─────────────────────────────────────────────────────
+
+@router.get("/{load_id}/pay-breakdown")
+def get_pay_breakdown(load_id: int, db: Session = Depends(get_db)):
+    """
+    Explain how drivers_payable_snapshot was computed, line by line.
+    Mirrors driver_pay_service.compute_driver_pay exactly (snapshot fields only).
+    """
+    from app.services.driver_pay_service import compute_driver_pay
+    load = crud.get_load(db, load_id)
+    if not load:
+        raise HTTPException(404, "Load not found")
+
+    pay_type = load.pay_type_snapshot or "per_mile"
+    lines = []
+
+    if pay_type == "percentage":
+        pct = load.freight_percentage_snapshot or 0.0
+        base = (load.rate or 0.0) * pct / 100.0
+        lines.append({
+            "label": f"{pct:g}% of freight ${load.rate or 0:,.2f}",
+            "amount": round(base, 2),
+        })
+        for s in (load.services or []):
+            if s.drivers_payable:
+                sign = 1 if s.add_deduct == "Add" else -1
+                lines.append({
+                    "label": f"Service — {s.service_type} ({s.add_deduct})",
+                    "amount": round(sign * s.drivers_payable, 2),
+                })
+    elif pay_type == "flatpay":
+        lines.append({"label": "Flat pay", "amount": round(load.flatpay_snapshot or 0.0, 2)})
+    else:  # per_mile
+        loaded_rate = load.pay_rate_loaded_snapshot or 0.65
+        empty_rate = load.pay_rate_empty_snapshot or 0.30
+        lines.append({
+            "label": f"{load.loaded_miles or 0:g} loaded mi × ${loaded_rate:,.2f}/mi",
+            "amount": round((load.loaded_miles or 0) * loaded_rate, 2),
+        })
+        lines.append({
+            "label": f"{load.empty_miles or 0:g} empty mi × ${empty_rate:,.2f}/mi",
+            "amount": round((load.empty_miles or 0) * empty_rate, 2),
+        })
+
+    return {
+        "load_number": load.load_number,
+        "pay_type": pay_type,
+        "lines": lines,
+        "total": compute_driver_pay(load),
+        "stored_total": load.drivers_payable_snapshot or 0.0,
+        "snapshot_taken_at": load.snapshot_taken_at.isoformat() if load.snapshot_taken_at else None,
+        "snapshot_overridden": bool(load.snapshot_overridden),
+    }
 
 
 # ─── Driver Pay Recalculate ───────────────────────────────────────────────────
