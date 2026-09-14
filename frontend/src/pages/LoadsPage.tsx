@@ -435,13 +435,13 @@ export default function LoadsPage() {
           )}
 
           {/* Revenue summary — one glance: total + where the money is */}
-          <div className="loads-summary">
+          <dl className="loads-summary" aria-label="Load revenue summary">
             <SummaryStat label="Total" value={totalRate} strong />
             <SummaryStat label="Paid" value={rateSummary.paid} dot="bg-emerald-500" />
             <SummaryStat label="Invoiced" value={rateSummary.invoiced} dot="bg-amber-400" />
             <SummaryStat label="Pending" value={rateSummary.pending} dot="bg-slate-400" />
             <SummaryStat label="Overdue" value={rateSummary.overdue} dot="bg-red-500" />
-          </div>
+          </dl>
         </div>
       </div>
 
@@ -979,9 +979,8 @@ function PanelSelect({ label, value, onChange, options }: {
 function SummaryStat({ label, value, dot, strong }: { label: string; value: number; dot?: string; strong?: boolean }) {
   return (
     <div className={`loads-stat ${strong ? 'loads-stat-primary' : ''}`}>
-      {dot && <span className={`h-2 w-2 flex-shrink-0 rounded-full ${dot}`} />}
-      <span className={`text-[0.625rem] font-semibold uppercase tracking-wide ${strong ? 'text-blue-500' : 'text-slate-400'}`}>{label}</span>
-      <span className={`whitespace-nowrap text-xs font-bold ${strong ? 'text-blue-800' : 'text-slate-800'}`}>{formatCurrency(value)}</span>
+      <dt>{dot && <span aria-hidden="true" className={`loads-stat-dot ${dot}`} />}{label}</dt>
+      <dd className={label === 'Overdue' && value > 0 ? 'loads-stat-overdue' : ''}>{formatCurrency(value)}</dd>
     </div>
   )
 }
