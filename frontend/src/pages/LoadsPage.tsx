@@ -13,6 +13,9 @@ import AutoCreateLoadModal from '@/components/loads/AutoCreateLoadModal'
 import { useEntities } from '@/hooks/useEntities'
 import type { Driver, Broker, Dispatcher, Truck, Trailer } from '@/types'
 import toast from 'react-hot-toast'
+import { createPortal } from 'react-dom'
+import { SlidersHorizontal, Columns3, Download, RefreshCw, Rows3 } from 'lucide-react'
+import './LoadsPage.css'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
@@ -28,6 +31,11 @@ const STATUS_STYLE: Record<string, string> = {
 }
 
 export default function LoadsPage() {
+  const [showColumnFilters, setShowColumnFilters] = useState(false)
+  const [compact, setCompact] = useState(() => localStorage.getItem('karvan.loads.compact') === 'true')
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const requestId = useRef(0)
+  const [loadError, setLoadError] = useState('')
   const [loads, setLoads] = useState<LoadListItem[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
@@ -60,9 +68,11 @@ export default function LoadsPage() {
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [showCustomize, setShowCustomize] = useState(false)
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => {
-    try { return new Set<string>(JSON.parse(localStorage.getItem(HIDDEN_COLS_KEY) || '[]')) } catch { return new Set<string>() }
+    try { return new Set<string>(JSON.parse(localStorage.getItem(HIDDEN_COLS_KEY) || JSON.stringify(DEFAULT_HIDDEN_COLS))) } catch { return new Set<string>() }
   })
   const actionsMenuRef = useRef<HTMLDivElement>(null)
+  const [rowMenuPosition, setRowMenuPosition] = useState({top: 0, left: 0})
+  useEffect(() => {const close = (e: KeyboardEvent) => {if (e.key === 'Escape') {setShowNewMenu(false); setShowActionsMenu(false); setRowMenuId(null)}}; document.addEventListener('keydown', close); return () => document.removeEventListener('keydown', close)}, [])
   const [rowMenuId, setRowMenuId] = useState<number | null>(null)
 
   useEffect(() => {
@@ -99,9 +109,14 @@ export default function LoadsPage() {
   }, [showActionsMenu])
 
   const fetchLoads = useCallback(async (f: LoadFilters) => {
+    const id = ++requestId.current
     setLoading(true)
+    setLoadError('')
     try {
-      const res = await loadsApi.list({ ...f, show_only_active: showOnlyActive })
+      const dates = period === 'custom' ? {date_from: customFrom || undefined, date_to: customTo || undefined} : period !== 'all' ? periodToDates(period) : {}
+      const res = await loadsApi.list({ ...f, ...dates, show_only_active: showOnlyActive })
+      if (id !== requestId.current) return
+      setSelectedIds(new Set())
       setLoads(res.items)
       setTotal(res.total)
       setTotalPages(res.total_pages)
@@ -113,11 +128,11 @@ export default function LoadsPage() {
         overdue: res.total_overdue_rate ?? 0,
       })
     } catch (e: unknown) {
-      toast.error((e as Error).message)
+      if (id === requestId.current) setLoadError((e as Error).message)
     } finally {
-      setLoading(false)
+      if (id === requestId.current) setLoading(false)
     }
-  }, [showOnlyActive])
+  }, [showOnlyActive, period, customFrom, customTo])
 
   useEffect(() => {
     let periodDates: { date_from?: string; date_to?: string } = {}
@@ -160,6 +175,7 @@ export default function LoadsPage() {
     setCustomFrom('')
     setCustomTo('')
     setAttachmentType('')
+    setShowOnlyActive(false)
     if (searchRef.current) searchRef.current.value = ''
   }
 
@@ -167,6 +183,7 @@ export default function LoadsPage() {
   const visibleDefs = COLUMN_DEFS.filter(c => visible(c.key))
 
   const toggleCol = (key: string) => {
+    if (key === 'load') return
     setHiddenCols(prev => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
@@ -184,7 +201,7 @@ export default function LoadsPage() {
     setCustomTo('')
     setAttachmentType('')
     setShowOnlyActive(false)
-    setHiddenCols(new Set())
+    setHiddenCols(new Set(DEFAULT_HIDDEN_COLS))
     localStorage.removeItem(HIDDEN_COLS_KEY)
     if (searchRef.current) searchRef.current.value = ''
     toast.success('Loadlist reset to default settings')
@@ -201,7 +218,7 @@ export default function LoadsPage() {
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
     }
     const header = ['Load #', 'Date', 'Driver', 'Broker', 'PO #', 'Pickup', 'Delivery', 'Rate', 'Completed', 'Status', 'Billing', 'Attachments']
-    const lines = displayLoads.map(l => [
+    const lines = displayLoads.filter(l => !selectedIds.size || selectedIds.has(l.id)).map(l => [
       l.load_number, l.load_date, l.driver?.name || '', l.broker?.name || '', l.po_number || '',
       stopLabel(getPickupStop(l.stops)), stopLabel(getDeliveryStop(l.stops)),
       l.rate, l.actual_delivery_date || '', l.status, l.billing_status, l.documents.length,
@@ -316,7 +333,7 @@ export default function LoadsPage() {
   const endEntry = Math.min((filters.page || 1) * (filters.page_size || 50), total)
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className={`loads-workspace ${compact ? 'loads-compact' : ''} flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]`}>
 
       {/* ── Top bar ── */}
       <div className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
@@ -418,7 +435,7 @@ export default function LoadsPage() {
           )}
 
           {/* Revenue summary — one glance: total + where the money is */}
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+          <div className="loads-summary">
             <SummaryStat label="Total" value={totalRate} strong />
             <SummaryStat label="Paid" value={rateSummary.paid} dot="bg-emerald-500" />
             <SummaryStat label="Invoiced" value={rateSummary.invoiced} dot="bg-amber-400" />
@@ -428,6 +445,57 @@ export default function LoadsPage() {
         </div>
       </div>
 
+      <div className="loads-toolbar">
+        <div className="loads-toolbar-group">
+          <button className={`loads-tool ${showOnlyActive ? 'is-active' : ''}`} aria-pressed={!showOnlyActive} onClick={() => {setShowOnlyActive(false); setFilters(p => ({...p, page: 1}))}}>All loads <span>{!showOnlyActive ? total : ''}</span></button>
+          <button className={`loads-tool ${showOnlyActive ? 'is-active' : ''}`} aria-pressed={showOnlyActive} onClick={() => {setShowOnlyActive(true); setFilters(p => ({...p, page: 1}))}}>Active only</button>
+          {selectedIds.size > 0 && <span className="loads-selection">{selectedIds.size} selected <button onClick={() => setSelectedIds(new Set())}>Clear</button></span>}
+        </div>
+        <div className="loads-toolbar-group">
+          <button className="loads-tool" aria-expanded={showFilterPanel} onClick={() => setShowFilterPanel(v => !v)}><SlidersHorizontal size={15}/> Filters{filterChips.length > 0 && <span>{filterChips.length}</span>}</button>
+                <div ref={actionsMenuRef} className="relative inline-flex items-center justify-center gap-1">
+
+                  <button
+                    onClick={() => { setShowActionsMenu(v => !v); setShowCustomize(true) }}
+                    title="Customize columns" aria-label="Customize columns"
+                    aria-expanded={showActionsMenu}
+                    aria-haspopup="menu"
+                    className="loads-tool"
+                  >Columns
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                  {showActionsMenu && (
+                    <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white text-left font-medium normal-case tracking-normal shadow-xl shadow-slate-950/10">
+                      {showCustomize ? (
+                        <div>
+                          <div className="border-b border-slate-100 px-3 py-2 text-[0.625rem] font-bold uppercase tracking-wide text-slate-400">Customize loadlist</div>
+                          <div className="max-h-56 overflow-auto py-1">
+                            {COLUMN_DEFS.map(c => (
+                              <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[0.6875rem] font-medium text-slate-700 hover:bg-slate-50">
+                                <input type="checkbox" disabled={c.key === 'load'} checked={visible(c.key)} onChange={() => toggleCol(c.key)} className="h-3 w-3 rounded" />
+                                {c.label}
+                              </label>
+                            ))}
+                          </div>
+                          <button onClick={() => setShowCustomize(false)} className="block w-full border-t border-slate-100 px-3 py-2 text-left text-[0.6875rem] font-bold text-blue-600 hover:bg-blue-50">Done</button>
+                        </div>
+                      ) : (
+                        <div className="py-1">
+                          <MenuItem onClick={() => { clearAllFilters(); setShowActionsMenu(false) }}>Clear All Filters</MenuItem>
+                          <MenuItem onClick={() => { applyDefaults(); setShowActionsMenu(false) }}>Default Settings</MenuItem>
+                          <MenuItem onClick={() => setShowCustomize(true)}>Customize Loadlist</MenuItem>
+                          <MenuItem onClick={exportLoads}>Export Loads</MenuItem>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+          <button className="loads-tool" aria-pressed={showColumnFilters} onClick={() => setShowColumnFilters(v => !v)}><Columns3 size={15}/> Column filters</button>
+          <button className="loads-tool" aria-pressed={compact} title="Toggle compact rows" onClick={() => {setCompact(v => !v); localStorage.setItem('karvan.loads.compact', String(!compact))}}><Rows3 size={15}/><span className="loads-tool-label">{compact ? 'Compact' : 'Comfortable'}</span></button>
+          <button className="loads-tool" disabled={loading || !displayLoads.length} onClick={exportLoads}><Download size={15}/>{selectedIds.size ? 'Export selected' : 'Export page'}</button>
+          <button className="loads-tool" title="Refresh loads" aria-label="Refresh loads" disabled={loading} onClick={() => fetchLoads({...activeFilters, ...filters})}><RefreshCw size={15} className={loading ? 'animate-spin' : ''}/></button>
+        </div>
+      </div>
       {/* ── Inline filter panel ── */}
       {showFilterPanel && (
         <FilterPanel
@@ -463,24 +531,24 @@ export default function LoadsPage() {
       )}
 
       {/* ── Table ── */}
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
-        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
+      <div className="loads-table-scroll min-h-0 flex-1 bg-white" role="region" aria-label="Loads table" tabIndex={0}>
+        <table className="loads-table w-full border-collapse" style={{ tableLayout: 'fixed', minWidth: `${(116 + visibleDefs.reduce((sum, c) => sum + Number(c.width), 0)) / 16}rem` }}>
           <colgroup>
-            <col style={{ width: 26 }} />
-            <col style={{ width: 14 }} />
-            {visibleDefs.map(c => <col key={c.key} style={{ width: c.width }} />)}
-            <col style={{ width: 76 }} />
+            <col style={{ width: '2rem' }} />
+            <col style={{ width: '0.5rem' }} />
+            {visibleDefs.map(c => <col key={c.key} style={{ width: `${Number(c.width) / 16}rem` }} />)}
+            <col style={{ width: '4.75rem' }} />
           </colgroup>
 
           <thead className="sticky top-0 z-10">
             {/* Header */}
             <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
               <th className="px-1 py-1.5 text-center">
-                <input type="checkbox" className="w-3 h-3 rounded" />
+                <input type="checkbox" aria-label="Select all loads on this page" checked={displayLoads.length > 0 && displayLoads.every(l => selectedIds.has(l.id))} ref={el => {if (el) el.indeterminate = selectedIds.size > 0 && !displayLoads.every(l => selectedIds.has(l.id))}} onChange={e => setSelectedIds(e.target.checked ? new Set(displayLoads.map(l => l.id)) : new Set())} className="w-3 h-3 rounded" />
               </th>
               <th className="px-0 py-1.5" />
               {visibleDefs.map(h => (
-                <th key={h.key} className="px-1.5 py-2 text-left font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
+                <th aria-sort={h.sort && filters.sort_by === h.sort ? filters.sort_dir === 'asc' ? 'ascending' : 'descending' : undefined} key={h.key} className="px-1.5 py-2 text-left font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
                   {h.sort ? (
                     <button onClick={() => sortBy(h.sort!)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
                       {h.label}
@@ -491,49 +559,11 @@ export default function LoadsPage() {
                   ) : <span className={h.align === 'center' ? 'block text-center' : ''}>{h.label}</span>}
                 </th>
               ))}
-              <th className="relative px-1.5 py-2 text-center font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
-                <div ref={actionsMenuRef} className="inline-flex items-center justify-center gap-1">
-                  ACTIONS
-                  <button
-                    onClick={() => { setShowActionsMenu(v => !v); setShowCustomize(false) }}
-                    title="Table actions"
-                    aria-expanded={showActionsMenu}
-                    aria-haspopup="menu"
-                    className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-700"
-                  >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
-                  </button>
-                  {showActionsMenu && (
-                    <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white text-left font-medium normal-case tracking-normal shadow-xl shadow-slate-950/10">
-                      {showCustomize ? (
-                        <div>
-                          <div className="border-b border-slate-100 px-3 py-2 text-[0.625rem] font-bold uppercase tracking-wide text-slate-400">Customize loadlist</div>
-                          <div className="max-h-56 overflow-auto py-1">
-                            {COLUMN_DEFS.map(c => (
-                              <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[0.6875rem] font-medium text-slate-700 hover:bg-slate-50">
-                                <input type="checkbox" checked={visible(c.key)} onChange={() => toggleCol(c.key)} className="h-3 w-3 rounded" />
-                                {c.label}
-                              </label>
-                            ))}
-                          </div>
-                          <button onClick={() => setShowCustomize(false)} className="block w-full border-t border-slate-100 px-3 py-2 text-left text-[0.6875rem] font-bold text-blue-600 hover:bg-blue-50">Done</button>
-                        </div>
-                      ) : (
-                        <div className="py-1">
-                          <MenuItem onClick={() => { clearAllFilters(); setShowActionsMenu(false) }}>Clear All Filters</MenuItem>
-                          <MenuItem onClick={() => { applyDefaults(); setShowActionsMenu(false) }}>Default Settings</MenuItem>
-                          <MenuItem onClick={() => setShowCustomize(true)}>Customize Loadlist</MenuItem>
-                          <MenuItem onClick={exportLoads}>Export Loads</MenuItem>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </th>
+              <th className="text-center text-slate-500">Actions</th>
             </tr>
 
             {/* Inline filters */}
-            <tr className="border-b border-slate-100 bg-white">
+            {showColumnFilters && <tr className="border-b border-slate-100 bg-white">
               <td className="px-1 py-0.5" />
               <td className="px-0 py-0.5" />
               {visible('load') && (
@@ -636,11 +666,11 @@ export default function LoadsPage() {
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M7 12h10M10 18h4"/></svg>
                 </button>
               </td>
-            </tr>
+            </tr>}
           </thead>
 
           <tbody className="divide-y divide-gray-100">
-            {loading ? (
+            {loadError ? (<tr><td colSpan={3 + visibleDefs.length} className="py-16 text-center"><p className="text-sm font-semibold text-slate-700">Could not load shipments</p><p className="mt-2 text-xs text-slate-500">{loadError}</p><button className="loads-tool mx-auto mt-3" onClick={() => fetchLoads({...activeFilters, ...filters})}>Try again</button></td></tr>) : loading ? (
               <tr><td colSpan={3 + visibleDefs.length} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading loads...</div></td></tr>
             ) : displayLoads.length === 0 ? (
               <tr><td colSpan={3 + visibleDefs.length} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7h13l5 5v5a2 2 0 01-2 2H5a2 2 0 01-2-2V7zM16 7v5h5M7 19a2 2 0 104 0m4 0a2 2 0 104 0"/></svg></div><div className="text-sm font-semibold text-slate-700">No loads found</div><p className="mt-1 text-xs text-slate-400">Try adjusting your search or filters.</p><button onClick={clearAllFilters} className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-700">Clear all filters</button></div></td></tr>
@@ -654,7 +684,7 @@ export default function LoadsPage() {
                 <tr key={load.id} onClick={() => setSelectedLoad(load)}
                   className="group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 hover:border-l-blue-500 hover:bg-blue-50/70">
                   <td className="px-1 py-1 text-center" onClick={e => e.stopPropagation()}>
-                    <input type="checkbox" className="w-3 h-3 rounded" />
+                    <input type="checkbox" aria-label={`Select load ${load.load_number}`} checked={selectedIds.has(load.id)} onChange={e => setSelectedIds(prev => {const next = new Set(prev); if (e.target.checked) next.add(load.id); else next.delete(load.id); return next})} className="w-3 h-3 rounded" />
                   </td>
                   <td className="px-0 py-1">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500" />
@@ -662,19 +692,19 @@ export default function LoadsPage() {
                   {visible('load') && (
                     <td className="px-1.5 py-1">
                       <button onClick={e => { e.stopPropagation(); setSelectedLoad(load) }}
-                        className="text-blue-600 hover:underline font-semibold text-[0.6875rem]">
+                        className="loads-number text-blue-600 hover:underline font-semibold">
                         {load.load_number}
                       </button>
                     </td>
                   )}
                   {visible('date') && <td className="px-1.5 py-1 text-gray-500 truncate">{formatDate(load.load_date)}</td>}
                   {visible('driver') && (
-                    <td className="px-1.5 py-1 text-gray-800 truncate">
+                    <td title={load.driver?.name} className="px-1.5 py-1 text-gray-800 truncate">
                       {load.driver?.name || <span className="text-gray-300">—</span>}
                     </td>
                   )}
                   {visible('broker') && (
-                    <td className="px-1.5 py-1 truncate">
+                    <td title={load.broker?.name} className="px-1.5 py-1 truncate">
                       {load.broker
                         ? <button onClick={e => e.stopPropagation()} className="text-blue-600 hover:underline text-left truncate max-w-full">{load.broker.name}</button>
                         : <span className="text-gray-300">—</span>}
@@ -722,13 +752,13 @@ export default function LoadsPage() {
                         title="Load actions"
                         aria-haspopup="menu"
                         aria-expanded={rowMenuId === load.id}
-                        onClick={() => setRowMenuId(prev => prev === load.id ? null : load.id)}
+                        onClick={e => {const rect = e.currentTarget.getBoundingClientRect(); setRowMenuPosition({top: Math.min(rect.bottom + 4, window.innerHeight - 180), left: Math.max(8, rect.right - 160)}); setRowMenuId(prev => prev === load.id ? null : load.id)}}
                         className={`inline-flex h-5 w-5 items-center justify-center rounded transition-colors ${rowMenuId === load.id ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:bg-blue-50 hover:text-blue-700'}`}
                       >
                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
                       </button>
-                      {rowMenuId === load.id && (
-                        <div role="menu" className="absolute right-1 top-full z-20 mt-0.5 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-xl shadow-slate-950/10">
+                      {rowMenuId === load.id && createPortal(
+                        <div data-row-menu role="menu" style={{position: 'fixed', ...rowMenuPosition}} className="z-[100] w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-xl shadow-slate-950/10">
                           <MenuItem onClick={() => { setRowMenuId(null); setSelectedLoad(load) }}>Edit Load</MenuItem>
                           <MenuItem onClick={() => { setRowMenuId(null); handleCopyLoad(load) }}>Copy Load</MenuItem>
                           <MenuItem onClick={() => { setRowMenuId(null); showOnMap(load) }}>Show on Map</MenuItem>
@@ -736,7 +766,7 @@ export default function LoadsPage() {
                             className="block w-full px-3 py-2 text-left text-[0.6875rem] font-medium text-red-600 transition-colors hover:bg-red-50">
                             Delete Load
                           </button>
-                        </div>
+                        </div>, document.body
                       )}
                     </div>
                   </td>
@@ -781,10 +811,7 @@ export default function LoadsPage() {
             Showing {total === 0 ? 0 : startEntry}–{endEntry} of {total} entries
           </span>
 
-          <button onClick={() => setShowOnlyActive(p => !p)}
-            className={`rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold transition ${showOnlyActive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
-            {showOnlyActive ? 'Show all loads' : 'Show only active loads'}
-          </button>
+
         </div>
 
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
@@ -823,25 +850,26 @@ function PagBtn({ onClick, disabled, children }: { onClick: () => void; disabled
 }
 
 const HIDDEN_COLS_KEY = 'karvan.loads.hiddenCols'
+const DEFAULT_HIDDEN_COLS = ['date', 'po', 'completed', 'notes', 'attachments']
 
 const ATTACHMENT_TYPES = [
   'Confirmation', 'BOL', 'Invoice', 'Merged documents', 'Lumper', 'Receipt', 'Document',
 ]
 
 const COLUMN_DEFS: { key: string; label: string; sort?: string; align?: 'center'; width: number | string }[] = [
-  { key: 'load', label: 'LOAD', sort: 'load_number', width: '5%' },
-  { key: 'date', label: 'DATE', sort: 'date', width: '6%' },
-  { key: 'driver', label: 'DRIVER', width: '9%' },
-  { key: 'broker', label: 'BROKER', width: '8%' },
-  { key: 'po', label: 'PO #', sort: 'po_number', width: '5%' },
-  { key: 'pickup', label: 'PICKUP', width: '9%' },
-  { key: 'delivery', label: 'DELIVERY', width: '9%' },
-  { key: 'rate', label: 'RATE', sort: 'rate', width: '6%' },
-  { key: 'completed', label: 'COMPLETED', sort: 'completed', width: '6%' },
-  { key: 'status', label: 'STATUS', sort: 'status', width: '6%' },
-  { key: 'billing', label: 'BILLING', sort: 'billing', width: '6%' },
-  { key: 'notes', label: 'NOTES', width: '6%' },
-  { key: 'attachments', label: 'ATTACHMENTS', align: 'center', width: '8%' },
+  { key: 'load', label: 'LOAD', sort: 'load_number', width: 90 },
+  { key: 'date', label: 'DATE', sort: 'date', width: 110 },
+  { key: 'driver', label: 'DRIVER', width: 160 },
+  { key: 'broker', label: 'BROKER', width: 170 },
+  { key: 'po', label: 'PO #', sort: 'po_number', width: 120 },
+  { key: 'pickup', label: 'PICKUP', width: 150 },
+  { key: 'delivery', label: 'DELIVERY', width: 150 },
+  { key: 'rate', label: 'RATE', sort: 'rate', width: 115 },
+  { key: 'completed', label: 'COMPLETED', sort: 'completed', width: 120 },
+  { key: 'status', label: 'STATUS', sort: 'status', width: 125 },
+  { key: 'billing', label: 'BILLING', sort: 'billing', width: 130 },
+  { key: 'notes', label: 'NOTES', width: 150 },
+  { key: 'attachments', label: 'ATTACHMENTS', align: 'center', width: 110 },
 ]
 
 function MenuItem({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
@@ -950,7 +978,7 @@ function PanelSelect({ label, value, onChange, options }: {
 
 function SummaryStat({ label, value, dot, strong }: { label: string; value: number; dot?: string; strong?: boolean }) {
   return (
-    <div className={`flex h-9 items-center gap-2 rounded-lg border px-3 shadow-sm ${strong ? 'border-blue-100 bg-blue-50' : 'border-slate-200 bg-white'}`}>
+    <div className={`loads-stat ${strong ? 'loads-stat-primary' : ''}`}>
       {dot && <span className={`h-2 w-2 flex-shrink-0 rounded-full ${dot}`} />}
       <span className={`text-[0.625rem] font-semibold uppercase tracking-wide ${strong ? 'text-blue-500' : 'text-slate-400'}`}>{label}</span>
       <span className={`whitespace-nowrap text-xs font-bold ${strong ? 'text-blue-800' : 'text-slate-800'}`}>{formatCurrency(value)}</span>
