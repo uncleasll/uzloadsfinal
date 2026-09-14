@@ -4,7 +4,7 @@ import { trucksApi, trailersApi, driversApi } from '@/api/entities'
 import { vendorsApi, scheduledTxApi } from '@/api/vendors'
 import type { Vendor, ScheduledTransaction } from '@/api/vendors'
 import type { Truck, Trailer, Driver } from '@/types'
-import { formatDate } from '@/utils'
+import { formatDate, formatCurrency } from '@/utils'
 import client from '@/api/client'
 import toast from 'react-hot-toast'
 
@@ -70,7 +70,7 @@ const DRIVER_STATUS_STYLE: Record<string, string> = {
 }
 const PAY_TYPES = [
   { v: 'per_mile',           l: 'Per mile' },
-  { v: 'freight_percentage', l: 'Freight %' },
+  { v: 'percentage',         l: 'Freight %' },
   { v: 'flatpay',            l: 'Flat pay' },
   { v: 'hourly',             l: 'Hourly' },
 ]
@@ -99,7 +99,7 @@ interface ExtDriver {
     truck_id?: number; truck_unit?: string; trailer_id?: number; trailer_unit?: string
     fuel_card: string; ifta_handled: boolean; driver_status: string
     pay_type: string; per_extra_stop: number; freight_percentage: number
-    flatpay: number; hourly_rate: number; notes: string
+    flatpay: number; flatpay_period?: string; flatpay_start_date?: string; hourly_rate: number; notes: string
   }
   documents: Doc[]
 }
@@ -128,7 +128,7 @@ interface DForm {
   truck_id: string; trailer_id: string; fuel_card: string; ifta: boolean
   payable_to: string; co_driver_id: string; driver_type: string
   pay_type: string; per_mile: string; empty_mile: string
-  extra_stop: string; freight_pct: string; flatpay: string; hourly: string
+  extra_stop: string; freight_pct: string; flatpay: string; flatpay_period: string; flatpay_start_date: string; hourly: string
   notes: string
 }
 
@@ -141,7 +141,7 @@ function emptyForm(): DForm {
     truck_id: '', trailer_id: '', fuel_card: '', ifta: true,
     payable_to: '', co_driver_id: '', driver_type: 'Drv',
     pay_type: 'per_mile', per_mile: '0.65', empty_mile: '0.30',
-    extra_stop: '0', freight_pct: '0', flatpay: '0', hourly: '0', notes: '',
+    extra_stop: '0', freight_pct: '0', flatpay: '0', flatpay_period: 'weekly', flatpay_start_date: '', hourly: '0', notes: '',
   }
 }
 
@@ -160,12 +160,14 @@ function driverToForm(d: ExtDriver): DForm {
     fuel_card: p?.fuel_card || '', ifta: p?.ifta_handled ?? true,
     payable_to: p?.payable_to || d.name, co_driver_id: String(p?.co_driver_id || ''),
     driver_type: d.driver_type || 'Drv',
-    pay_type: p?.pay_type || 'per_mile',
+    pay_type: p?.pay_type === 'freight_percentage' ? 'percentage' : (p?.pay_type || 'per_mile'),
     per_mile: String(d.pay_rate_loaded || 0.65),
     empty_mile: String(d.pay_rate_empty || 0.30),
     extra_stop: String(p?.per_extra_stop || 0),
     freight_pct: String(p?.freight_percentage || 0),
     flatpay: String(p?.flatpay || 0),
+    flatpay_period: p?.flatpay_period || 'weekly',
+    flatpay_start_date: p?.flatpay_start_date || '',
     hourly: String(p?.hourly_rate || 0),
     notes: p?.notes || '',
   }
@@ -414,7 +416,7 @@ function ExportMenu({ onPdf, onExcel, onEmail }: { onPdf: () => void; onExcel: (
       <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">{icon}</span>
       <span>
         <span className="block text-xs font-bold text-slate-800">{label}</span>
-        <span className="block text-[10px] text-slate-400">{sub}</span>
+        <span className="block text-[0.625rem] text-slate-400">{sub}</span>
       </span>
     </button>
   )
@@ -458,12 +460,12 @@ function DriverActionMenu({ onEdit, onDelete }: { onEdit: ()=>void; onDelete: ()
       {open && (
         <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
           <button role="menuitem" onClick={(e)=>{e.stopPropagation();setOpen(false);onEdit()}}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">
             <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
             Edit Driver
           </button>
           <button role="menuitem" onClick={(e)=>{e.stopPropagation();setOpen(false);onDelete()}}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-red-600 transition-colors hover:bg-red-50">
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             Delete Driver
           </button>
@@ -583,19 +585,19 @@ export default function DriversPage() {
   const end   = Math.min(safePage * pageSize, drivers.length)
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
 
       {/* Header */}
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-5 py-4">
         <div className="mr-1 flex-shrink-0">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-slate-950">Drivers</h1>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{total}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.625rem] font-bold text-slate-500">{total}</span>
           </div>
-          <p className="mt-0.5 text-[11px] font-medium text-slate-400">Manage driver profiles, documents and pay</p>
+          <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Manage driver profiles, documents and pay</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <div className="relative min-w-[220px] flex-1 sm:flex-none">
+          <div className="relative min-w-[13.75rem] flex-1 sm:flex-none">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><IcoSearch /></span>
             <input type="search" placeholder="Search drivers..." value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
@@ -606,7 +608,7 @@ export default function DriversPage() {
               className={`absolute right-1.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md transition-colors ${showFilter || filterType || filterStatus ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-slate-200/70 hover:text-slate-600'}`}>
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M7 12h10M10 18h4"/></svg>
               {(Number(!!filterType) + Number(!!filterStatus)) > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[8px] font-bold text-white">{Number(!!filterType) + Number(!!filterStatus)}</span>
+                <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[0.5rem] font-bold text-white">{Number(!!filterType) + Number(!!filterStatus)}</span>
               )}
             </button>
           </div>
@@ -660,27 +662,27 @@ export default function DriversPage() {
                     <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white text-left font-medium normal-case tracking-normal shadow-xl shadow-slate-950/10">
                       {showCustomize ? (
                         <div>
-                          <div className="border-b border-slate-100 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Customize driver list</div>
+                          <div className="border-b border-slate-100 px-3 py-2 text-[0.625rem] font-bold uppercase tracking-wide text-slate-400">Customize driver list</div>
                           <div className="max-h-56 overflow-auto py-1">
                             {DRIVER_COLUMN_DEFS.map(c => (
-                              <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50">
+                              <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[0.6875rem] font-medium text-slate-700 hover:bg-slate-50">
                                 <input type="checkbox" checked={visible(c.key)} onChange={() => toggleCol(c.key)} className="h-3 w-3 rounded" />
                                 {c.label}
                               </label>
                             ))}
                           </div>
-                          <button onClick={() => setShowCustomize(false)} className="block w-full border-t border-slate-100 px-3 py-2 text-left text-[11px] font-bold text-blue-600 hover:bg-blue-50">Done</button>
+                          <button onClick={() => setShowCustomize(false)} className="block w-full border-t border-slate-100 px-3 py-2 text-left text-[0.6875rem] font-bold text-blue-600 hover:bg-blue-50">Done</button>
                         </div>
                       ) : (
                         <div className="py-1">
                           <button role="menuitem" onClick={() => { setShowFilter(v => !v); setShowActionsMenu(false) }}
-                            className="block w-full px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">Show Filters</button>
+                            className="block w-full px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">Show Filters</button>
                           <button role="menuitem" onClick={() => { clearAllFilters(); setShowActionsMenu(false) }}
-                            className="block w-full px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">Clear All Filters</button>
+                            className="block w-full px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">Clear All Filters</button>
                           <button role="menuitem" onClick={() => { applyDefaults(); setShowActionsMenu(false) }}
-                            className="block w-full px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">Default Settings</button>
+                            className="block w-full px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">Default Settings</button>
                           <button role="menuitem" onClick={() => setShowCustomize(true)}
-                            className="block w-full px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">Customize Driver List</button>
+                            className="block w-full px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">Customize Driver List</button>
                         </div>
                       )}
                     </div>
@@ -693,19 +695,19 @@ export default function DriversPage() {
                 <td colSpan={visibleDefs.length + 1} className="px-4 py-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1) }}
-                      className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200">
+                      className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[0.6875rem] font-medium text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200">
                       <option value="">All Types</option>
                       <option value="Drv">Company Driver</option>
                       <option value="OO">Owner Operator</option>
                     </select>
                     <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
-                      className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200">
+                      className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[0.6875rem] font-medium text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200">
                       <option value="">All Statuses</option>
                       {DRIVER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                     {(filterType || filterStatus) && (
                       <button onClick={() => { setFilterType(''); setFilterStatus(''); setPage(1) }}
-                        className="rounded px-2 py-1 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600">Clear</button>
+                        className="rounded px-2 py-1 text-[0.6875rem] font-semibold text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600">Clear</button>
                     )}
                   </div>
                 </td>
@@ -729,9 +731,9 @@ export default function DriversPage() {
                     <td className="px-1.5 py-1">
                       <div className="flex items-center gap-1 min-w-0">
                         {rowWarn && <span className={(hasExpired ? 'text-red-500' : 'text-amber-500') + ' flex-shrink-0'}><IcoWarn /></span>}
-                        <span className="font-semibold text-blue-600 truncate hover:underline text-[11px]">
+                        <span className="font-semibold text-blue-600 truncate hover:underline text-[0.6875rem]">
                           {d.name} [{d.driver_type}]
-                          {!d.is_active && <span className="ml-1 text-[10px] font-normal text-slate-400">(inactive)</span>}
+                          {!d.is_active && <span className="ml-1 text-[0.625rem] font-normal text-slate-400">(inactive)</span>}
                         </span>
                       </div>
                     </td>
@@ -739,7 +741,7 @@ export default function DriversPage() {
                   {visible('type') && <td className="px-1.5 py-1 text-gray-600">{d.driver_type === 'OO' ? 'O/O' : 'Drv'}</td>}
                   {visible('status') && (
                     <td className="px-1.5 py-1">
-                      <span className={`inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${DRIVER_STATUS_STYLE[d.profile?.driver_status || ''] || 'bg-slate-100 text-slate-500'}`}>
+                      <span className={`inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold ${DRIVER_STATUS_STYLE[d.profile?.driver_status || ''] || 'bg-slate-100 text-slate-500'}`}>
                         {d.profile?.driver_status || '—'}
                       </span>
                     </td>
@@ -758,12 +760,12 @@ export default function DriversPage() {
                       ) : (
                         <div className="space-y-0.5">
                           {warns.slice(0,2).map((w,i) => (
-                            <div key={i} className={'text-[10px] flex items-center gap-1 ' + (w.type==='expired'?'text-red-600':w.type==='soon'?'text-amber-600':'text-gray-500')}>
+                            <div key={i} className={'text-[0.625rem] flex items-center gap-1 ' + (w.type==='expired'?'text-red-600':w.type==='soon'?'text-amber-600':'text-gray-500')}>
                               <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 inline-block bg-current"></span>
                               <span className="truncate">{w.label}</span>
                             </div>
                           ))}
-                          {warns.length > 2 && <div className="text-[10px] text-gray-400">+{warns.length-2}</div>}
+                          {warns.length > 2 && <div className="text-[0.625rem] text-gray-400">+{warns.length-2}</div>}
                         </div>
                       )}
                     </td>
@@ -806,7 +808,7 @@ export default function DriversPage() {
               return s + i
             }).map(p => (
               <button key={p} onClick={() => setPage(p)}
-                className={'w-5 h-5 rounded text-[11px] font-medium transition-colors ' +
+                className={'w-5 h-5 rounded text-[0.6875rem] font-medium transition-colors ' +
                   (p===safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100')}>
                 {p}
               </button>
@@ -818,20 +820,20 @@ export default function DriversPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
             </PBtn>
           </div>
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[0.6875rem] text-gray-500">
             {total === 0 ? 'No entries' : 'Showing ' + start + '–' + end + ' of ' + total + ' entries'}
           </span>
           <button onClick={() => { setShowInactive(v=>!v); setPage(1) }}
-            className={'rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ' +
+            className={'rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold transition ' +
               (showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700')}>
             {showInactive ? 'Hide inactive drivers' : 'Show inactive drivers'}
           </button>
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          <span className="px-1.5 text-[0.625rem] font-medium text-slate-400">Rows</span>
           {PAGE_SIZES.map(n => (
             <button key={n} onClick={() => { setPageSize(n); setPage(1) }}
-              className={'rounded-md px-2 py-1 text-[10px] transition ' +
+              className={'rounded-md px-2 py-1 text-[0.625rem] transition ' +
                 (pageSize===n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700')}>
               {n}
             </button>
@@ -921,8 +923,8 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
       name, first_name: form.first_name, last_name: form.last_name,
       phone: form.phone || undefined, email: form.email || undefined,
       driver_type: form.driver_type,
-      pay_rate_loaded: parseFloat(form.per_mile) || 0.65,
-      pay_rate_empty:  parseFloat(form.empty_mile) || 0.30,
+      pay_rate_loaded: form.per_mile === '' ? 0.65 : Number(form.per_mile),
+      pay_rate_empty:  form.empty_mile === '' ? 0.30 : Number(form.empty_mile),
       is_active: form.driver_status !== 'Terminated',
       date_of_birth: form.dob || undefined,
       hire_date: form.hire_date || undefined,
@@ -938,6 +940,8 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
       per_extra_stop:     parseFloat(form.extra_stop)  || 0,
       freight_percentage: parseFloat(form.freight_pct) || 0,
       flatpay:     parseFloat(form.flatpay) || 0,
+      flatpay_period: form.flatpay_period,
+      flatpay_start_date: form.flatpay_start_date || null,
       hourly_rate: parseFloat(form.hourly)  || 0,
       notes: form.notes,
     }
@@ -1007,7 +1011,7 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-slate-950/40" style={{ animation: 'drawer-fade 0.2s ease-out' }} onClick={onClose} />
-      <div className="flex h-full w-[980px] flex-col overflow-hidden rounded-l-2xl bg-white shadow-2xl shadow-slate-950/30" style={{ animation: 'drawer-slide 0.3s cubic-bezier(0.32, 0.72, 0, 1)' }}>
+      <div className="flex h-full w-[61.25rem] flex-col overflow-hidden rounded-l-2xl bg-white shadow-2xl shadow-slate-950/30" style={{ animation: 'drawer-slide 0.3s cubic-bezier(0.32, 0.72, 0, 1)' }}>
 
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0 bg-white">
@@ -1032,7 +1036,7 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                   </button>
                 </div>
                 {showTerminateDropdown && (
-                  <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+                  <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[8.75rem]">
                     {DRIVER_STATUSES.map(s => (
                       <button key={s} onClick={() => { sf('driver_status', s); setShowTerminateDropdown(false) }}
                         className={'w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ' + (form.driver_status === s ? 'font-semibold text-brand-600' : 'text-gray-700')}>
@@ -1069,7 +1073,7 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                   }
                   <button onClick={() => photoRef.current?.click()}
                     className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-colors flex items-end justify-center pb-1.5">
-                    <span className="text-white text-[10px] font-medium opacity-0 hover:opacity-100 transition-opacity bg-black/50 px-1.5 py-0.5 rounded">Edit</span>
+                    <span className="text-white text-[0.625rem] font-medium opacity-0 hover:opacity-100 transition-opacity bg-black/50 px-1.5 py-0.5 rounded">Edit</span>
                   </button>
                   <input ref={photoRef} type="file" accept="image/*" className="hidden"
                     onChange={e => {
@@ -1118,7 +1122,7 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                         Edit <IcoDown />
                       </button>
                       {showPayableDropdown && (
-                        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[120px]">
+                        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[7.5rem]">
                           <button onClick={() => { setShowPayableDropdown(false); setShowVendorModal(true) }}
                             className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 text-gray-700">Add new</button>
                           <button onClick={() => {
@@ -1289,11 +1293,11 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                                 <thead>
                                   <tr className="bg-gray-50">
                                     {fields.map((f,i) => (
-                                      <th key={i} className="px-3 py-2 text-left text-gray-500 font-semibold uppercase text-[10px] tracking-wider">
+                                      <th key={i} className="px-3 py-2 text-left text-gray-500 font-semibold uppercase text-[0.625rem] tracking-wider">
                                         {f.label}
                                       </th>
                                     ))}
-                                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase text-[10px] tracking-wider">ATTACHMENTS</th>
+                                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase text-[0.625rem] tracking-wider">ATTACHMENTS</th>
                                     <th className="w-24"></th>
                                   </tr>
                                 </thead>
@@ -1323,7 +1327,7 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                                             {doc.original_filename && (
                                               <a href={API_BASE + '/uploads/' + doc.filename}
                                                 target="_blank" rel="noreferrer"
-                                                className="inline-flex items-center gap-1 text-blue-600 hover:underline text-xs truncate max-w-[110px]"
+                                                className="inline-flex items-center gap-1 text-blue-600 hover:underline text-xs truncate max-w-[6.875rem]"
                                                 title={doc.original_filename}>
                                                 <IcoLink />
                                                 {doc.original_filename}
@@ -1387,9 +1391,9 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                                     </div>
                                   ))}
                                   {/* Attachment field */}
-                                  <div className="flex-1 min-w-[140px]">
+                                  <div className="flex-1 min-w-[8.75rem]">
                                     <p className="text-xs font-medium text-gray-500 uppercase mb-1">ATTACHMENTS</p>
-                                    <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-2.5 h-[34px] bg-white">
+                                    <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-2.5 h-[2.125rem] bg-white">
                                       {addFile && <span className="text-xs text-gray-600 truncate flex-1">{addFile.name}</span>}
                                       {!addFile && <span className="flex-1"/>}
                                       <label className="inline-flex items-center gap-1 text-xs text-brand-600 cursor-pointer hover:underline whitespace-nowrap">
@@ -1429,7 +1433,7 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
               </div>
               <div className="p-5 bg-white">
                 {payTab === 'pay_rates' && (
-                  <PayRatesTab form={form} sf={sf} />
+                  <PayRatesTab form={form} sf={sf} onSave={handleSave} saving={saving} />
                 )}
                 {payTab === 'scheduled' && (
                   <ScheduledTabView
@@ -1473,6 +1477,7 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
                         {form.ifta ? 'Company handles IFTA' : 'Driver handles IFTA'}
                       </button>
                     </div>
+                    <div className="col-span-2">{driver ? <AdditionalPayeesEditor driverId={driver.id} vendors={vendors} /> : <p className="text-sm text-gray-500">Save the driver to add additional payees.</p>}</div>
                   </div>
                 )}
                 {payTab === 'notes' && (
@@ -1557,27 +1562,23 @@ function DriverModal({ driver, trucks, trailers, allDrivers, onClose, onSaved }:
 }
 
 // ── PayRatesTab ───────────────────────────────────────────────────────────────
-function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string|boolean)=>void }) {
+function PayRatesTab({ form, sf, onSave, saving }: { form: DForm; sf: (k: keyof DForm, v: string|boolean)=>void; onSave: () => void; saving: boolean }) {
   const isOO = form.driver_type === 'OO'
 
-  // Flatpay schedule preview — generates upcoming dates
   const scheduleRows = (() => {
-    if (form.pay_type !== 'flatpay') return []
-    const rows = []
-    const start = form.hire_date ? new Date(form.hire_date) : new Date()
-    // next Friday
-    const d = new Date(start)
-    d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7))
-    for (let i = 0; i < 10; i++) {
-      const dt = new Date(d)
-      dt.setDate(d.getDate() + i * 7)
-      rows.push({
-        date: dt.toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'2-digit'}),
-        amount: form.flatpay ? `$${parseFloat(form.flatpay).toFixed(2)}` : '$0.00',
-        description: 'Weekly, every Friday',
-      })
-    }
-    return rows
+    if (form.pay_type !== 'flatpay' || !form.flatpay_start_date) return []
+    const [year, month, day] = form.flatpay_start_date.split('-').map(Number)
+    return Array.from({length: 10}, (_, index) => {
+      const dt = new Date(year, month - 1, day)
+      if (form.flatpay_period === 'monthly') {
+        dt.setDate(1)
+        dt.setMonth(month - 1 + index)
+        dt.setDate(Math.min(day, new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate()))
+      } else {
+        dt.setDate(day + index * ({daily: 1, weekly: 7, biweekly: 14}[form.flatpay_period] || 7))
+      }
+      return {date: dt.toLocaleDateString('en-US'), amount: `$${Number(form.flatpay || 0).toFixed(2)}`, description: form.flatpay_period}
+    })
   })()
 
   return (
@@ -1601,7 +1602,7 @@ function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string
         <div className="flex items-center gap-6">
           {[
             {v:'per_mile',l:'Per mile'},
-            {v:'freight_percentage',l:'Freight percentage'},
+            {v:'percentage',l:'Freight percentage'},
             {v:'flatpay',l:'Flatpay'},
             {v:'hourly',l:'Hourly'},
           ].map(o => (
@@ -1648,7 +1649,7 @@ function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string
       )}
 
       {/* Freight percentage */}
-      {!isOO && form.pay_type === 'freight_percentage' && (
+      {!isOO && form.pay_type === 'percentage' && (
         <div className="grid grid-cols-2 gap-6">
           <div>
             <label className="block text-sm text-gray-700 mb-1">Percentage (e.g. 80%)</label>
@@ -1673,13 +1674,13 @@ function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string
       {!isOO && form.pay_type === 'flatpay' && (
         <div className="grid grid-cols-2 gap-8">
           <div className="space-y-4">
-            <button className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#2563eb] text-white text-sm font-medium rounded hover:bg-[#4ab668]">
+            <button type="button" onClick={onSave} disabled={saving} className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#2563eb] text-white text-sm font-medium rounded hover:bg-[#4ab668]">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              Run now
+              Save schedule
             </button>
             <div>
               <label className="block text-sm text-gray-700 mb-1">Period <span className="text-red-500">*</span></label>
-              <select value={form.extra_stop || 'weekly'} onChange={e=>sf('extra_stop',e.target.value)}
+              <select value={form.flatpay_period} onChange={e=>sf('flatpay_period',e.target.value)}
                 className="input-base text-sm w-full">
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
@@ -1698,9 +1699,9 @@ function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string
             <div>
               <label className="block text-sm text-gray-700 mb-1">Starting from <span className="text-red-500">*</span></label>
               <div className="relative flex items-center">
-                <input type="date" value={form.hire_date} onChange={e=>sf('hire_date',e.target.value)}
+                <input type="date" value={form.flatpay_start_date} onChange={e=>sf('flatpay_start_date',e.target.value)}
                   className="input-base text-sm w-full pr-8" />
-                <button className="absolute right-2 text-gray-400 hover:text-gray-600">✕</button>
+                <button type="button" onClick={() => sf('flatpay_start_date', '')} className="absolute right-2 text-gray-400 hover:text-gray-600">✕</button>
               </div>
             </div>
             <div>
@@ -1715,11 +1716,11 @@ function PayRatesTab({ form, sf }: { form: DForm; sf: (k: keyof DForm, v: string
           <div>
             <div className="flex items-center gap-2 mb-3">
               <h4 className="text-base font-bold text-gray-900">Payments Schedule</h4>
-              <button className="text-sm text-blue-600 hover:underline flex items-center gap-1">show all <IcoDown /></button>
+              <span className="text-xs text-gray-500">Next 10 periods</span>
             </div>
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200">
+                <tr className="text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-gray-400 border-b border-gray-200">
                   <th className="py-1.5">Date</th>
                   <th className="py-1.5">Amount</th>
                   <th className="py-1.5">Period</th>
@@ -1814,7 +1815,7 @@ function ScheduledTabView({ isEdit, txs, onAdd, onEdit, onDelete }: {
 
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          <tr className="border-b border-gray-200 text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-gray-500">
             <th className="py-2">Category</th>
             <th className="py-2">Amount</th>
             <th className="py-2">Schedule</th>
@@ -1852,7 +1853,7 @@ function ScheduledTabView({ isEdit, txs, onAdd, onEdit, onDelete }: {
                   {tx.is_active ? 'Active' : 'Inactive'}
                 </span>
               </td>
-              <td className="py-2.5 text-gray-400 truncate max-w-[100px]">{tx.notes || '—'}</td>
+              <td className="py-2.5 text-gray-400 truncate max-w-[6.25rem]">{tx.notes || '—'}</td>
               <td className="py-2.5">
                 <div className="flex gap-1">
                   <button onClick={() => onEdit(tx)} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"><IcoEdit /></button>
@@ -1900,7 +1901,7 @@ function EmailModal({ drivers, onClose }: { drivers: ExtDriver[]; onClose: () =>
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}/>
-      <div className="relative bg-white rounded-2xl shadow-2xl w-[820px] max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-[51.25rem] max-h-[85vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <IcoMail /> Email Drivers List
@@ -2005,9 +2006,9 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-[1100px] max-h-[95vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-[68.75rem] max-h-[95vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-[#f8f9fb]">
-          <h3 className="text-[16px] font-bold text-gray-800">New Vendor</h3>
+          <h3 className="text-[1rem] font-bold text-gray-800">New Vendor</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><IcoX /></button>
         </div>
         <div className="flex-1 overflow-auto px-8 py-6">
@@ -2016,57 +2017,57 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
             <div className="flex flex-1 flex-col gap-4">
               <Field label="Company Name" required>
                 <input value={form.company_name} onChange={e=>sf('company_name',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]" />
+                  className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]" />
               </Field>
               <Field label="Address">
                 <input value={form.address} onChange={e=>sf('address',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                  className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
               <Field label="Address line 2">
                 <input value={form.address2} onChange={e=>sf('address2',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                  className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Phone">
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">📞</span>
                     <input value={form.phone} onChange={e=>sf('phone',e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#2563eb]" />
+                      className="h-[2.25rem] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#2563eb]" />
                   </div>
                 </Field>
                 <Field label="Email">
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">@</span>
                     <input value={form.email} onChange={e=>sf('email',e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#2563eb]" />
+                      className="h-[2.25rem] w-full rounded border border-gray-200 bg-white pl-8 pr-3 text-sm outline-none focus:border-[#2563eb]" />
                   </div>
                 </Field>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <Field label="City">
                   <input value={form.city} onChange={e=>sf('city',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
                 <Field label="State">
                   <select value={form.state} onChange={e=>sf('state',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#2563eb]">
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#2563eb]">
                     <option value=""></option>
                     {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </Field>
                 <Field label="Zip">
                   <input value={form.zip_code} onChange={e=>sf('zip_code',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="FID/EIN">
                   <input value={form.fid_ein} onChange={e=>sf('fid_ein',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
                 <Field label="MC">
                   <input value={form.mc_number} onChange={e=>sf('mc_number',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
               </div>
               <Field label="Notes">
@@ -2075,9 +2076,9 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
               </Field>
             </div>
             {/* Right */}
-            <div className="w-full md:w-[420px] flex flex-col pt-1">
+            <div className="w-full md:w-[26.25rem] flex flex-col pt-1">
               <div className="mb-10">
-                <h3 className="mb-3 text-[16px] font-bold text-gray-800">Vendor type</h3>
+                <h3 className="mb-3 text-[1rem] font-bold text-gray-800">Vendor type</h3>
                 {form.vendor_type && (
                   <div className="mb-3 flex items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 rounded bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
@@ -2087,21 +2088,21 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
                   </div>
                 )}
                 <button onClick={() => setShowTypeModal(true)}
-                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#2563eb] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]">
+                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#2563eb] px-2.5 text-[0.8125rem] font-medium text-white hover:bg-[#4ab668]">
                   <IcoPlus /> Vendor type
                 </button>
               </div>
               <div>
-                <h3 className="mb-4 text-[16px] font-bold text-gray-800">Billing</h3>
+                <h3 className="mb-4 text-[1rem] font-bold text-gray-800">Billing</h3>
                 <div className="flex items-center gap-6 mb-6">
-                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                  <label className="flex cursor-pointer items-center gap-2 text-[0.8125rem] text-gray-700">
                     <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_additional_payee ? 'border-[#2563eb] bg-[#2563eb]' : 'border-gray-300 bg-gray-50')}>
                       {form.is_additional_payee && <IcoCheck />}
                     </div>
                     <input type="checkbox" className="hidden" checked={form.is_additional_payee} onChange={e=>sf('is_additional_payee',e.target.checked)} />
                     Additional payee
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                  <label className="flex cursor-pointer items-center gap-2 text-[0.8125rem] text-gray-700">
                     <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_equipment_owner ? 'border-[#2563eb] bg-[#2563eb]' : 'border-gray-300 bg-gray-50')}>
                       {form.is_equipment_owner && <IcoCheck />}
                     </div>
@@ -2114,12 +2115,12 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
                   <input value={form.additional_payee_rate_pct}
                     onChange={e=>sf('additional_payee_rate_pct',e.target.value)}
                     disabled={!form.is_additional_payee}
-                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#2563eb] disabled:opacity-80" />
+                    className="h-[2.25rem] w-[12.5rem] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#2563eb] disabled:opacity-80" />
                 </div>
                 <div>
                   <Label text="Settlement template type" />
                   <select value={form.settlement_template_type} onChange={e=>sf('settlement_template_type',e.target.value)}
-                    className="h-[36px] w-full rounded border border-[#6ea8fe] bg-white px-2 text-sm text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]">
+                    className="h-[2.25rem] w-full rounded border border-[#6ea8fe] bg-white px-2 text-sm text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]">
                     <option value="">Select template type</option>
                     <option value="Additional Payee">Additional Payee</option>
                     <option value="Equipment Owner">Equipment Owner</option>
@@ -2145,8 +2146,8 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
           </button>
         </div>
         {showTypeModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
-            <div className="w-full max-w-[480px] overflow-hidden rounded bg-white shadow-2xl">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-[0.0625rem]">
+            <div className="w-full max-w-[30rem] overflow-hidden rounded bg-white shadow-2xl">
               <div className="flex items-center justify-between p-6 pb-2">
                 <h2 className="text-2xl font-bold text-[#1f2937]">Add Vendor Type</h2>
                 <button onClick={() => setShowTypeModal(false)} className="text-gray-400 hover:text-gray-700"><IcoX /></button>
@@ -2154,7 +2155,7 @@ function VendorModal({ onClose, onSaved }: { onClose: ()=>void; onSaved: (v: Ven
               <div className="p-6 pt-4">
                 <Label text="Add New Vendor Type" />
                 <select value={form.vendor_type} onChange={e=>{ sf('vendor_type',e.target.value); setShowTypeModal(false) }}
-                  className="h-[42px] w-full rounded border border-[#6ea8fe] bg-white px-3 text-[15px] text-gray-800 outline-none ring-1 ring-[#6ea8fe]">
+                  className="h-[2.625rem] w-full rounded border border-[#6ea8fe] bg-white px-3 text-[0.9375rem] text-gray-800 outline-none ring-1 ring-[#6ea8fe]">
                   <option value=""></option>
                   <option value="Dispatcher">Dispatcher</option>
                   <option value="Driver">Driver</option>
@@ -2204,9 +2205,9 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-[1100px] max-h-[95vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-[68.75rem] max-h-[95vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-[#f8f9fb]">
-          <h3 className="text-[16px] font-bold text-gray-800">Edit Vendor</h3>
+          <h3 className="text-[1rem] font-bold text-gray-800">Edit Vendor</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><IcoX /></button>
         </div>
         <div className="flex-1 overflow-auto px-8 py-6">
@@ -2215,41 +2216,41 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
             <div className="flex flex-1 flex-col gap-4">
               <Field label="Company Name" required>
                 <input value={form.company_name} onChange={e=>sf('company_name',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]" />
+                  className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]" />
               </Field>
               <Field label="Address">
                 <input value={form.address} onChange={e=>sf('address',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                  className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
               <Field label="Address line 2">
                 <input value={form.address2} onChange={e=>sf('address2',e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                  className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
               </Field>
               <div className="grid grid-cols-3 gap-4">
                 <Field label="City">
                   <input value={form.city} onChange={e=>sf('city',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
                 <Field label="State">
                   <select value={form.state} onChange={e=>sf('state',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#2563eb]">
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#2563eb]">
                     <option value=""></option>
                     {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </Field>
                 <Field label="Zip">
                   <input value={form.zip_code} onChange={e=>sf('zip_code',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="FID/EIN">
                   <input value={form.fid_ein} onChange={e=>sf('fid_ein',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
                 <Field label="MC">
                   <input value={form.mc_number} onChange={e=>sf('mc_number',e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]" />
                 </Field>
               </div>
               <Field label="Notes">
@@ -2277,7 +2278,7 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
                       </div>
                       <table className="w-full text-xs">
                         <thead>
-                          <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                          <tr className="text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-gray-500">
                             {['Contact','Default','Default Billing','Phones','Email','Notes',''].map((h,i) => (
                               <th key={i} className="px-3 py-2">{h}</th>
                             ))}
@@ -2313,9 +2314,9 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
               </div>
             </div>
             {/* Right */}
-            <div className="w-full md:w-[420px] flex flex-col pt-1">
+            <div className="w-full md:w-[26.25rem] flex flex-col pt-1">
               <div className="mb-10">
-                <h3 className="mb-3 text-[16px] font-bold text-gray-800">Vendor type</h3>
+                <h3 className="mb-3 text-[1rem] font-bold text-gray-800">Vendor type</h3>
                 {form.vendor_type && (
                   <div className="mb-3 flex items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 rounded bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
@@ -2325,21 +2326,21 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
                   </div>
                 )}
                 <button onClick={() => setShowTypeModal(true)}
-                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#2563eb] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]">
+                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#2563eb] px-2.5 text-[0.8125rem] font-medium text-white hover:bg-[#4ab668]">
                   <IcoPlus /> Vendor type
                 </button>
               </div>
               <div>
-                <h3 className="mb-4 text-[16px] font-bold text-gray-800">Billing</h3>
+                <h3 className="mb-4 text-[1rem] font-bold text-gray-800">Billing</h3>
                 <div className="flex items-center gap-6 mb-6">
-                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                  <label className="flex cursor-pointer items-center gap-2 text-[0.8125rem] text-gray-700">
                     <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_additional_payee ? 'border-[#2563eb] bg-[#2563eb]' : 'border-gray-300 bg-gray-50')}>
                       {form.is_additional_payee && <IcoCheck />}
                     </div>
                     <input type="checkbox" className="hidden" checked={form.is_additional_payee} onChange={e=>sf('is_additional_payee',e.target.checked)} />
                     Additional payee
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                  <label className="flex cursor-pointer items-center gap-2 text-[0.8125rem] text-gray-700">
                     <div className={'flex h-4 w-4 items-center justify-center rounded border ' + (form.is_equipment_owner ? 'border-[#2563eb] bg-[#2563eb]' : 'border-gray-300 bg-gray-50')}>
                       {form.is_equipment_owner && <IcoCheck />}
                     </div>
@@ -2352,12 +2353,12 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
                   <input value={form.additional_payee_rate_pct}
                     onChange={e=>sf('additional_payee_rate_pct',e.target.value)}
                     disabled={!form.is_additional_payee}
-                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#2563eb] disabled:opacity-80" />
+                    className="h-[2.25rem] w-[12.5rem] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#2563eb] disabled:opacity-80" />
                 </div>
                 <div>
                   <Label text="Settlement template type" />
                   <select value={form.settlement_template_type} onChange={e=>sf('settlement_template_type',e.target.value)}
-                    className="h-[36px] w-full rounded border border-[#6ea8fe] bg-white px-2 text-sm text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]">
+                    className="h-[2.25rem] w-full rounded border border-[#6ea8fe] bg-white px-2 text-sm text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]">
                     <option value="">Select template type</option>
                     <option value="Additional Payee">Additional Payee</option>
                     <option value="Equipment Owner">Equipment Owner</option>
@@ -2383,8 +2384,8 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
           </button>
         </div>
         {showTypeModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
-            <div className="w-full max-w-[480px] overflow-hidden rounded bg-white shadow-2xl">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-[0.0625rem]">
+            <div className="w-full max-w-[30rem] overflow-hidden rounded bg-white shadow-2xl">
               <div className="flex items-center justify-between p-6 pb-2">
                 <h2 className="text-2xl font-bold text-[#1f2937]">Add Vendor Type</h2>
                 <button onClick={() => setShowTypeModal(false)} className="text-gray-400 hover:text-gray-700"><IcoX /></button>
@@ -2392,7 +2393,7 @@ function EditVendorModal({ vendor, onClose, onSaved }: { vendor: Vendor; onClose
               <div className="p-6 pt-4">
                 <Label text="Add New Vendor Type" />
                 <select value={form.vendor_type} onChange={e=>{ sf('vendor_type',e.target.value); setShowTypeModal(false) }}
-                  className="h-[42px] w-full rounded border border-[#6ea8fe] bg-white px-3 text-[15px] text-gray-800 outline-none ring-1 ring-[#6ea8fe]">
+                  className="h-[2.625rem] w-full rounded border border-[#6ea8fe] bg-white px-3 text-[0.9375rem] text-gray-800 outline-none ring-1 ring-[#6ea8fe]">
                   <option value=""></option>
                   <option value="Dispatcher">Dispatcher</option>
                   <option value="Driver">Driver</option>
@@ -2416,7 +2417,7 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
   const [transType,     setTransType]     = useState(tx?.trans_type || 'deduction')
   const [category,      setCategory]      = useState(tx?.category || '')
   const [amount,        setAmount]        = useState(String(tx?.amount || '0'))
-  const [deductBy,      setDeductBy]      = useState('')
+  const [deductBy,      setDeductBy]      = useState(String(tx?.deduct_by || ''))
   const [schedule,      setSchedule]      = useState(tx?.schedule || 'weekly')
   const [startDate,     setStartDate]     = useState(tx?.start_date || '')
   const [repeatType,    setRepeatType]    = useState(tx?.repeat_type || 'always')
@@ -2430,28 +2431,29 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
   const [isActive,      setIsActive]      = useState(tx?.is_active ?? true)
   const [saving,        setSaving]        = useState(false)
 
-  // Generate 10-row schedule preview
-  const scheduleRows = (() => {
-    const rows: {date:string;amount:string;description:string}[] = []
-    const base = startDate ? new Date(startDate) : new Date()
-    const step = schedule === 'daily' ? 1 : schedule === 'weekly' ? 7 : schedule === 'biweekly' ? 14 : 30
-    const fmt = (dt: Date) => dt.toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'2-digit'})
-    const descMap: Record<string,string> = {
-      daily:'Every day', weekly:'Weekly, every Friday', biweekly:'Every other week', monthly:'Monthly', annually:'Annually'
-    }
-    for (let i = 0; i < 10; i++) {
-      const dt = new Date(base)
-      dt.setDate(base.getDate() + i * step)
-      rows.push({ date: fmt(dt), amount: `$${(parseFloat(amount)||0).toFixed(2)}`, description: descMap[schedule] || schedule })
-    }
-    return rows
-  })()
+  const [scheduleRows, setScheduleRows] = useState<{date: string; amount: string; description: string}[]>([])
+  useEffect(() => {
+    let active = true
+    const timer = setTimeout(() => {
+      if (!startDate || Number(amount) <= 0) {setScheduleRows([]); return}
+      client.post('/api/v1/scheduled-transactions/preview', {
+        driver_id: driverId, trans_type: transType, amount: Number(amount),
+        deduct_by: ['loan', 'escrow'].includes(transType) ? Number(deductBy) : null,
+        schedule, start_date: startDate, repeat_type: repeatType,
+        repeat_times: repeatType === 'times' ? Number(repeatTimes) : null,
+        end_date: repeatType === 'until' ? endDate || null : null,
+      }).then(r => {if (active) setScheduleRows(r.data.rows.map((row: any) => ({...row, amount: formatCurrency(row.amount)})))})
+        .catch(() => {if (active) setScheduleRows([])})
+    }, 250)
+    return () => {active = false; clearTimeout(timer)}
+  }, [driverId, transType, amount, deductBy, schedule, startDate, repeatType, repeatTimes, endDate])
 
   const save = () => {
     setSaving(true)
     const payload = {
       driver_id: driverId, trans_type: transType,
       category: category || undefined, amount: parseFloat(amount) || 0,
+      deduct_by: ['loan', 'escrow'].includes(transType) ? Number(deductBy) : undefined,
       schedule: schedule || undefined, start_date: startDate || undefined,
       end_date: repeatType==='until' ? (endDate||undefined) : undefined,
       repeat_type: repeatType,
@@ -2480,7 +2482,7 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
   return (
     <div className="fixed inset-0 z-[60] flex">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative ml-auto w-full max-w-[1100px] bg-white flex flex-col h-full shadow-2xl">
+      <div className="relative ml-auto w-full max-w-[68.75rem] bg-white flex flex-col h-full shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
           <h3 className="text-base font-bold text-gray-900">{isEdit ? 'Edit Payment' : 'New Payment'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><IcoX /></button>
@@ -2617,7 +2619,7 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
               {scheduleRows[0] && <p className="text-xs text-gray-500 mb-3">Next transaction will be created on {scheduleRows[0].date}</p>}
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-left text-[11px] font-semibold uppercase text-gray-400 border-b border-gray-200">
+                  <tr className="text-left text-[0.6875rem] font-semibold uppercase text-gray-400 border-b border-gray-200">
                     <th className="py-1.5">Date</th><th className="py-1.5">Amount</th><th className="py-1.5">Period</th><th className="py-1.5">Description</th>
                   </tr>
                 </thead>
@@ -2642,4 +2644,25 @@ function TxModal({ driverId, driverName, tx, onClose, onSaved }: {
       </div>
     </div>
   )
+}
+
+function AdditionalPayeesEditor({driverId, vendors}: {driverId: number; vendors: Vendor[]}) {
+  const [rows, setRows] = useState<any[]>([])
+  const [vendorId, setVendorId] = useState('')
+  const [rate, setRate] = useState('0')
+  const [busy, setBusy] = useState(false)
+  const base = `/api/v1/drivers/${driverId}/additional-payees`
+  useEffect(() => { client.get(base).then(r => setRows(r.data)).catch(e => toast.error(e.message)) }, [base])
+  const save = async (vendor_id: number, rate_pct: number, is_active = true) => {
+    setBusy(true)
+    try { const r = await client.put(base, {vendor_id, rate_pct, is_active}); setRows(r.data); toast.success('Additional payee saved') }
+    catch (e: any) { toast.error(e.message) }
+    finally { setBusy(false) }
+  }
+  return <section className="space-y-3 border-t pt-3"><h4 className="font-semibold text-sm">Additional payees</h4>
+    <div className="flex gap-2"><select aria-label="Additional payee" className="select-base flex-1" value={vendorId} onChange={e => {setVendorId(e.target.value); setRate(String(vendors.find(v => v.id === Number(e.target.value))?.additional_payee_rate_pct || 0))}}>
+      <option value="">Select vendor</option>{vendors.filter(v => v.is_additional_payee).map(v => <option key={v.id} value={v.id}>{v.company_name}</option>)}
+    </select><input aria-label="Freight percentage" type="number" min="0" max="100" step="0.01" className="input-base w-24" value={rate} onChange={e => setRate(e.target.value)}/><span className="py-2">%</span><button type="button" disabled={busy || !vendorId || rate === ''} onClick={() => save(Number(vendorId), Number(rate))} className="btn-primary">Save payee</button></div>
+    {rows.map(row => <div key={row.id} className="flex justify-between text-sm"><span>{row.name} · {row.rate_pct}% of freight · {row.is_active ? 'Active' : 'Inactive'}</span><button type="button" disabled={busy} className="text-blue-600" onClick={() => save(row.vendor_id, row.rate_pct, !row.is_active)}>{row.is_active ? 'Deactivate' : 'Activate'}</button></div>)}
+  </section>
 }

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Literal
 from datetime import date
 
 from app.db.session import get_db
@@ -34,6 +34,8 @@ class DriverProfileIn(BaseModel):
     per_extra_stop: Optional[float] = 0.0
     freight_percentage: Optional[float] = 0.0
     flatpay: Optional[float] = 0.0
+    flatpay_period: Optional[Literal["daily", "weekly", "biweekly", "monthly"]] = None
+    flatpay_start_date: Optional[date] = None
     hourly_rate: Optional[float] = 0.0
     notes: Optional[str] = None
     # core driver fields
@@ -90,6 +92,8 @@ def _serialize_driver(d: Driver, db: Session) -> dict:
             "per_extra_stop": profile.per_extra_stop if profile else 0,
             "freight_percentage": profile.freight_percentage if profile else 0,
             "flatpay": profile.flatpay if profile else 0,
+            "flatpay_period": profile.flatpay_period if profile else None,
+            "flatpay_start_date": str(profile.flatpay_start_date) if profile and profile.flatpay_start_date else None,
             "hourly_rate": profile.hourly_rate if profile else 0,
             "notes": profile.notes if profile else "",
         } if profile else None,
@@ -152,7 +156,7 @@ def list_drivers_extended(
 
 @router.get("/extended/{driver_id}")
 def get_driver_extended(driver_id: int, db: Session = Depends(get_db)):
-    d = db.query(Driver).filter(Driver.id == driver_id).first()
+    d = db.query(Driver).filter(Driver.id == driver_id).with_for_update().first()
     if not d:
         raise HTTPException(404, "Driver not found")
     return _serialize_driver(d, db)
@@ -160,7 +164,7 @@ def get_driver_extended(driver_id: int, db: Session = Depends(get_db)):
 
 @router.put("/extended/{driver_id}")
 def update_driver_extended(driver_id: int, data: DriverProfileIn, db: Session = Depends(get_db)):
-    d = db.query(Driver).filter(Driver.id == driver_id).first()
+    d = db.query(Driver).filter(Driver.id == driver_id).with_for_update().first()
     if not d:
         raise HTTPException(404, "Driver not found")
 
@@ -181,13 +185,14 @@ def update_driver_extended(driver_id: int, data: DriverProfileIn, db: Session = 
         'first_name', 'last_name', 'date_of_birth', 'hire_date', 'termination_date',
         'address', 'address2', 'city', 'state', 'zip_code', 'payable_to', 'co_driver_id',
         'truck_id', 'trailer_id', 'fuel_card', 'ifta_handled', 'driver_status',
-        'pay_type', 'per_extra_stop', 'freight_percentage', 'flatpay', 'hourly_rate', 'notes',
+        'pay_type', 'per_extra_stop', 'freight_percentage', 'flatpay', 'flatpay_period', 'flatpay_start_date', 'hourly_rate', 'notes',
     ]
     for field in profile_fields:
-        val = getattr(data, field, None)
-        if val is not None:
-            setattr(profile, field, val)
+        if field in data.model_fields_set:
+            setattr(profile, field, getattr(data, field))
 
+    from app.services.flatpay import sync_flatpay
+    sync_flatpay(db, d, profile)
     db.commit()
     return _serialize_driver(d, db)
 
@@ -200,8 +205,8 @@ def create_driver_extended(data: DriverProfileIn, db: Session = Depends(get_db))
         phone=data.phone,
         email=data.email,
         driver_type=data.driver_type or "Drv",
-        pay_rate_loaded=data.pay_rate_loaded or 0.65,
-        pay_rate_empty=data.pay_rate_empty or 0.30,
+        pay_rate_loaded=data.pay_rate_loaded if data.pay_rate_loaded is not None else 0.65,
+        pay_rate_empty=data.pay_rate_empty if data.pay_rate_empty is not None else 0.30,
         is_active=True,
     )
     db.add(d)
@@ -231,10 +236,14 @@ def create_driver_extended(data: DriverProfileIn, db: Session = Depends(get_db))
         per_extra_stop=data.per_extra_stop or 0,
         freight_percentage=data.freight_percentage or 0,
         flatpay=data.flatpay or 0,
+        flatpay_period=data.flatpay_period,
+        flatpay_start_date=data.flatpay_start_date,
         hourly_rate=data.hourly_rate or 0,
         notes=data.notes or "",
     )
     db.add(profile)
+    from app.services.flatpay import sync_flatpay
+    sync_flatpay(db, d, profile)
     db.commit()
     return _serialize_driver(d, db)
 
@@ -243,41 +252,41 @@ def create_driver_extended(data: DriverProfileIn, db: Session = Depends(get_db))
 
 @router.get("/open-balance")
 def open_balance(db: Session = Depends(get_db)):
-    """Returns each active driver's unsettled drivers_payable balance using snapshots."""
-    from app.models.models import Load, SettlementItem
+    """Use the same unselected payroll entries as the settlement picker."""
+    from app.crud.payroll import get_open_balances
+    return [{**row, 'last_load_date': str(row['updated']) if row['updated'] else None}
+            for row in get_open_balances(db)]
 
-    drivers = db.query(Driver).filter(Driver.is_active == True).all()
-    result = []
-    for drv in drivers:
-        settled_load_ids = db.query(SettlementItem.load_id).filter(
-            SettlementItem.load_id.isnot(None)
-        ).subquery()
 
-        loads = db.query(Load).filter(
-            Load.driver_id == drv.id,
-            Load.is_active == True,
-            Load.id.notin_(settled_load_ids),
-        ).all()
+from pydantic import Field
+from app.models.models import DriverAdditionalPayee, Vendor
 
-        # CRITICAL: use historical snapshot, never live driver rates
-        balance = sum(
-            (l.drivers_payable_snapshot if l.drivers_payable_snapshot is not None
-             else (l.loaded_miles or 0) * drv.pay_rate_loaded + (l.empty_miles or 0) * drv.pay_rate_empty)
-            for l in loads
-        )
-        balance = round(balance, 2)
 
-        profile = db.query(DriverProfile).filter(DriverProfile.driver_id == drv.id).first()
-        payable_to = (profile.payable_to if profile and profile.payable_to else drv.name)
-        last_load = max((l.load_date for l in loads if l.load_date), default=None)
+class AdditionalPayeeIn(BaseModel):
+    vendor_id: int
+    rate_pct: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    is_active: bool = True
 
-        result.append({
-            "driver_id": drv.id,
-            "driver_name": drv.name,
-            "driver_type": drv.driver_type,
-            "payable_to": payable_to,
-            "balance": balance,
-            "last_load_date": str(last_load) if last_load else None,
-        })
 
-    return result
+@router.get('/{driver_id}/additional-payees')
+def list_additional_payees(driver_id: int, db: Session = Depends(get_db)):
+    rows = db.query(DriverAdditionalPayee).filter(DriverAdditionalPayee.driver_id == driver_id).all()
+    return [{'id': r.id, 'vendor_id': r.vendor_id, 'name': r.vendor.company_name, 'rate_pct': r.rate_pct, 'is_active': r.is_active} for r in rows]
+
+
+@router.put('/{driver_id}/additional-payees')
+def save_additional_payee(driver_id: int, data: AdditionalPayeeIn, db: Session = Depends(get_db)):
+    driver = db.query(Driver).filter(Driver.id == driver_id, Driver.is_active == True).with_for_update().first()
+    vendor = db.query(Vendor).filter(Vendor.id == data.vendor_id, Vendor.is_active == True, Vendor.is_additional_payee == True).first()
+    if not driver or not vendor:
+        raise HTTPException(400, 'Select an active driver and additional-payee vendor')
+    rate = data.rate_pct if data.rate_pct is not None else vendor.additional_payee_rate_pct
+    if rate is None or not 0 <= rate <= 100:
+        raise HTTPException(400, 'Payee percentage must be between 0 and 100')
+    row = db.query(DriverAdditionalPayee).filter_by(driver_id=driver_id, vendor_id=vendor.id).first()
+    if not row:
+        row = DriverAdditionalPayee(driver_id=driver_id, vendor_id=vendor.id)
+        db.add(row)
+    row.rate_pct = rate; row.is_active = data.is_active
+    db.commit()
+    return list_additional_payees(driver_id, db)

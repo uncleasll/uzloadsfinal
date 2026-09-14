@@ -50,7 +50,7 @@ export default function LoadImportModal({ onClose, onImported }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose}/>
-      <div className="relative bg-white rounded-xl shadow-2xl w-[700px] max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-xl shadow-2xl w-[43.75rem] max-h-[85vh] flex flex-col overflow-hidden">
 
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <h3 className="font-bold text-gray-900">Import Loads</h3>
@@ -97,7 +97,7 @@ export default function LoadImportModal({ onClose, onImported }: Props) {
 
               <div className="text-xs text-gray-500">
                 <p className="font-semibold mb-1">Expected columns:</p>
-                <code className="block bg-gray-50 border border-gray-200 rounded p-2 text-[10px]">
+                <code className="block bg-gray-50 border border-gray-200 rounded p-2 text-[0.625rem]">
                   load_number, broker_name, driver_name, rate,<br/>
                   pickup_city, pickup_state, pickup_zip, pickup_date,<br/>
                   delivery_city, delivery_state, delivery_zip, delivery_date,<br/>

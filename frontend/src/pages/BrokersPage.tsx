@@ -131,7 +131,7 @@ function formToPayload(form: BrokerFormState): Partial<Broker> & { name: string 
 // Icons
 function SearchIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-[14px] w-[14px]">
+    <svg viewBox="0 0 24 24" fill="none" className="h-[0.875rem] w-[0.875rem]">
       <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="2" />
     </svg>
@@ -158,7 +158,7 @@ function PlusDocIcon() {
 
 function EditIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-[14px] w-[14px]">
+    <svg viewBox="0 0 24 24" fill="none" className="h-[0.875rem] w-[0.875rem]">
       <path d="M4 20h4l10-10-4-4L4 16v4Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d="M12 6l4 4" stroke="currentColor" strokeWidth="2" />
     </svg>
@@ -167,16 +167,16 @@ function EditIcon() {
 
 function TrashIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-[14px] w-[14px]">
+    <svg viewBox="0 0 24 24" fill="none" className="h-[0.875rem] w-[0.875rem]">
       <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-function DoubleChevronLeft() { return <span className="text-[10px]">«</span> }
-function ChevronLeft() { return <span className="text-[10px]">‹</span> }
-function ChevronRight() { return <span className="text-[10px]">›</span> }
-function DoubleChevronRight() { return <span className="text-[10px]">»</span> }
+function DoubleChevronLeft() { return <span className="text-[0.625rem]">«</span> }
+function ChevronLeft() { return <span className="text-[0.625rem]">‹</span> }
+function ChevronRight() { return <span className="text-[0.625rem]">›</span> }
+function DoubleChevronRight() { return <span className="text-[0.625rem]">»</span> }
 
 // Small badge helpers for the table.
 function StatusBadge({ status }: { status: string }) {
@@ -188,7 +188,7 @@ function StatusBadge({ status }: { status: string }) {
   }
   return (
     <span className={clsx(
-      'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+      'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold',
       styles[s] || styles.Pending,
     )}>
       {s}
@@ -205,7 +205,7 @@ function CreditBadge({ credit }: { credit?: string }) {
   }
   return (
     <span className={clsx(
-      'inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold',
+      'inline-flex h-5 w-5 items-center justify-center rounded-full border text-[0.625rem] font-bold',
       colors[credit] || 'border-slate-200 bg-slate-50 text-slate-500',
     )}>
       {credit}
@@ -256,12 +256,12 @@ function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel }: {
       {open && (
         <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
           <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">
             <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
             {editLabel}
           </button>
           <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-red-600 transition-colors hover:bg-red-50">
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             {deleteLabel}
           </button>
@@ -422,7 +422,7 @@ export default function BrokersPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
 
       {/* Header */}
       <div className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
@@ -430,13 +430,13 @@ export default function BrokersPage() {
           <div className="mr-1 flex-shrink-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold tracking-tight text-slate-950">Customers</h1>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{filteredBrokers.length}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.625rem] font-bold text-slate-500">{filteredBrokers.length}</span>
             </div>
-            <p className="mt-0.5 text-[11px] font-medium text-slate-400">Brokers and shippers you haul for</p>
+            <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Brokers and shippers you haul for</p>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="relative min-w-[220px] flex-1 sm:flex-none">
+            <div className="relative min-w-[13.75rem] flex-1 sm:flex-none">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><SearchIcon /></span>
               <input
                 value={search}
@@ -460,7 +460,7 @@ export default function BrokersPage() {
               key={key}
               onClick={() => { setActiveTab(key); setPage(1) }}
               className={clsx(
-                'rounded-md px-3 py-1.5 text-[11px] font-semibold transition',
+                'rounded-md px-3 py-1.5 text-[0.6875rem] font-semibold transition',
                 activeTab === key
                   ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
                   : 'text-slate-500 hover:text-slate-700'
@@ -513,7 +513,7 @@ export default function BrokersPage() {
                   onClick={() => openEditModal(broker)}
                 >
                   <td className="px-1.5 py-1">
-                    <span className="font-semibold text-blue-600 truncate hover:underline text-[11px] block">
+                    <span className="font-semibold text-blue-600 truncate hover:underline text-[0.6875rem] block">
                       {broker.name}
                     </span>
                   </td>
@@ -568,7 +568,7 @@ export default function BrokersPage() {
               return s + i
             }).map(p => (
               <button key={p} onClick={() => setPage(p)}
-                className={clsx('w-5 h-5 rounded text-[11px] font-medium transition-colors',
+                className={clsx('w-5 h-5 rounded text-[0.6875rem] font-medium transition-colors',
                   p === safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100')}>
                 {p}
               </button>
@@ -583,13 +583,13 @@ export default function BrokersPage() {
             </button>
           </div>
 
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[0.6875rem] text-gray-500">
             Showing {startEntry}–{endEntry} of {filteredBrokers.length} entries
           </span>
 
           <button
             onClick={() => { setShowInactive((v) => !v); setPage(1) }}
-            className={clsx('rounded-full border px-2.5 py-1 text-[10px] font-semibold transition',
+            className={clsx('rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold transition',
               showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700')}
           >
             {showInactive ? 'Hide inactive customers' : 'Show inactive customers'}
@@ -597,12 +597,12 @@ export default function BrokersPage() {
         </div>
 
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          <span className="px-1.5 text-[0.625rem] font-medium text-slate-400">Rows</span>
           {[10, 25, 50, 100].map((size) => (
             <button
               key={size}
               onClick={() => { setPerPage(size); setPage(1) }}
-              className={clsx('rounded-md px-2 py-1 text-[10px] transition',
+              className={clsx('rounded-md px-2 py-1 text-[0.625rem] transition',
                 perPage === size ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700')}
             >
               {size}
@@ -613,11 +613,11 @@ export default function BrokersPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-sm">
-          <div className="flex max-h-[95vh] w-full max-w-[1100px] flex-col overflow-hidden rounded bg-white shadow-2xl">
+          <div className="flex max-h-[95vh] w-full max-w-[68.75rem] flex-col overflow-hidden rounded bg-white shadow-2xl">
 
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 bg-[#f8f9fb] px-6 py-3">
-              <h2 className="text-[16px] font-bold text-gray-800">{isEdit ? 'Edit Customer' : 'New Customer'}</h2>
+              <h2 className="text-[1rem] font-bold text-gray-800">{isEdit ? 'Edit Customer' : 'New Customer'}</h2>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-700">
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -632,7 +632,7 @@ export default function BrokersPage() {
                 {/* LEFT COLUMN - General Info */}
                 <div className="flex flex-1 flex-col gap-4">
                   <div>
-                    <label className="mb-1.5 block text-[13px] font-medium text-gray-600">
+                    <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">
                       Company Name <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -640,7 +640,7 @@ export default function BrokersPage() {
                         value={form.companyName}
                         onChange={(e) => updateForm('companyName', e.target.value)}
                         placeholder="Search by name or MC number"
-                        className="h-[36px] w-full rounded border border-gray-200 bg-[#fcfcfd] px-3 text-sm outline-none placeholder:text-gray-400 focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
+                        className="h-[2.25rem] w-full rounded border border-gray-200 bg-[#fcfcfd] px-3 text-sm outline-none placeholder:text-gray-400 focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
                       />
                       <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                         <SearchIcon />
@@ -649,26 +649,26 @@ export default function BrokersPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Address</label>
+                    <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Address</label>
                     <input
                       value={form.address}
                       onChange={(e) => updateForm('address', e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
+                      className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Address line 2</label>
+                    <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Address line 2</label>
                     <input
                       value={form.addressLine2}
                       onChange={(e) => updateForm('addressLine2', e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
+                      className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Phone</label>
+                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Phone</label>
                       <div className="relative">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                           <PhoneIcon />
@@ -676,12 +676,12 @@ export default function BrokersPage() {
                         <input
                           value={form.phone}
                           onChange={(e) => updateForm('phone', e.target.value)}
-                          className="h-[36px] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
+                          className="h-[2.25rem] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Email</label>
+                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Email</label>
                       <div className="relative">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">
                           @
@@ -689,7 +689,7 @@ export default function BrokersPage() {
                         <input
                           value={form.email}
                           onChange={(e) => updateForm('email', e.target.value)}
-                          className="h-[36px] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
+                          className="h-[2.25rem] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
                         />
                       </div>
                     </div>
@@ -697,19 +697,19 @@ export default function BrokersPage() {
 
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="mb-1.5 block text-[13px] font-medium text-gray-600">City</label>
+                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">City</label>
                       <input
                         value={form.city}
                         onChange={(e) => updateForm('city', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
+                        className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[13px] font-medium text-gray-600">State</label>
+                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">State</label>
                       <select
                         value={form.state}
                         onChange={(e) => updateForm('state', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] bg-white"
+                        className="h-[2.25rem] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] bg-white"
                       >
                         <option value=""></option>
                         {STATES.map((state) => (
@@ -718,36 +718,36 @@ export default function BrokersPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Zip</label>
+                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Zip</label>
                       <input
                         value={form.zip}
                         onChange={(e) => updateForm('zip', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
+                        className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="mb-1.5 block text-[13px] font-medium text-gray-600">FID/EIN</label>
+                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">FID/EIN</label>
                       <input
                         value={form.fidEin}
                         onChange={(e) => updateForm('fidEin', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
+                        className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[13px] font-medium text-gray-600">MC</label>
+                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">MC</label>
                       <input
                         value={form.mc}
                         onChange={(e) => updateForm('mc', e.target.value)}
-                        className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
+                        className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Notes</label>
+                    <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Notes</label>
                     <textarea
                       value={form.notes}
                       onChange={(e) => updateForm('notes', e.target.value)}
@@ -758,11 +758,11 @@ export default function BrokersPage() {
                 </div>
 
                 {/* RIGHT COLUMN - Settings / Billing */}
-                <div className="w-full md:w-[480px] flex flex-col">
+                <div className="w-full md:w-[30rem] flex flex-col">
 
                   {/* Customer Type Section */}
                   <div className="mb-8">
-                    <h3 className="mb-3 text-[15px] font-bold text-gray-800">Customer type</h3>
+                    <h3 className="mb-3 text-[0.9375rem] font-bold text-gray-800">Customer type</h3>
                     <div className="flex flex-col gap-2.5">
                       <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
                         <div className={clsx("flex h-4 w-4 items-center justify-center rounded", form.isBroker ? "bg-[#2563eb]" : "border border-gray-300")}>
@@ -783,13 +783,13 @@ export default function BrokersPage() {
 
                   {/* Billing Section */}
                   <div>
-                    <h3 className="mb-3 text-[15px] font-bold text-gray-800">Billing</h3>
+                    <h3 className="mb-3 text-[0.9375rem] font-bold text-gray-800">Billing</h3>
 
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       {/* Radio Buttons */}
                       <div className="flex flex-col gap-3 justify-center">
                         <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                          <div className={clsx("flex h-[18px] w-[18px] items-center justify-center rounded-full border", form.billingType === 'direct' ? "border-[#2563eb]" : "border-gray-300")}>
+                          <div className={clsx("flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full border", form.billingType === 'direct' ? "border-[#2563eb]" : "border-gray-300")}>
                             {form.billingType === 'direct' && <div className="h-2.5 w-2.5 rounded-full bg-[#2563eb]"></div>}
                           </div>
                           <input type="radio" className="hidden" checked={form.billingType === 'direct'} onChange={() => updateForm('billingType', 'direct')} />
@@ -797,7 +797,7 @@ export default function BrokersPage() {
                         </label>
 
                         <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                          <div className={clsx("flex h-[18px] w-[18px] items-center justify-center rounded-full border", form.billingType === 'factoring' ? "border-[#2563eb]" : "border-gray-300")}>
+                          <div className={clsx("flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full border", form.billingType === 'factoring' ? "border-[#2563eb]" : "border-gray-300")}>
                             {form.billingType === 'factoring' && <div className="h-2.5 w-2.5 rounded-full bg-[#2563eb]"></div>}
                           </div>
                           <input type="radio" className="hidden" checked={form.billingType === 'factoring'} onChange={() => updateForm('billingType', 'factoring')} />
@@ -807,12 +807,12 @@ export default function BrokersPage() {
 
                       {/* Factoring Dropdown */}
                       <div>
-                        <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Factoring</label>
+                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Factoring</label>
                         <select
                           value={form.factoringCompany}
                           onChange={(e) => updateForm('factoringCompany', e.target.value)}
                           disabled={form.billingType !== 'factoring'}
-                          className="h-[36px] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] disabled:bg-gray-50 bg-white"
+                          className="h-[2.25rem] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] disabled:bg-gray-50 bg-white"
                         >
                           <option value=""></option>
                           <option value="RTS">RTS</option>
@@ -825,20 +825,20 @@ export default function BrokersPage() {
                     {/* 3 Column Stats */}
                     <div className="grid grid-cols-3 gap-4 mb-4">
                       <div>
-                        <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Quickpay fee, %</label>
+                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Quickpay fee, %</label>
                         <input
                           value={form.quickpayFee}
                           onChange={(e) => updateForm('quickpayFee', e.target.value)}
                           placeholder="e.g. 2.25"
-                          className="h-[36px] w-full rounded border border-gray-200 bg-[#f1f5f9] px-3 text-sm outline-none text-gray-700 placeholder:text-gray-500 focus:border-[#2563eb]"
+                          className="h-[2.25rem] w-full rounded border border-gray-200 bg-[#f1f5f9] px-3 text-sm outline-none text-gray-700 placeholder:text-gray-500 focus:border-[#2563eb]"
                         />
                       </div>
                       <div>
-                        <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Credit</label>
+                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Credit</label>
                         <select
                           value={form.credit}
                           onChange={(e) => updateForm('credit', e.target.value)}
-                          className="h-[36px] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] bg-white"
+                          className="h-[2.25rem] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] bg-white"
                         >
                           <option value=""></option>
                           <option value="A">A</option>
@@ -847,12 +847,12 @@ export default function BrokersPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Avg days to pay</label>
+                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Avg days to pay</label>
                         <input
                           value={form.avgDaysToPay}
                           onChange={(e) => updateForm('avgDaysToPay', e.target.value)}
                           inputMode="numeric"
-                          className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
+                          className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                         />
                       </div>
                     </div>
@@ -860,11 +860,11 @@ export default function BrokersPage() {
                     {/* Status & Pay terms */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Status</label>
+                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Status</label>
                         <select
                           value={form.status}
                           onChange={(e) => updateForm('status', e.target.value as StatusType)}
-                          className="h-[36px] w-full rounded border border-[#6ea8fe] px-2 text-sm font-medium text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe] bg-white"
+                          className="h-[2.25rem] w-full rounded border border-[#6ea8fe] px-2 text-sm font-medium text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe] bg-white"
                         >
                           <option value="Pending">Pending</option>
                           <option value="Approved">Approved</option>
@@ -872,11 +872,11 @@ export default function BrokersPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="mb-1.5 block text-[13px] font-medium text-gray-600">Pay terms</label>
+                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Pay terms</label>
                         <input
                           value={form.payTerms}
                           onChange={(e) => updateForm('payTerms', e.target.value)}
-                          className="h-[36px] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
+                          className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
                         />
                       </div>
                     </div>

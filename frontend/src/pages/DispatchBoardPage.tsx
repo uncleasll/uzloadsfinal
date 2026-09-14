@@ -154,18 +154,18 @@ export default function DispatchBoardPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
       <div className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold tracking-tight text-slate-950">Dispatch Board</h1>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{loads.length}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.625rem] font-bold text-slate-500">{loads.length}</span>
               {loading && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />}
             </div>
-            <p className="mt-0.5 text-[11px] font-medium text-slate-400">Assign loads, monitor live lanes, and keep equipment moving</p>
+            <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Assign loads, monitor live lanes, and keep equipment moving</p>
           </div>
-          <div className="flex min-w-[260px] flex-1 items-center justify-end gap-2">
+          <div className="flex min-w-[16.25rem] flex-1 items-center justify-end gap-2">
             <div className="relative w-full max-w-sm">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -195,19 +195,19 @@ export default function DispatchBoardPage() {
         <div className="min-h-0 overflow-y-auto overflow-x-hidden p-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
             {BOARD_STATUSES.map(status => (
-              <section key={status} className="flex min-h-[360px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <section key={status} className="flex min-h-[22.5rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <span className={`h-2 w-2 rounded-full ${STATUS_META[status].dot}`} />
-                    <h2 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">{STATUS_META[status].label}</h2>
+                    <h2 className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-700">{STATUS_META[status].label}</h2>
                   </div>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-slate-200">{grouped[status].length}</span>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[0.625rem] font-bold text-slate-500 ring-1 ring-slate-200">{grouped[status].length}</span>
                 </div>
                 <div className="flex-1 space-y-2 overflow-auto p-2">
                   {grouped[status].length ? grouped[status].map(load => (
                     <LoadCard key={load.id} load={load} active={selected?.id === load.id} onClick={() => setSelectedId(load.id)} />
                   )) : (
-                    <div className="grid h-28 place-items-center rounded-lg border border-dashed border-slate-200 bg-slate-50/70 text-[10px] font-semibold text-slate-400">
+                    <div className="grid h-28 place-items-center rounded-lg border border-dashed border-slate-200 bg-slate-50/70 text-[0.625rem] font-semibold text-slate-400">
                       No loads
                     </div>
                   )}
@@ -227,11 +227,11 @@ export default function DispatchBoardPage() {
                       <h2 className="text-base font-bold text-slate-950">Load #{selected.load_number}</h2>
                       <StatusPill status={selected.status} />
                     </div>
-                    <p className="mt-1 text-[11px] font-medium text-slate-400">{selected.broker?.name || 'No broker'} · PO {selected.po_number || 'N/A'}</p>
+                    <p className="mt-1 text-[0.6875rem] font-medium text-slate-400">{selected.broker?.name || 'No broker'} · PO {selected.po_number || 'N/A'}</p>
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-bold text-slate-900">{formatCurrency(selected.rate || 0)}</div>
-                    <div className="text-[10px] font-semibold text-slate-400">{selected.total_miles || 0} mi</div>
+                    <div className="text-[0.625rem] font-semibold text-slate-400">{selected.total_miles || 0} mi</div>
                   </div>
                 </div>
               </div>
@@ -241,7 +241,7 @@ export default function DispatchBoardPage() {
 
                 <div className="rounded-lg border border-slate-200 bg-white">
                   <div className="border-b border-slate-100 px-3 py-2">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Assign equipment</h3>
+                    <h3 className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">Assign equipment</h3>
                   </div>
                   <div className="space-y-2 p-3">
                     <SelectRow icon={<UserRound />} label="Driver" value={driverId} onChange={setDriverId}
@@ -257,14 +257,14 @@ export default function DispatchBoardPage() {
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Move status</div>
+                  <div className="mb-2 text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">Move status</div>
                   <div className="grid grid-cols-2 gap-2">
                     {BOARD_STATUSES.map(status => (
                       <button
                         key={status}
                         onClick={() => updateLoad({ status })}
                         disabled={saving || selected.status === status}
-                        className={`rounded-md border px-2 py-2 text-left text-[11px] font-bold transition disabled:cursor-default disabled:opacity-60 ${selected.status === status ? STATUS_META[status].tone : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50'}`}
+                        className={`rounded-md border px-2 py-2 text-left text-[0.6875rem] font-bold transition disabled:cursor-default disabled:opacity-60 ${selected.status === status ? STATUS_META[status].tone : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50'}`}
                       >
                         {STATUS_META[status].label}
                       </button>
@@ -276,7 +276,7 @@ export default function DispatchBoardPage() {
               </div>
             </div>
           ) : (
-            <div className="grid h-full min-h-[360px] place-items-center p-8 text-center">
+            <div className="grid h-full min-h-[22.5rem] place-items-center p-8 text-center">
               <div>
                 <ClipboardList className="mx-auto h-8 w-8 text-slate-300" />
                 <p className="mt-2 text-xs font-semibold text-slate-500">No active loads to dispatch</p>
@@ -301,7 +301,7 @@ function TopStat({ icon, label, value, tone }: { icon: React.ReactNode; label: s
     <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
       <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ring-1 [&>svg]:h-4 [&>svg]:w-4 ${tones[tone]}`}>{icon}</span>
       <span className="min-w-0">
-        <span className="block truncate text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
+        <span className="block truncate text-[0.625rem] font-bold uppercase tracking-wide text-slate-400">{label}</span>
         <span className="block truncate text-sm font-bold text-slate-950">{value}</span>
       </span>
     </div>
@@ -321,29 +321,29 @@ function LoadCard({ load, active, onClick }: { load: LoadListItem; active: boole
             <span className="text-xs font-bold text-slate-950">#{load.load_number}</span>
             {stale && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
           </div>
-          <div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">{load.broker?.name || 'No broker'}</div>
+          <div className="mt-0.5 truncate text-[0.625rem] font-semibold text-slate-400">{load.broker?.name || 'No broker'}</div>
         </div>
-        <div className="text-right text-[10px] font-bold text-slate-700">{formatCurrency(load.rate || 0)}</div>
+        <div className="text-right text-[0.625rem] font-bold text-slate-700">{formatCurrency(load.rate || 0)}</div>
       </div>
       <div className="mt-3 space-y-1.5">
         <RouteLine icon={<MapPin />} label={stopLabel(pickup)} />
         <RouteLine icon={<Navigation />} label={stopLabel(delivery)} />
       </div>
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
-        <span className="truncate text-[10px] font-semibold text-slate-500">{load.driver?.name || 'Unassigned'}</span>
-        <span className="text-[10px] font-bold text-slate-400">{formatDate(load.load_date)}</span>
+        <span className="truncate text-[0.625rem] font-semibold text-slate-500">{load.driver?.name || 'Unassigned'}</span>
+        <span className="text-[0.625rem] font-bold text-slate-400">{formatDate(load.load_date)}</span>
       </div>
     </button>
   )
 }
 
 function RouteLine({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-semibold text-slate-600 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:shrink-0 [&>svg]:text-slate-400"><>{icon}</><span className="truncate">{label}</span></div>
+  return <div className="flex min-w-0 items-center gap-1.5 text-[0.625rem] font-semibold text-slate-600 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:shrink-0 [&>svg]:text-slate-400"><>{icon}</><span className="truncate">{label}</span></div>
 }
 
 function StatusPill({ status }: { status: LoadStatus }) {
   const meta = STATUS_META[status]
-  return <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${meta.tone}`}><span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />{meta.label}</span>
+  return <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.625rem] font-bold ${meta.tone}`}><span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />{meta.label}</span>
 }
 
 function RoutePanel({ load }: { load: LoadListItem }) {
@@ -352,8 +352,8 @@ function RoutePanel({ load }: { load: LoadListItem }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Route</div>
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400"><CalendarClock className="h-3 w-3" />{formatDate(load.load_date)}</span>
+        <div className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">Route</div>
+        <span className="inline-flex items-center gap-1 text-[0.625rem] font-bold text-slate-400"><CalendarClock className="h-3 w-3" />{formatDate(load.load_date)}</span>
       </div>
       <div className="space-y-3">
         <StopBlock label="Pickup" value={stopLabel(pickup)} date={pickup?.stop_date} />
@@ -369,9 +369,9 @@ function StopBlock({ label, value, date }: { label: string; value: string; date?
     <div className="flex gap-2">
       <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-white text-blue-600 ring-1 ring-slate-200"><MapPin className="h-3.5 w-3.5" /></span>
       <div className="min-w-0">
-        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</div>
+        <div className="text-[0.625rem] font-bold uppercase tracking-wide text-slate-400">{label}</div>
         <div className="truncate text-xs font-bold text-slate-800">{value}</div>
-        {date && <div className="text-[10px] font-semibold text-slate-400">{formatDate(date)}</div>}
+        {date && <div className="text-[0.625rem] font-semibold text-slate-400">{formatDate(date)}</div>}
       </div>
     </div>
   )
@@ -380,7 +380,7 @@ function StopBlock({ label, value, date }: { label: string; value: string; date?
 function SelectRow({ icon, label, value, onChange, options }: { icon: React.ReactNode; label: string; value: string; onChange: (value: string) => void; options: { value: number; label: string; muted?: boolean }[] }) {
   return (
     <label className="block">
-      <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400 [&>svg]:h-3 [&>svg]:w-3">{icon}{label}</span>
+      <span className="mb-1 flex items-center gap-1.5 text-[0.625rem] font-bold uppercase tracking-wide text-slate-400 [&>svg]:h-3 [&>svg]:w-3">{icon}{label}</span>
       <select value={value} onChange={e => onChange(e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100">
         <option value="">Choose {label.toLowerCase()}</option>
         {options.map(option => <option key={option.value} value={option.value}>{option.label}{option.muted ? ' · busy' : ''}</option>)}
@@ -397,16 +397,16 @@ function DriverStack({ drivers, busyIds, loads }: { drivers: Driver[]; busyIds: 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
       <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-        <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Driver availability</h3>
-        <span className="text-[10px] font-bold text-slate-400">{drivers.length - busyIds.size} free</span>
+        <h3 className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">Driver availability</h3>
+        <span className="text-[0.625rem] font-bold text-slate-400">{drivers.length - busyIds.size} free</span>
       </div>
       <div className="divide-y divide-slate-100">
         {rows.map(({ driver, activeLoad }) => (
           <div key={driver.id} className="flex items-center gap-2 px-3 py-2">
             <span className={`h-2 w-2 rounded-full ${activeLoad ? 'bg-cyan-500' : 'bg-emerald-500'}`} />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[11px] font-bold text-slate-800">{driver.name}</div>
-              <div className="truncate text-[10px] font-semibold text-slate-400">{activeLoad ? `On load #${activeLoad.load_number}` : 'Available now'}</div>
+              <div className="truncate text-[0.6875rem] font-bold text-slate-800">{driver.name}</div>
+              <div className="truncate text-[0.625rem] font-semibold text-slate-400">{activeLoad ? `On load #${activeLoad.load_number}` : 'Available now'}</div>
             </div>
             {driver.phone && <Phone className="h-3.5 w-3.5 text-slate-300" />}
           </div>

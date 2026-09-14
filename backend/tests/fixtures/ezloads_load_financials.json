@@ -1,0 +1,43 @@
+{
+  "observed_at": "2026-09-14",
+  "extra_stops": [
+    {
+      "case": "base",
+      "amount": "63.00"
+    },
+    {
+      "case": "extra_nonpayable",
+      "amount": "88.00"
+    },
+    {
+      "case": "extra_payable",
+      "amount": "88.00"
+    },
+    {
+      "case": "other_nonpayable",
+      "amount": "88.00"
+    },
+    {
+      "case": "other_payable",
+      "amount": "113.00"
+    }
+  ],
+  "fee_accessorial": {
+    "amount_freight": 1200,
+    "amount_services": 0,
+    "amount_invoice": 1300,
+    "amount_funding_fees": 29.25,
+    "amount_additional_payee": "120.00",
+    "amount_driver": "70.00"
+  },
+  "inputs": {
+    "loaded_miles": 100,
+    "empty_miles": 10,
+    "loaded_rate": 0.6,
+    "empty_rate": 0.3,
+    "extra_stop_rate": 25,
+    "additional_payee_pct": 10,
+    "quickpay_pct": 2.25,
+    "accessorial": 100
+  }
+}

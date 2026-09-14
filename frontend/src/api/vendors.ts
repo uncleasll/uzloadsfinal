@@ -31,6 +31,7 @@ export interface ScheduledTransaction {
   category?: string
   description?: string
   amount: number
+  deduct_by?: number
   schedule?: string
   start_date?: string
   end_date?: string

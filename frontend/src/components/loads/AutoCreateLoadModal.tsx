@@ -141,7 +141,7 @@ export default function AutoCreateLoadModal({ onClose, onSaved, entities }: Prop
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <div>
             <h2 className="text-base font-bold text-slate-950">{data ? 'Review Load Details' : 'Create New Loads'}</h2>
-            <p className="text-[11px] font-medium text-slate-400">Upload PDF, JPG, JPEG or PNG. Review extracted fields before approving.</p>
+            <p className="text-[0.6875rem] font-medium text-slate-400">Upload PDF, JPG, JPEG or PNG. Review extracted fields before approving.</p>
           </div>
           <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X className="h-4 w-4" /></button>
         </div>
@@ -156,7 +156,7 @@ export default function AutoCreateLoadModal({ onClose, onSaved, entities }: Prop
               <Upload className="h-9 w-9 text-slate-400" />
               <button onClick={() => inputRef.current?.click()} className="mt-4 text-sm font-bold text-blue-600">Click to select</button>
               <p className="mt-1 text-xs font-medium text-slate-500">or drag and drop up to 10 files</p>
-              <p className="mt-1 text-[11px] font-medium text-slate-400">Supported: PDF, JPG, JPEG, PNG</p>
+              <p className="mt-1 text-[0.6875rem] font-medium text-slate-400">Supported: PDF, JPG, JPEG, PNG</p>
               <input ref={inputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => e.target.files && addFiles(e.target.files)} />
             </div>
             {files.length > 0 && (
@@ -176,7 +176,7 @@ export default function AutoCreateLoadModal({ onClose, onSaved, entities }: Prop
             <div className="min-h-0 overflow-auto bg-slate-100 p-4">
               <div className="mb-2 flex items-center gap-2">
                 {files.map((file, idx) => (
-                  <button key={file.name + idx} onClick={() => setPreviewIndex(idx)} className={`rounded-md px-2 py-1 text-[11px] font-bold ${previewIndex === idx ? 'bg-blue-600 text-white' : 'bg-white text-slate-500'}`}>{idx + 1}</button>
+                  <button key={file.name + idx} onClick={() => setPreviewIndex(idx)} className={`rounded-md px-2 py-1 text-[0.6875rem] font-bold ${previewIndex === idx ? 'bg-blue-600 text-white' : 'bg-white text-slate-500'}`}>{idx + 1}</button>
                 ))}
               </div>
               {activePreview?.type.includes('pdf') || activePreview?.name.toLowerCase().endsWith('.pdf')
@@ -194,7 +194,7 @@ export default function AutoCreateLoadModal({ onClose, onSaved, entities }: Prop
                   <Input label="Delivery date" type="date" value={data.actual_delivery_date || ''} onChange={v => setField('actual_delivery_date', v)} />
                 </div>
                 <label className="mt-3 block">
-                  <span className="mb-1 block text-[11px] font-bold text-slate-500">Notes</span>
+                  <span className="mb-1 block text-[0.6875rem] font-bold text-slate-500">Notes</span>
                   <textarea value={data.notes || ''} onChange={e => setField('notes', e.target.value)} className="h-20 w-full rounded-md border border-slate-200 px-3 py-2 text-xs focus:border-blue-400 focus:outline-none" />
                 </label>
               </Section>
@@ -242,7 +242,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Input({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-bold text-slate-500">{label}</span>
+      <span className="mb-1 block text-[0.6875rem] font-bold text-slate-500">{label}</span>
       <input type={type} value={value} onChange={e => onChange(e.target.value)} className="h-9 w-full rounded-md border border-slate-200 px-3 text-xs text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100" />
     </label>
   )

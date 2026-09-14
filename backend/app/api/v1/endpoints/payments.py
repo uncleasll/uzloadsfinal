@@ -168,7 +168,7 @@ def delete_payment(payment_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{payment_id}/apply/{settlement_id}")
 def apply_to_settlement(payment_id: int, settlement_id: int, db: Session = Depends(get_db)):
-    """Apply an advanced payment to a specific settlement (reduces settlement total)."""
+    """Apply an advanced payment to a specific settlement (reduces balance due)."""
     p = db.query(Payment).filter(Payment.id == payment_id, Payment.is_active == True).first()
     if not p:
         raise HTTPException(404, "Payment not found")
@@ -183,10 +183,13 @@ def apply_to_settlement(payment_id: int, settlement_id: int, db: Session = Depen
     if not _is_editable(s):
         raise HTTPException(400, f"Settlement is {s.status.value}. Move back to Preparing to apply advanced payments.")
 
+    if p.driver_id != s.driver_id:
+        raise HTTPException(400, "Payment belongs to a different driver")
     p.applied_settlement_id = settlement_id
-    db.commit()
+    db.flush()
     _add_history(db, settlement_id, f"Advanced payment #{p.payment_number} (${p.amount}) applied")
     _recalculate(db, settlement_id)
+    db.commit()
     return _serialize(p)
 
 
@@ -203,7 +206,8 @@ def unapply_from_settlement(payment_id: int, db: Session = Depends(get_db)):
         raise HTTPException(400, f"Settlement is {s.status.value}. Move back to Preparing to unapply.")
     prev_sid = p.applied_settlement_id
     p.applied_settlement_id = None
-    db.commit()
+    db.flush()
     _add_history(db, prev_sid, f"Advanced payment #{p.payment_number} unapplied")
     _recalculate(db, prev_sid)
+    db.commit()
     return _serialize(p)

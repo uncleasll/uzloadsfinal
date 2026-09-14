@@ -17,7 +17,7 @@ export type BillingStatus =
   | 'Funded'
   | 'Paid'
 
-export type StopType = 'pickup' | 'delivery'
+export type StopType = 'pickup' | 'delivery' | 'other'
 export type ServiceType = 'Lumper' | 'Detention' | 'Other'
 export type DocumentType = 'Confirmation' | 'BOL' | 'POD' | 'Other'
 
@@ -145,6 +145,8 @@ export interface LoadStop {
   id: number
   stop_type: StopType
   stop_order: number
+  is_payable?: boolean
+  title?: string
   city?: string
   state?: string
   zip_code?: string
@@ -215,10 +217,17 @@ export interface Load {
   pay_rate_loaded_snapshot?: number
   pay_rate_empty_snapshot?: number
   freight_percentage_snapshot?: number
+  extra_stop_rate_snapshot?: number
+  extra_stop_count_snapshot?: number
   flatpay_snapshot?: number
   drivers_payable_snapshot?: number
   snapshot_taken_at?: string
+  quickpay_amount?: number
+  invoice_total?: number
+  quickpay_rate_snapshot?: number
+  additional_payees?: {id: number; vendor_id: number; payable_to: string; rate_pct: number; base_amount: number; amount: number}[]
   snapshot_overridden?: boolean
+  driver_pay_override?: {type: string; amount?: number; base?: number; percentage?: number; loaded_rate?: number; empty_rate?: number; extra_stop_rate?: number} | null
 
   driver?: Driver
   co_driver?: Driver
@@ -310,6 +319,8 @@ export interface LoadCreatePayload {
   stops: {
     stop_type: StopType
     stop_order: number
+  is_payable?: boolean
+  title?: string
     city?: string
     state?: string
     zip_code?: string

@@ -7,7 +7,7 @@ from app.models.models import (
     LoadStatus, BillingStatus, Driver, Broker, Truck, Trailer, Dispatcher
 )
 from app.schemas.schemas import LoadCreate, LoadUpdate, LoadServiceCreate, LoadNoteCreate
-from app.services.driver_pay_service import take_snapshot, recalculate_driver_pay as _recalc_pay
+from app.services.driver_pay_service import take_snapshot, compute_driver_pay, is_in_settlement, is_locked
 import os
 import shutil
 
@@ -51,7 +51,7 @@ def get_loads(
         joinedload(Load.stops),
         joinedload(Load.services),
         joinedload(Load.documents),
-    )
+    ).filter(Load.is_active == True)
 
     if show_only_active:
         query = query.filter(
@@ -207,12 +207,13 @@ def create_load(db: Session, load_in: LoadCreate, author: str = "System") -> Loa
     db_load = Load(**load_data, load_number=load_number)
     db.add(db_load)
     db.flush()
-    # Freeze driver compensation rules at load-creation time
-    take_snapshot(db, db_load)
-
     for stop_data in stops:
-        stop = LoadStop(load_id=db_load.id, **stop_data.model_dump())
-        db.add(stop)
+        db_load.stops.append(LoadStop(**stop_data.model_dump()))
+
+    from app.services.load_financials import capture_quickpay
+    capture_quickpay(db, db_load)
+    # Capture pay after the initial route is assembled.
+    take_snapshot(db, db_load)
 
     # Build history entry
     driver_name = ""
@@ -289,21 +290,39 @@ def update_load(db: Session, load_id: int, load_in: LoadUpdate, author: str = "S
                 f"on load #{duplicate.load_number}."
             )
 
+    broker_changed = "broker_id" in update_data and update_data["broker_id"] != db_load.broker_id
     driver_changed = "driver_id" in update_data and update_data["driver_id"] != db_load.driver_id
+    pay_changed = driver_changed or load_in.stops is not None or any(
+        key in update_data and update_data[key] != getattr(db_load, key)
+        for key in ("rate", "loaded_miles", "empty_miles", "load_date")
+    )
+    # Check the ORIGINAL state, before assigning new statuses or compensation inputs.
+    if (pay_changed or broker_changed) and (is_locked(db_load) or is_in_settlement(db, db_load)[0]):
+        raise ValueError("Load pay is locked. Remove it from its settlement and unlock billing before changing pay inputs.")
     for key, value in update_data.items():
         setattr(db_load, key, value)
 
     if load_in.stops is not None:
-        db.query(LoadStop).filter(LoadStop.load_id == load_id).delete()
+        db_load.stops.clear()
+        db.flush()
         for stop_data in load_in.stops:
-            stop = LoadStop(load_id=load_id, **stop_data.model_dump())
-            db.add(stop)
+            db_load.stops.append(LoadStop(**stop_data.model_dump()))
 
-    # If driver changed on an unlocked load, retake compensation snapshot
-    if driver_changed and not is_locked(db_load):
+    if load_in.stops is not None:
+        from app.services.driver_pay_service import refresh_extra_stop_count
+        refresh_extra_stop_count(db_load)
+
+    if driver_changed:
         db.flush()
         take_snapshot(db, db_load)
+    elif pay_changed:
+        db_load.drivers_payable_snapshot = compute_driver_pay(db_load)
 
+    from app.services.load_financials import refresh_payees, capture_quickpay
+    if pay_changed:
+        refresh_payees(db, db_load)
+    if broker_changed:
+        capture_quickpay(db, db_load)
     history = LoadHistory(
         load_id=load_id,
         description=f"Load #{db_load.load_number} was updated by {author}",
@@ -319,32 +338,43 @@ def delete_load(db: Session, load_id: int) -> bool:
     db_load = db.query(Load).filter(Load.id == load_id).first()
     if not db_load:
         return False
+    if is_in_settlement(db, db_load)[0]:
+        raise ValueError("Remove this load from its settlement before deleting it.")
     db_load.is_active = False
     db.commit()
     return True
 
 
 def add_service(db: Session, load_id: int, service_in: LoadServiceCreate) -> LoadService:
-    service = LoadService(load_id=load_id, **service_in.model_dump())
-    db.add(service)
-
-    db_load = db.query(Load).filter(Load.id == load_id).first()
-    history = LoadHistory(
-        load_id=load_id,
-        description=f"Service added: {service_in.service_type.value} - ${service_in.invoice_amount:.2f}",
-        author="System"
-    )
-    db.add(history)
+    db_load = db.query(Load).filter(Load.id == load_id, Load.is_active == True).first()
+    if not db_load:
+        raise ValueError("Load not found")
+    if is_locked(db_load) or is_in_settlement(db, db_load)[0]:
+        raise ValueError("Remove the load from its settlement and unlock billing before editing services.")
+    service = LoadService(**service_in.model_dump())
+    db_load.services.append(service)
+    db_load.drivers_payable_snapshot = compute_driver_pay(db_load)
+    db.add(LoadHistory(load_id=load_id,
+                       description=f"Service added: {service_in.service_type.value} - ${service_in.invoice_amount:.2f}",
+                       author="System"))
     db.commit()
     db.refresh(service)
     return service
 
 
-def delete_service(db: Session, service_id: int) -> bool:
-    svc = db.query(LoadService).filter(LoadService.id == service_id).first()
+def delete_service(db: Session, service_id: int, load_id: int = None) -> bool:
+    query = db.query(LoadService).filter(LoadService.id == service_id)
+    if load_id is not None:
+        query = query.filter(LoadService.load_id == load_id)
+    svc = query.first()
     if not svc:
         return False
-    db.delete(svc)
+    load = svc.load
+    if is_locked(load) or is_in_settlement(db, load)[0]:
+        raise ValueError("Remove the load from its settlement and unlock billing before editing services.")
+    load.services.remove(svc)
+    load.drivers_payable_snapshot = compute_driver_pay(load)
+    db.add(LoadHistory(load_id=load.id, description="Service removed; driver pay updated", author="System"))
     db.commit()
     return True
 

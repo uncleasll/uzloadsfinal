@@ -34,7 +34,7 @@ def _filters_str(statuses, billing_statuses, **kw):
 @router.get("/total-revenue")
 def total_revenue(period:str=Query("last_30_days"),date_from:Optional[date]=None,date_to:Optional[date]=None,
     broker_id:Optional[int]=None,driver_id:Optional[int]=None,truck_id:Optional[int]=None,
-    group_by:str=Query("none"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
+    group_by:str=Query("none", pattern="^(none|driver|truck)$"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
     billing_statuses:Optional[str]=None,db:Session=Depends(get_db)):
     return crud.get_total_revenue_report(db,period=period,date_from=date_from,date_to=date_to,
         broker_id=broker_id,driver_id=driver_id,truck_id=truck_id,group_by=group_by,
@@ -43,7 +43,7 @@ def total_revenue(period:str=Query("last_30_days"),date_from:Optional[date]=None
 @router.get("/total-revenue/pdf")
 def total_revenue_pdf(period:str=Query("last_30_days"),date_from:Optional[date]=None,date_to:Optional[date]=None,
     broker_id:Optional[int]=None,driver_id:Optional[int]=None,truck_id:Optional[int]=None,
-    group_by:str=Query("none"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
+    group_by:str=Query("none", pattern="^(none|driver|truck)$"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
     billing_statuses:Optional[str]=None,columns:Optional[str]=None,db:Session=Depends(get_db)):
     data=crud.get_total_revenue_report(db,period=period,date_from=date_from,date_to=date_to,
         broker_id=broker_id,driver_id=driver_id,truck_id=truck_id,group_by=group_by,
@@ -56,7 +56,7 @@ def total_revenue_pdf(period:str=Query("last_30_days"),date_from:Optional[date]=
 @router.get("/total-revenue/xlsx")
 def total_revenue_xlsx(period:str=Query("last_30_days"),date_from:Optional[date]=None,date_to:Optional[date]=None,
     broker_id:Optional[int]=None,driver_id:Optional[int]=None,truck_id:Optional[int]=None,
-    group_by:str=Query("none"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
+    group_by:str=Query("none", pattern="^(none|driver|truck)$"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
     billing_statuses:Optional[str]=None,columns:Optional[str]=None,db:Session=Depends(get_db)):
     data=crud.get_total_revenue_report(db,period=period,date_from=date_from,date_to=date_to,
         broker_id=broker_id,driver_id=driver_id,truck_id=truck_id,group_by=group_by,
@@ -72,7 +72,7 @@ def total_revenue_xlsx(period:str=Query("last_30_days"),date_from:Optional[date]
 @router.get("/rate-per-mile")
 def rate_per_mile(period:str=Query("last_30_days"),date_from:Optional[date]=None,date_to:Optional[date]=None,
     broker_id:Optional[int]=None,driver_id:Optional[int]=None,truck_id:Optional[int]=None,
-    dispatcher_id:Optional[int]=None,group_by:str=Query("none"),date_type:str=Query("pickup"),
+    dispatcher_id:Optional[int]=None,group_by:str=Query("none", pattern="^(none|driver|truck)$"),date_type:str=Query("pickup"),
     statuses:Optional[str]=None,billing_statuses:Optional[str]=None,change_to_overridden:bool=False,
     db:Session=Depends(get_db)):
     return crud.get_rate_per_mile_report(db,period=period,date_from=date_from,date_to=date_to,
@@ -82,7 +82,7 @@ def rate_per_mile(period:str=Query("last_30_days"),date_from:Optional[date]=None
 @router.get("/rate-per-mile/pdf")
 def rate_per_mile_pdf(period:str=Query("last_30_days"),date_from:Optional[date]=None,date_to:Optional[date]=None,
     broker_id:Optional[int]=None,driver_id:Optional[int]=None,truck_id:Optional[int]=None,
-    dispatcher_id:Optional[int]=None,group_by:str=Query("none"),date_type:str=Query("pickup"),
+    dispatcher_id:Optional[int]=None,group_by:str=Query("none", pattern="^(none|driver|truck)$"),date_type:str=Query("pickup"),
     statuses:Optional[str]=None,billing_statuses:Optional[str]=None,dispatcher_name:Optional[str]=None,
     db:Session=Depends(get_db)):
     data=crud.get_rate_per_mile_report(db,period=period,date_from=date_from,date_to=date_to,
@@ -95,7 +95,7 @@ def rate_per_mile_pdf(period:str=Query("last_30_days"),date_from:Optional[date]=
 @router.get("/rate-per-mile/xlsx")
 def rate_per_mile_xlsx(period:str=Query("last_30_days"),date_from:Optional[date]=None,date_to:Optional[date]=None,
     broker_id:Optional[int]=None,driver_id:Optional[int]=None,truck_id:Optional[int]=None,
-    dispatcher_id:Optional[int]=None,group_by:str=Query("none"),date_type:str=Query("pickup"),
+    dispatcher_id:Optional[int]=None,group_by:str=Query("none", pattern="^(none|driver|truck)$"),date_type:str=Query("pickup"),
     statuses:Optional[str]=None,billing_statuses:Optional[str]=None,dispatcher_name:Optional[str]=None,
     db:Session=Depends(get_db)):
     data=crud.get_rate_per_mile_report(db,period=period,date_from=date_from,date_to=date_to,
@@ -208,7 +208,7 @@ def gross_profit_xlsx(period:str=Query("last_30_days"),date_from:Optional[date]=
 @router.get("/gross-profit-per-load")
 def gross_profit_per_load(period:str=Query("last_30_days"),date_from:Optional[date]=None,date_to:Optional[date]=None,
     broker_id:Optional[int]=None,driver_id:Optional[int]=None,truck_id:Optional[int]=None,
-    group_by:str=Query("none"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
+    group_by:str=Query("none", pattern="^(none|driver|truck)$"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
     billing_statuses:Optional[str]=None,db:Session=Depends(get_db)):
     return crud.get_gross_profit_per_load_report(db,period=period,date_from=date_from,date_to=date_to,
         broker_id=broker_id,driver_id=driver_id,truck_id=truck_id,group_by=group_by,date_type=date_type,
@@ -217,7 +217,7 @@ def gross_profit_per_load(period:str=Query("last_30_days"),date_from:Optional[da
 @router.get("/gross-profit-per-load/pdf")
 def gross_profit_per_load_pdf(period:str=Query("last_30_days"),date_from:Optional[date]=None,date_to:Optional[date]=None,
     broker_id:Optional[int]=None,driver_id:Optional[int]=None,truck_id:Optional[int]=None,
-    group_by:str=Query("none"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
+    group_by:str=Query("none", pattern="^(none|driver|truck)$"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
     billing_statuses:Optional[str]=None,db:Session=Depends(get_db)):
     data=crud.get_gross_profit_per_load_report(db,period=period,date_from=date_from,date_to=date_to,
         broker_id=broker_id,driver_id=driver_id,truck_id=truck_id,group_by=group_by,date_type=date_type,
@@ -229,7 +229,7 @@ def gross_profit_per_load_pdf(period:str=Query("last_30_days"),date_from:Optiona
 @router.get("/gross-profit-per-load/xlsx")
 def gross_profit_per_load_xlsx(period:str=Query("last_30_days"),date_from:Optional[date]=None,date_to:Optional[date]=None,
     broker_id:Optional[int]=None,driver_id:Optional[int]=None,truck_id:Optional[int]=None,
-    group_by:str=Query("none"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
+    group_by:str=Query("none", pattern="^(none|driver|truck)$"),date_type:str=Query("pickup"),statuses:Optional[str]=None,
     billing_statuses:Optional[str]=None,db:Session=Depends(get_db)):
     data=crud.get_gross_profit_per_load_report(db,period=period,date_from=date_from,date_to=date_to,
         broker_id=broker_id,driver_id=driver_id,truck_id=truck_id,group_by=group_by,date_type=date_type,

@@ -437,7 +437,7 @@ export default function NewLoadModal({ onClose, onSaved, entities }: Props) {
                     setActiveAttachType(type)
                     fileInputRef.current?.click()
                   }}
-                  className={`px-2 py-0.5 text-[11px] rounded border font-medium transition-colors ${
+                  className={`px-2 py-0.5 text-[0.6875rem] rounded border font-medium transition-colors ${
                     activeAttachType === type
                       ? 'bg-brand-600 text-white border-brand-600'
                       : 'bg-white text-gray-600 border-gray-300 hover:border-brand-500 hover:text-brand-600'
@@ -458,7 +458,7 @@ export default function NewLoadModal({ onClose, onSaved, entities }: Props) {
                 dragOver ? 'border-brand-500 bg-brand-50' : 'border-gray-300 hover:border-gray-400'
               }`}
             >
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[0.6875rem] text-gray-400 leading-relaxed">
                 Click to upload or drag and drop file
               </p>
             </div>
@@ -478,7 +478,7 @@ export default function NewLoadModal({ onClose, onSaved, entities }: Props) {
             {attachments.map((att, idx) => (
               <div key={idx} className="flex items-center justify-between mt-1 text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1">
                 <span className="text-blue-700 font-medium flex-shrink-0">[{att.type}]</span>
-                <span className="text-gray-600 truncate mx-1 max-w-[70px]" title={att.file.name}>{att.file.name}</span>
+                <span className="text-gray-600 truncate mx-1 max-w-[4.375rem]" title={att.file.name}>{att.file.name}</span>
                 <button onClick={() => removeAttachment(idx)} className="text-red-400 hover:text-red-600 flex-shrink-0">✕</button>
               </div>
             ))}
@@ -502,7 +502,7 @@ export default function NewLoadModal({ onClose, onSaved, entities }: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{label}</label>
+      <label className="block text-[0.625rem] font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{label}</label>
       {children}
     </div>
   )

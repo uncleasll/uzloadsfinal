@@ -78,11 +78,11 @@ function ReportCard({
   pdfUrl: string
   xlsxUrl: string
 }) {
-  const exportBtn = 'inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700'
+  const exportBtn = 'inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-[0.6875rem] font-semibold text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700'
   return (
     <div className="mt-5 overflow-hidden rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-5 py-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Report results</span>
+        <span className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Report results</span>
         <div className="flex gap-1.5">
           <button onClick={() => downloadFile(pdfUrl)} className={exportBtn}>
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
@@ -98,7 +98,7 @@ function ReportCard({
           </button>
         </div>
       </div>
-      <div className="bg-white px-6 py-5 [&_.table-td]:py-1.5 [&_.table-td]:text-xs [&_.table-th]:py-2 [&_.table-th]:text-[10px]">
+      <div className="bg-white px-6 py-5 [&_.table-td]:py-1.5 [&_.table-td]:text-xs [&_.table-th]:py-2 [&_.table-th]:text-[0.625rem]">
         {/* Company header */}
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -109,7 +109,7 @@ function ReportCard({
             </div>
             <div>
               <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">TOPTRUCK</p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest">COMPANY</p>
+              <p className="text-[0.625rem] text-gray-400 uppercase tracking-widest">COMPANY</p>
             </div>
           </div>
           <div className="text-right text-xs text-gray-600 leading-5">
@@ -284,6 +284,7 @@ function TotalRevenue() {
       {results && (
         <ReportCard pdfUrl={pdfUrl} xlsxUrl={xlsxUrl}>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Total Revenue Report</h2>
+          <ReportGroups data={results} />
           <MetaLines lines={[
             `Dates range: ${results.date_from} - ${results.date_to}`,
             `Status: ${cfg.statuses.join(', ')}`,
@@ -292,7 +293,7 @@ function TotalRevenue() {
           <div className="mb-5 grid grid-cols-2 gap-2 md:grid-cols-4">
             {[{l:'Total Revenue',v:formatCurrency(summary.total_revenue||0),strong:true},{l:'Total Miles',v:(summary.total_miles||0).toLocaleString()+' mi'},{l:'Total Loads',v:String(summary.total_loads||0)},{l:'Rate/Mile',v:'$'+(summary.rate_per_mile||0).toFixed(2)+'/mi'}].map(s=>(
               <div key={s.l} className={`flex h-11 items-center justify-between gap-2 rounded-lg border px-3 shadow-sm ${s.strong ? 'border-blue-100 bg-blue-50' : 'border-slate-200 bg-white'}`}>
-                <span className={`text-[10px] font-semibold uppercase tracking-wide ${s.strong ? 'text-blue-500' : 'text-slate-400'}`}>{s.l}</span>
+                <span className={`text-[0.625rem] font-semibold uppercase tracking-wide ${s.strong ? 'text-blue-500' : 'text-slate-400'}`}>{s.l}</span>
                 <span className={`whitespace-nowrap text-sm font-bold ${s.strong ? 'text-blue-800' : 'text-slate-800'}`}>{s.v}</span>
               </div>
             ))}
@@ -313,7 +314,7 @@ function TotalRevenue() {
                 <th className="table-th">Status</th>
               </tr></thead>
               <tbody className="divide-y divide-gray-100">
-                {rows.length===0?<tr><td colSpan={12} className="py-8 text-center text-gray-400">No data</td></tr>:rows.map((r,i)=>(
+                {rows.length===0?<tr><td colSpan={13} className="py-8 text-center text-gray-400">No data</td></tr>:rows.map((r,i)=>(
                   <tr key={i} className={i%2===0?'bg-white':'bg-gray-50'}>
                     {cfg.columns.includes('pickup_date')&&<td className="table-td">{formatDate(r.pickup_date as string)}</td>}
                     {cfg.columns.includes('actual_delivery_date')&&<td className="table-td">{formatDate(r.actual_delivery_date as string)}</td>}
@@ -437,6 +438,7 @@ function RatePerMile() {
       {results && (
         <ReportCard pdfUrl={pdfUrl} xlsxUrl={xlsxUrl}>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Rate per Mile Report</h2>
+          <ReportGroups data={results} />
           <MetaLines lines={[
             `Dates range: ${results.date_from} - ${results.date_to}`,
             ...(broker?[`Broker: ${broker.name}`]:[]),
@@ -458,7 +460,7 @@ function RatePerMile() {
                 <th className="table-th text-right">Rate per mile</th>
               </tr></thead>
               <tbody className="divide-y divide-gray-100">
-                {rows.length===0?<tr><td colSpan={12} className="py-8 text-center text-gray-400">No data</td></tr>:rows.map((r,i)=>(
+                {rows.length===0?<tr><td colSpan={13} className="py-8 text-center text-gray-400">No data</td></tr>:rows.map((r,i)=>(
                   <tr key={i} className={i%2===0?'bg-white':'bg-gray-50'}>
                     <td className="table-td">{formatDate(r.pickup_date as string)}</td>
                     <td className="table-td">{formatDate(r.actual_delivery_date as string)}</td>
@@ -666,7 +668,7 @@ function GrossProfit() {
           <table className="w-full text-sm border border-gray-200 rounded">
             <thead className="bg-gray-50"><tr><th className="table-th flex-1"></th><th className="table-th text-right w-40">Amount</th></tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {[['Total Revenue',summary.total_revenue||0,false],['Loads Revenue',summary.loads_revenue||0,true],['Other Revenue',summary.other_revenue||0,true],['Driver Payments',summary.driver_payments||0,false],['Fuel',summary.fuel||0,true],['Tolls',summary.tolls||0,true],['Gross Profit',summary.gross_profit||0,false]].map(([l,v,link])=>(
+              {[['Total Revenue',summary.total_revenue||0,false],['Loads Revenue',summary.loads_revenue||0,true],['Other Revenue',summary.other_revenue||0,true],['Driver Payments',summary.driver_payments||0,false],['Additional Payees',summary.additional_payees||0,false],['Quick Pay Fees',summary.quickpay_fees||0,false],['Fuel',summary.fuel||0,true],['Tolls',summary.tolls||0,true],['Gross Profit',summary.gross_profit||0,false]].map(([l,v,link])=>(
                 <tr key={l as string} className="hover:bg-gray-50"><td className="table-td font-medium">{l as string}</td><td className={`table-td text-right ${link?'text-brand-600':''}`}>{formatCurrency(v as number)}</td></tr>
               ))}
             </tbody>
@@ -705,12 +707,13 @@ function GrossProfitPerLoad() {
       {results&&(
         <ReportCard pdfUrl={pdfUrl} xlsxUrl={xlsxUrl}>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Gross Profit per Load Report</h2>
+          <ReportGroups data={results} />
           <MetaLines lines={[`Dates range: ${results.date_from} - ${results.date_to}`,...(driver?[`Driver: ${driver.name} [${driver.driver_type}]`]:[]),...(truck?[`Truck: ${truck.unit_number}`]:[]),`Status: ${cfg.statuses.join(', ')}`,`Billing status: ${cfg.billing_statuses.join(', ')}`]} />
           <div className="overflow-x-auto">
             <table className="w-full text-xs border border-gray-200 rounded">
-              <thead className="bg-gray-50"><tr><th className="table-th">Pickup date</th><th className="table-th">Delivery date</th><th className="table-th">Load #</th><th className="table-th">Truck #</th><th className="table-th">Driver</th><th className="table-th">Route</th><th className="table-th text-right">Total miles</th><th className="table-th text-right">Invoice</th><th className="table-th text-right">QP/Fac fee</th><th className="table-th text-right">Lumpers+Other</th><th className="table-th text-right">Driver Pay</th><th className="table-th text-right">Gross Profit</th></tr></thead>
+              <thead className="bg-gray-50"><tr><th className="table-th">Pickup date</th><th className="table-th">Delivery date</th><th className="table-th">Load #</th><th className="table-th">Truck #</th><th className="table-th">Driver</th><th className="table-th">Route</th><th className="table-th text-right">Total miles</th><th className="table-th text-right">Invoice</th><th className="table-th text-right">QP/Fac fee</th><th className="table-th text-right">Lumpers+Other</th><th className="table-th text-right">Driver Pay</th><th className="table-th text-right">Additional Payees</th><th className="table-th text-right">Gross Profit</th></tr></thead>
               <tbody className="divide-y divide-gray-100">
-                {rows.length===0?<tr><td colSpan={12} className="py-8 text-center text-gray-400">No data</td></tr>:rows.map((r,i)=>(
+                {rows.length===0?<tr><td colSpan={13} className="py-8 text-center text-gray-400">No data</td></tr>:rows.map((r,i)=>(
                   <tr key={i} className={i%2===0?'bg-white':'bg-gray-50'}>
                     <td className="table-td">{formatDate(r.pickup_date as string)}</td><td className="table-td">{formatDate(r.actual_delivery_date as string)}</td>
                     <td className="table-td"><LoadNumberLink row={r} /></td><td className="table-td">{r.truck as string}</td><td className="table-td">{r.driver as string}</td>
@@ -719,11 +722,11 @@ function GrossProfitPerLoad() {
                     <td className="table-td text-right">{formatCurrency(r.qp_fee as number)}</td>
                     <td className="table-td text-right">{formatCurrency((r.lumpers as number)+(r.other_add_ded as number))}</td>
                     <td className="table-td text-right">{formatCurrency(r.driver_pay as number)}</td>
-                    <td className="table-td text-right font-semibold">{formatCurrency(r.gross_profit as number)}</td>
+                    <td className="table-td text-right">{formatCurrency((r.additional_payee as number) || 0)}</td><td className="table-td text-right font-semibold">{formatCurrency(r.gross_profit as number)}</td>
                   </tr>
                 ))}
               </tbody>
-              {rows.length>0&&<tfoot><tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-xs"><td colSpan={6} className="table-td text-right">Total:</td><td className="table-td text-right">{rows.reduce((s,r)=>s+(r.total_miles as number||0),0)}</td><td className="table-td text-right">{formatCurrency(summary.total_revenue||0)}</td><td className="table-td text-right">{formatCurrency(rows.reduce((s,r)=>s+(r.qp_fee as number||0),0))}</td><td className="table-td text-right">{formatCurrency(rows.reduce((s,r)=>s+((r.lumpers as number||0)+(r.other_add_ded as number||0)),0))}</td><td className="table-td text-right">{formatCurrency(summary.total_driver_pay||0)}</td><td className="table-td text-right">{formatCurrency(summary.total_gross_profit||0)}</td></tr></tfoot>}
+              {rows.length>0&&<tfoot><tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-xs"><td colSpan={6} className="table-td text-right">Total:</td><td className="table-td text-right">{rows.reduce((s,r)=>s+(r.total_miles as number||0),0)}</td><td className="table-td text-right">{formatCurrency(summary.total_revenue||0)}</td><td className="table-td text-right">{formatCurrency(rows.reduce((s,r)=>s+(r.qp_fee as number||0),0))}</td><td className="table-td text-right">{formatCurrency(rows.reduce((s,r)=>s+((r.lumpers as number||0)+(r.other_add_ded as number||0)),0))}</td><td className="table-td text-right">{formatCurrency(summary.total_driver_pay||0)}</td><td className="table-td text-right">{formatCurrency(summary.total_additional_payees||0)}</td><td className="table-td text-right">{formatCurrency(summary.total_gross_profit||0)}</td></tr></tfoot>}
             </table>
           </div>
         </ReportCard>
@@ -759,7 +762,7 @@ function ProfitLoss() {
           <table className="w-full text-sm border border-gray-200 rounded">
             <thead className="bg-gray-50"><tr><th className="table-th flex-1"></th><th className="table-th text-right w-40">Amount</th></tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {[['Total Revenue',summary.total_revenue||0,false],['Loads Revenue',summary.loads_revenue||0,true],['Other Revenue',summary.other_revenue||0,true],['Driver Payments',summary.driver_payments||0,false],['Fuel',summary.fuel||0,true],['Tolls',summary.tolls||0,true],['Expenses',summary.expenses||0,false],['Gross Profit',summary.gross_profit||0,false],['Net Profit',summary.net_profit||0,false]].map(([l,v,link])=>(
+              {[['Total Revenue',summary.total_revenue||0,false],['Loads Revenue',summary.loads_revenue||0,true],['Other Revenue',summary.other_revenue||0,true],['Driver Payments',summary.driver_payments||0,false],['Additional Payees',summary.additional_payees||0,false],['Quick Pay Fees',summary.quickpay_fees||0,false],['Fuel',summary.fuel||0,true],['Tolls',summary.tolls||0,true],['Expenses',summary.expenses||0,false],['Gross Profit',summary.gross_profit||0,false],['Net Profit',summary.net_profit||0,false]].map(([l,v,link])=>(
                 <tr key={l as string} className="hover:bg-gray-50"><td className="table-td">{l as string}</td><td className={`table-td text-right ${link?'text-brand-600':''}`}>{formatCurrency(v as number)}</td></tr>
               ))}
             </tbody>
@@ -781,7 +784,7 @@ function EmailReports() {
   return (
     <div className="px-6 py-5">
       <h1 className="mb-1 text-xl font-bold tracking-tight text-slate-950">Email Reports</h1>
-      <p className="mb-4 text-[11px] font-medium text-slate-400">Export any report as PDF or Excel and send it through your email client</p>
+      <p className="mb-4 text-[0.6875rem] font-medium text-slate-400">Export any report as PDF or Excel and send it through your email client</p>
       <div className="max-w-2xl divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         {templates.map(([label, path]) => (
           <div key={path} className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-slate-50/60">
@@ -791,11 +794,11 @@ function EmailReports() {
               </span>
               <div>
                 <div className="text-xs font-bold text-slate-800">{label}</div>
-                <div className="text-[10px] text-slate-400">Open report, export PDF/XLSX, then attach it through your email client.</div>
+                <div className="text-[0.625rem] text-slate-400">Open report, export PDF/XLSX, then attach it through your email client.</div>
               </div>
             </div>
             <NavLink to={`../${path}`}
-              className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+              className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-3 text-[0.6875rem] font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
               Open
             </NavLink>
           </div>
@@ -838,4 +841,13 @@ export default function ReportsPage() {
       )}
     </div>
   )
+}
+
+
+function ReportGroups({data}: {data: any}) {
+  if (!data.groups?.length) return null
+  return <div className="overflow-x-auto my-4"><table className="w-full text-xs border border-gray-200">
+    <thead className="bg-gray-50"><tr><th className="table-th capitalize">{data.group_by}</th><th className="table-th">Loads</th><th className="table-th">Revenue</th><th className="table-th">Miles</th><th className="table-th">Rate / mile</th><th className="table-th">Driver pay</th><th className="table-th">Gross profit</th></tr></thead>
+    <tbody>{data.groups.map((g: any) => <tr key={g.id ?? 'unassigned'} className="border-t"><td className="table-td font-semibold">{g.label}</td><td className="table-td">{g.summary.total_loads}</td><td className="table-td">{formatCurrency(g.summary.total_revenue)}</td><td className="table-td">{g.summary.total_miles}</td><td className="table-td">{formatCurrency(g.summary.rate_per_mile)}</td><td className="table-td">{formatCurrency(g.summary.driver_pay)}</td><td className="table-td">{formatCurrency(g.summary.gross_profit)}</td></tr>)}</tbody>
+  </table></div>
 }

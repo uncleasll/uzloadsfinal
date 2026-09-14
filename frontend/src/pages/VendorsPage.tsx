@@ -69,12 +69,12 @@ function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel }: {
       {open && (
         <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
           <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">
             <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
             {editLabel}
           </button>
           <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-red-600 transition-colors hover:bg-red-50">
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             {deleteLabel}
           </button>
@@ -167,18 +167,18 @@ export default function VendorsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
       {/* Header */}
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
         <div className="mr-1 flex-shrink-0">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-slate-950">Vendors</h1>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{total}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.625rem] font-bold text-slate-500">{total}</span>
           </div>
-          <p className="mt-0.5 text-[11px] font-medium text-slate-400">Repair shops, payees and other service providers</p>
+          <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Repair shops, payees and other service providers</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <div className="relative min-w-[220px] flex-1 sm:flex-none">
+          <div className="relative min-w-[13.75rem] flex-1 sm:flex-none">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><IcoSearch /></span>
             <input type="search" placeholder="Search vendors..." value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
@@ -224,11 +224,11 @@ export default function VendorsPage() {
                 className="group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 hover:border-l-blue-500 hover:bg-blue-50/70"
                 onClick={() => setEditVendor(v)}>
                 <td className="px-1.5 py-1">
-                  <span className="font-semibold text-blue-600 truncate hover:underline text-[11px] block">{v.company_name}</span>
+                  <span className="font-semibold text-blue-600 truncate hover:underline text-[0.6875rem] block">{v.company_name}</span>
                 </td>
                 <td className="px-1.5 py-1">
                   {v.vendor_type ? (
-                    <span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                    <span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-600">
                       {v.vendor_type}
                     </span>
                   ) : <span className="text-gray-300">—</span>}
@@ -269,22 +269,22 @@ export default function VendorsPage() {
             <PagBtn onClick={() => setPage(1)} disabled={page <= 1}><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></PagBtn>
             <PagBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg></PagBtn>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => { const s = Math.max(1, Math.min(page - 2, totalPages - 4)); return s + i }).map(p => (
-              <button key={p} onClick={() => setPage(p)} className={`w-5 h-5 rounded text-[11px] font-medium transition-colors ${p === page ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{p}</button>
+              <button key={p} onClick={() => setPage(p)} className={`w-5 h-5 rounded text-[0.6875rem] font-medium transition-colors ${p === page ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{p}</button>
             ))}
             <PagBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></PagBtn>
             <PagBtn onClick={() => setPage(totalPages)} disabled={page >= totalPages}><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></PagBtn>
           </div>
-          <span className="text-[11px] text-gray-500">Showing {startEntry}–{endEntry} of {total} entries</span>
+          <span className="text-[0.6875rem] text-gray-500">Showing {startEntry}–{endEntry} of {total} entries</span>
           <button onClick={() => { setShowInactive(v => !v); setPage(1) }}
-            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
+            className={`rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold transition ${showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
             {showInactive ? 'Hide inactive vendors' : 'Show inactive vendors'}
           </button>
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          <span className="px-1.5 text-[0.625rem] font-medium text-slate-400">Rows</span>
           {[10, 25, 50, 100].map(n => (
             <button key={n} onClick={() => { setPageSize(n); setPage(1) }}
-              className={`rounded-md px-2 py-1 text-[10px] transition ${pageSize === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+              className={`rounded-md px-2 py-1 text-[0.625rem] transition ${pageSize === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
               {n}
             </button>
           ))}
@@ -336,11 +336,11 @@ function VendorModal({ vendor, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-sm">
-      <div className="flex max-h-[95vh] w-full max-w-[1100px] flex-col overflow-hidden rounded bg-white shadow-2xl">
+      <div className="flex max-h-[95vh] w-full max-w-[68.75rem] flex-col overflow-hidden rounded bg-white shadow-2xl">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 bg-[#f8f9fb] px-6 py-3">
-          <h2 className="text-[16px] font-bold text-gray-800">{isEdit ? 'Edit Vendor' : 'New Vendor'}</h2>
+          <h2 className="text-[1rem] font-bold text-gray-800">{isEdit ? 'Edit Vendor' : 'New Vendor'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
             <IcoX />
           </button>
@@ -353,37 +353,37 @@ function VendorModal({ vendor, onClose, onSaved }: {
             {/* LEFT COLUMN - General Info */}
             <div className="flex flex-1 flex-col gap-4">
               <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-gray-700">
+                <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">
                   Company Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   value={form.company_name}
                   onChange={(e) => set('company_name', e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
+                  className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Address</label>
+                <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">Address</label>
                 <input
                   value={form.address}
                   onChange={(e) => set('address', e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
+                  className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Address line 2</label>
+                <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">Address line 2</label>
                 <input
                   value={form.address2}
                   onChange={(e) => set('address2', e.target.value)}
-                  className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
+                  className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Phone</label>
+                  <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">Phone</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                       <PhoneIcon />
@@ -391,12 +391,12 @@ function VendorModal({ vendor, onClose, onSaved }: {
                     <input
                       value={form.phone}
                       onChange={(e) => set('phone', e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
+                      className="h-[2.25rem] w-full rounded border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Email</label>
+                  <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">Email</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">
                       @
@@ -404,7 +404,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                     <input
                       value={form.email}
                       onChange={(e) => set('email', e.target.value)}
-                      className="h-[36px] w-full rounded border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
+                      className="h-[2.25rem] w-full rounded border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
                     />
                   </div>
                 </div>
@@ -412,19 +412,19 @@ function VendorModal({ vendor, onClose, onSaved }: {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-gray-700">City</label>
+                  <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">City</label>
                   <input
                     value={form.city}
                     onChange={(e) => set('city', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-gray-700">State</label>
+                  <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">State</label>
                   <select
                     value={form.state}
                     onChange={(e) => set('state', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#2563eb]"
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-2 text-sm outline-none focus:border-[#2563eb]"
                   >
                     <option value=""></option>
                     {STATES.map((state) => (
@@ -433,36 +433,36 @@ function VendorModal({ vendor, onClose, onSaved }: {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Zip</label>
+                  <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">Zip</label>
                   <input
                     value={form.zip_code}
                     onChange={(e) => set('zip_code', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-gray-700">FID/EIN</label>
+                  <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">FID/EIN</label>
                   <input
                     value={form.fid_ein}
                     onChange={(e) => set('fid_ein', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-gray-700">MC</label>
+                  <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">MC</label>
                   <input
                     value={form.mc_number}
                     onChange={(e) => set('mc_number', e.target.value)}
-                    className="h-[36px] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
+                    className="h-[2.25rem] w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#2563eb]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Notes</label>
+                <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">Notes</label>
                 <textarea
                   value={form.notes}
                   onChange={(e) => set('notes', e.target.value)}
@@ -473,11 +473,11 @@ function VendorModal({ vendor, onClose, onSaved }: {
             </div>
 
             {/* RIGHT COLUMN - Settings / Billing */}
-            <div className="w-full md:w-[420px] flex flex-col pt-1">
+            <div className="w-full md:w-[26.25rem] flex flex-col pt-1">
               
               {/* Vendor Type Section */}
               <div className="mb-10">
-                <h3 className="mb-3 text-[16px] font-bold text-gray-800">Vendor type</h3>
+                <h3 className="mb-3 text-[1rem] font-bold text-gray-800">Vendor type</h3>
                 
                 {/* Shows the selected vendor type badge if one exists */}
                 {form.vendor_type && (
@@ -493,7 +493,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                 
                 <button 
                   onClick={() => setShowTypeModal(true)} 
-                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#2563eb] px-2.5 text-[13px] font-medium text-white hover:bg-[#4ab668]"
+                  className="inline-flex h-7 items-center gap-1.5 rounded bg-[#2563eb] px-2.5 text-[0.8125rem] font-medium text-white hover:bg-[#4ab668]"
                 >
                   <IcoPlus /> Vendor type
                 </button>
@@ -501,10 +501,10 @@ function VendorModal({ vendor, onClose, onSaved }: {
 
               {/* Billing Section */}
               <div>
-                <h3 className="mb-4 text-[16px] font-bold text-gray-800">Billing</h3>
+                <h3 className="mb-4 text-[1rem] font-bold text-gray-800">Billing</h3>
                 
                 <div className="flex items-center gap-6 mb-6">
-                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                  <label className="flex cursor-pointer items-center gap-2 text-[0.8125rem] text-gray-700">
                     <div className={clsx("flex h-4 w-4 items-center justify-center rounded border", form.is_additional_payee ? "border-[#2563eb] bg-[#2563eb]" : "border-gray-300 bg-gray-50")}>
                       {form.is_additional_payee && <IcoChk />}
                     </div>
@@ -512,7 +512,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                     Additional payee
                   </label>
 
-                  <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gray-700">
+                  <label className="flex cursor-pointer items-center gap-2 text-[0.8125rem] text-gray-700">
                     <div className={clsx("flex h-4 w-4 items-center justify-center rounded border", form.is_equipment_owner ? "border-[#2563eb] bg-[#2563eb]" : "border-gray-300 bg-gray-50")}>
                       {form.is_equipment_owner && <IcoChk />}
                     </div>
@@ -523,23 +523,23 @@ function VendorModal({ vendor, onClose, onSaved }: {
                 </div>
 
                 <div className="mb-6">
-                  <label className="mb-1.5 block text-[13px] font-medium text-gray-700">
+                  <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">
                     Additional payee rate, % (e.g. 90) <span className="text-red-500">*</span>
                   </label>
                   <input
                     value={form.additional_payee_rate_pct}
                     onChange={(e) => set('additional_payee_rate_pct', e.target.value)}
                     disabled={!form.is_additional_payee}
-                    className="h-[36px] w-[200px] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#2563eb] disabled:opacity-80"
+                    className="h-[2.25rem] w-[12.5rem] rounded border border-gray-200 bg-[#cbd5e1] px-3 text-sm text-gray-800 outline-none focus:border-[#2563eb] disabled:opacity-80"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Settlement template type</label>
+                  <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-700">Settlement template type</label>
                   <select
                     value={form.settlement_template_type}
                     onChange={(e) => set('settlement_template_type', e.target.value)}
-                    className="h-[36px] w-full rounded border border-[#6ea8fe] bg-white px-2 text-sm text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]"
+                    className="h-[2.25rem] w-full rounded border border-[#6ea8fe] bg-white px-2 text-sm text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]"
                   >
                     <option value="" className="text-gray-400">Select template type</option>
                     <option value="Additional Payee">Additional Payee</option>
@@ -578,8 +578,8 @@ function VendorModal({ vendor, onClose, onSaved }: {
 
       {/* NESTED MODAL: Add Vendor Type */}
       {showTypeModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
-          <div className="w-full max-w-[480px] overflow-hidden rounded bg-white shadow-2xl">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-[0.0625rem]">
+          <div className="w-full max-w-[30rem] overflow-hidden rounded bg-white shadow-2xl">
             <div className="flex items-center justify-between p-6 pb-2">
               <h2 className="text-2xl font-bold text-[#1f2937]">Add Vendor Type</h2>
               <button 
@@ -590,7 +590,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
               </button>
             </div>
             <div className="p-6 pt-4">
-              <label className="mb-2 block text-[15px] text-gray-800">
+              <label className="mb-2 block text-[0.9375rem] text-gray-800">
                 Add New Vendor Type
               </label>
               <select
@@ -599,7 +599,7 @@ function VendorModal({ vendor, onClose, onSaved }: {
                   set('vendor_type', e.target.value);
                   setShowTypeModal(false); // Auto-close modal when an option is selected
                 }}
-                className="h-[42px] w-full rounded border border-[#6ea8fe] bg-white px-3 text-[15px] text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]"
+                className="h-[2.625rem] w-full rounded border border-[#6ea8fe] bg-white px-3 text-[0.9375rem] text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe]"
               >
                 <option value=""></option>
                 <option value="Dispatcher">Dispatcher</option>

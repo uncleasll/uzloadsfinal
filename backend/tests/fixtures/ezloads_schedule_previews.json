@@ -1,0 +1,163 @@
+[
+  {
+    "case": "weekly",
+    "request": {
+      "scheduledPaymentId": null,
+      "active": 1,
+      "driver_id": null,
+      "type": 2,
+      "amount": -100,
+      "deduct_by": null,
+      "period_ends_at": null,
+      "category_code": 11,
+      "start_at": "2026-09-01",
+      "schedule": {
+        "type": "weekly",
+        "body": {
+          "week_no": "first",
+          "day_wk": "mo"
+        }
+      },
+      "repeat": {
+        "type": "times",
+        "times": 3
+      },
+      "notes": null,
+      "loan": null,
+      "description_overridden": null
+    },
+    "expected": {
+      "dates": [
+        "2026-09-01",
+        "2026-09-08",
+        "2026-09-15"
+      ],
+      "amounts": [
+        -100,
+        -100,
+        -100
+      ]
+    }
+  },
+  {
+    "case": "month31",
+    "request": {
+      "scheduledPaymentId": null,
+      "active": 1,
+      "driver_id": null,
+      "type": 2,
+      "amount": -100,
+      "deduct_by": null,
+      "period_ends_at": null,
+      "category_code": 11,
+      "start_at": "2026-01-31",
+      "schedule": {
+        "type": "monthly",
+        "body": {
+          "type": "day",
+          "month_no": "first",
+          "day_no": 31
+        }
+      },
+      "repeat": {
+        "type": "times",
+        "times": 3
+      },
+      "notes": null,
+      "loan": null,
+      "description_overridden": null
+    },
+    "expected": {
+      "dates": [
+        "2026-01-31",
+        "2026-02-28",
+        "2026-03-31"
+      ],
+      "amounts": [
+        -100,
+        -100,
+        -100
+      ]
+    }
+  },
+  {
+    "case": "biweekly_verified",
+    "request": {
+      "scheduledPaymentId": null,
+      "active": 1,
+      "driver_id": null,
+      "type": 2,
+      "amount": -100,
+      "deduct_by": null,
+      "period_ends_at": null,
+      "category_code": 11,
+      "start_at": "2026-09-01",
+      "schedule": {
+        "type": "biweekly",
+        "body": {
+          "day_wk": "mo",
+          "week_no": "first"
+        }
+      },
+      "repeat": {
+        "type": "times",
+        "times": 3
+      },
+      "notes": null,
+      "loan": null,
+      "description_overridden": null
+    },
+    "expected": {
+      "dates": [
+        "2026-09-01",
+        "2026-09-15",
+        "2026-09-29"
+      ],
+      "amounts": [
+        -100,
+        -100,
+        -100
+      ]
+    }
+  },
+  {
+    "case": "until_inclusive",
+    "request": {
+      "scheduledPaymentId": null,
+      "active": 1,
+      "driver_id": null,
+      "type": 2,
+      "amount": -100,
+      "deduct_by": null,
+      "period_ends_at": null,
+      "category_code": 11,
+      "start_at": "2026-09-01",
+      "schedule": {
+        "type": "weekly",
+        "body": {
+          "day_wk": "mo",
+          "week_no": "first"
+        }
+      },
+      "repeat": {
+        "type": "until",
+        "until": "2026-09-15"
+      },
+      "notes": null,
+      "loan": null,
+      "description_overridden": null
+    },
+    "expected": {
+      "dates": [
+        "2026-09-01",
+        "2026-09-08",
+        "2026-09-15"
+      ],
+      "amounts": [
+        -100,
+        -100,
+        -100
+      ]
+    }
+  }
+]

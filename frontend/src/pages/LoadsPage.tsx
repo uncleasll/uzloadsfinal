@@ -316,7 +316,7 @@ export default function LoadsPage() {
   const endEntry = Math.min((filters.page || 1) * (filters.page_size || 50), total)
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
 
       {/* ── Top bar ── */}
       <div className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
@@ -325,13 +325,13 @@ export default function LoadsPage() {
           <div className="mr-1 flex-shrink-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold tracking-tight text-slate-950">Loads</h1>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{total}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.625rem] font-bold text-slate-500">{total}</span>
             </div>
-            <p className="mt-0.5 text-[11px] font-medium text-slate-400">Manage, track and invoice every shipment</p>
+            <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Manage, track and invoice every shipment</p>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="relative order-1 min-w-[240px] flex-1 sm:flex-none">
+            <div className="relative order-1 min-w-[15rem] flex-1 sm:flex-none">
               <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
               <input ref={searchRef} type="search" placeholder="Search load, broker or PO..." onChange={handleSearch}
                 className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-10 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-72" />
@@ -343,7 +343,7 @@ export default function LoadsPage() {
               >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M7 12h10M10 18h4"/></svg>
                 {filterChips.length > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[8px] font-bold text-white">{filterChips.length}</span>
+                  <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[0.5rem] font-bold text-white">{filterChips.length}</span>
                 )}
               </button>
             </div>
@@ -363,7 +363,7 @@ export default function LoadsPage() {
                     </span>
                     <span>
                       <span className="block text-xs font-bold text-slate-800">Auto-create from document</span>
-                      <span className="block text-[10px] text-slate-500">Upload PDF, JPG, JPEG or PNG</span>
+                      <span className="block text-[0.625rem] text-slate-500">Upload PDF, JPG, JPEG or PNG</span>
                     </span>
                   </button>
                   <button role="menuitem" onClick={() => { setShowNewMenu(false); setShowNewForm(true) }}
@@ -373,7 +373,7 @@ export default function LoadsPage() {
                     </span>
                     <span>
                       <span className="block text-xs font-bold text-slate-800">Manual entry</span>
-                      <span className="block text-[10px] text-slate-400">Fill in the load details yourself</span>
+                      <span className="block text-[0.625rem] text-slate-400">Fill in the load details yourself</span>
                     </span>
                   </button>
                   <button role="menuitem" onClick={() => { setShowNewMenu(false); setShowImport(true) }}
@@ -383,7 +383,7 @@ export default function LoadsPage() {
                     </span>
                     <span>
                       <span className="block text-xs font-bold text-slate-800">Import spreadsheet</span>
-                      <span className="block text-[10px] text-slate-400">Add many loads at once from a file</span>
+                      <span className="block text-[0.625rem] text-slate-400">Add many loads at once from a file</span>
                     </span>
                   </button>
                 </div>
@@ -398,7 +398,7 @@ export default function LoadsPage() {
             <select
               value={period}
               onChange={e => { setPeriod(e.target.value); setFilters(p => ({ ...p, page: 1 })) }}
-              className="h-9 appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-8 text-[11px] font-semibold text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="h-9 appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-8 text-[0.6875rem] font-semibold text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
               {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -409,11 +409,11 @@ export default function LoadsPage() {
             <div className="flex items-center gap-1 flex-shrink-0">
               <input type="date" value={customFrom}
                 onChange={e => { setCustomFrom(e.target.value); setFilters(p => ({ ...p, page: 1 })) }}
-                className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
+                className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[0.6875rem] shadow-sm focus:outline-none focus:border-blue-400" />
               <span className="text-gray-300">—</span>
               <input type="date" value={customTo}
                 onChange={e => { setCustomTo(e.target.value); setFilters(p => ({ ...p, page: 1 })) }}
-                className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
+                className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[0.6875rem] shadow-sm focus:outline-none focus:border-blue-400" />
             </div>
           )}
 
@@ -442,16 +442,16 @@ export default function LoadsPage() {
       {/* ── Filter chips ── */}
       {filterChips.length > 0 && (
         <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-blue-100 bg-blue-50/40 px-4 py-2.5 lg:px-5">
-          <span className="mr-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Active filters</span>
+          <span className="mr-1 text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Active filters</span>
           {filterChips.map(chip => (
-            <span key={chip.key} className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-white px-2.5 py-1 text-[10px] font-semibold text-blue-700 shadow-sm">
+            <span key={chip.key} className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-white px-2.5 py-1 text-[0.625rem] font-semibold text-blue-700 shadow-sm">
               {chip.label}
               <button onClick={() => removeFilter(chip.key)} className="hover:text-sky-900 ml-0.5">
                 <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             </span>
           ))}
-          <button onClick={clearAllFilters} className="ml-1 rounded px-1.5 py-1 text-[10px] font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600">Clear all</button>
+          <button onClick={clearAllFilters} className="ml-1 rounded px-1.5 py-1 text-[0.625rem] font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600">Clear all</button>
         </div>
       )}
 
@@ -507,16 +507,16 @@ export default function LoadsPage() {
                     <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white text-left font-medium normal-case tracking-normal shadow-xl shadow-slate-950/10">
                       {showCustomize ? (
                         <div>
-                          <div className="border-b border-slate-100 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Customize loadlist</div>
+                          <div className="border-b border-slate-100 px-3 py-2 text-[0.625rem] font-bold uppercase tracking-wide text-slate-400">Customize loadlist</div>
                           <div className="max-h-56 overflow-auto py-1">
                             {COLUMN_DEFS.map(c => (
-                              <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50">
+                              <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[0.6875rem] font-medium text-slate-700 hover:bg-slate-50">
                                 <input type="checkbox" checked={visible(c.key)} onChange={() => toggleCol(c.key)} className="h-3 w-3 rounded" />
                                 {c.label}
                               </label>
                             ))}
                           </div>
-                          <button onClick={() => setShowCustomize(false)} className="block w-full border-t border-slate-100 px-3 py-2 text-left text-[11px] font-bold text-blue-600 hover:bg-blue-50">Done</button>
+                          <button onClick={() => setShowCustomize(false)} className="block w-full border-t border-slate-100 px-3 py-2 text-left text-[0.6875rem] font-bold text-blue-600 hover:bg-blue-50">Done</button>
                         </div>
                       ) : (
                         <div className="py-1">
@@ -543,7 +543,7 @@ export default function LoadsPage() {
                       const v = e.target.value; const num = parseInt(v)
                       setFilters(p => ({ ...p, page: 1, load_number: !isNaN(num) && v ? num : undefined }))
                     }}
-                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-blue-400"
+                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[0.6875rem] focus:outline-none focus:border-blue-400"
                   />
                 </td>
               )}
@@ -552,7 +552,7 @@ export default function LoadsPage() {
                   <input type="date"
                     value={activeFilters.date_from || ''}
                     onChange={e => { setActiveFilters(p => ({ ...p, date_from: e.target.value || undefined })); setFilters(p => ({ ...p, page: 1 })) }}
-                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-blue-400"
+                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[0.6875rem] focus:outline-none focus:border-blue-400"
                   />
                 </td>
               )}
@@ -560,7 +560,7 @@ export default function LoadsPage() {
                 <td className="px-1 py-0.5">
                   <select value={activeFilters.driver_id || ''}
                     onChange={e => { setActiveFilters(p => ({ ...p, driver_id: e.target.value ? parseInt(e.target.value) : undefined })); setFilters(p => ({ ...p, page: 1 })) }}
-                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none bg-white">
+                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[0.6875rem] focus:outline-none bg-white">
                     <option value="">Choose</option>
                     {entities.drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
@@ -570,7 +570,7 @@ export default function LoadsPage() {
                 <td className="px-1 py-0.5">
                   <select value={activeFilters.broker_id || ''}
                     onChange={e => { setActiveFilters(p => ({ ...p, broker_id: e.target.value ? parseInt(e.target.value) : undefined })); setFilters(p => ({ ...p, page: 1 })) }}
-                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none bg-white">
+                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[0.6875rem] focus:outline-none bg-white">
                     <option value=""></option>
                     {entities.brokers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
@@ -580,19 +580,19 @@ export default function LoadsPage() {
                 <td className="px-1 py-0.5">
                   <input type="text"
                     onChange={e => setFilters(p => ({ ...p, page: 1, search: e.target.value || undefined }))}
-                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-blue-400"
+                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[0.6875rem] focus:outline-none focus:border-blue-400"
                   />
                 </td>
               )}
-              {visible('pickup') && <td className="px-1 py-0.5"><input readOnly className="w-full border border-gray-100 rounded px-1 py-0.5 text-[11px] bg-gray-50 cursor-not-allowed" /></td>}
-              {visible('delivery') && <td className="px-1 py-0.5"><input readOnly className="w-full border border-gray-100 rounded px-1 py-0.5 text-[11px] bg-gray-50 cursor-not-allowed" /></td>}
-              {visible('rate') && <td className="px-1 py-0.5"><input readOnly className="w-full border border-gray-100 rounded px-1 py-0.5 text-[11px] bg-gray-50 cursor-not-allowed" /></td>}
+              {visible('pickup') && <td className="px-1 py-0.5"><input readOnly className="w-full border border-gray-100 rounded px-1 py-0.5 text-[0.6875rem] bg-gray-50 cursor-not-allowed" /></td>}
+              {visible('delivery') && <td className="px-1 py-0.5"><input readOnly className="w-full border border-gray-100 rounded px-1 py-0.5 text-[0.6875rem] bg-gray-50 cursor-not-allowed" /></td>}
+              {visible('rate') && <td className="px-1 py-0.5"><input readOnly className="w-full border border-gray-100 rounded px-1 py-0.5 text-[0.6875rem] bg-gray-50 cursor-not-allowed" /></td>}
               {visible('completed') && (
                 <td className="px-1 py-0.5">
                   <input type="date"
                     value={activeFilters.date_to || ''}
                     onChange={e => { setActiveFilters(p => ({ ...p, date_to: e.target.value || undefined })); setFilters(p => ({ ...p, page: 1 })) }}
-                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-blue-400"
+                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[0.6875rem] focus:outline-none focus:border-blue-400"
                   />
                 </td>
               )}
@@ -600,7 +600,7 @@ export default function LoadsPage() {
                 <td className="px-1 py-0.5">
                   <select value={activeFilters.status || ''}
                     onChange={e => { setActiveFilters(p => ({ ...p, status: e.target.value || undefined })); setFilters(p => ({ ...p, page: 1 })) }}
-                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none bg-white">
+                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[0.6875rem] focus:outline-none bg-white">
                     <option value=""></option>
                     {['New','Canceled','TONU','Dispatched','En Route','Picked-up','Delivered','Closed'].map(s => <option key={s}>{s}</option>)}
                   </select>
@@ -610,7 +610,7 @@ export default function LoadsPage() {
                 <td className="px-1 py-0.5">
                   <select value={activeFilters.billing_status || ''}
                     onChange={e => { setActiveFilters(p => ({ ...p, billing_status: e.target.value || undefined })); setFilters(p => ({ ...p, page: 1 })) }}
-                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none bg-white">
+                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[0.6875rem] focus:outline-none bg-white">
                     <option value=""></option>
                     {['Pending','Canceled','BOL received','Invoiced','Sent to factoring','Funded','Paid'].map(s => <option key={s}>{s}</option>)}
                   </select>
@@ -618,14 +618,14 @@ export default function LoadsPage() {
               )}
               {visible('notes') && (
                 <td className="px-1 py-0.5">
-                  <input readOnly className="w-full border border-gray-100 rounded px-1 py-0.5 text-[11px] bg-gray-50 cursor-not-allowed" />
+                  <input readOnly className="w-full border border-gray-100 rounded px-1 py-0.5 text-[0.6875rem] bg-gray-50 cursor-not-allowed" />
                 </td>
               )}
               {visible('attachments') && (
                 <td className="px-1 py-0.5">
                   <select value={attachmentType}
                     onChange={e => setAttachmentType(e.target.value)}
-                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[11px] focus:outline-none bg-white">
+                    className="w-full border border-gray-200 rounded px-1 py-0.5 text-[0.6875rem] focus:outline-none bg-white">
                     <option value=""></option>
                     {ATTACHMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
@@ -662,7 +662,7 @@ export default function LoadsPage() {
                   {visible('load') && (
                     <td className="px-1.5 py-1">
                       <button onClick={e => { e.stopPropagation(); setSelectedLoad(load) }}
-                        className="text-blue-600 hover:underline font-semibold text-[11px]">
+                        className="text-blue-600 hover:underline font-semibold text-[0.6875rem]">
                         {load.load_number}
                       </button>
                     </td>
@@ -691,7 +691,7 @@ export default function LoadsPage() {
                   {visible('completed') && <td className="px-1.5 py-1 text-gray-500 truncate">{formatDate(load.actual_delivery_date) || '—'}</td>}
                   {visible('status') && (
                     <td className="px-1.5 py-1">
-                      <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${STATUS_STYLE[load.status] || 'bg-gray-100 text-gray-500'}`}>
+                      <span className={`inline-block px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold whitespace-nowrap ${STATUS_STYLE[load.status] || 'bg-gray-100 text-gray-500'}`}>
                         {load.status}
                       </span>
                     </td>
@@ -706,7 +706,7 @@ export default function LoadsPage() {
                     <td className="px-1 py-1 text-center" onClick={e => e.stopPropagation()}>
                       {load.documents.length > 0 ? (
                         <span
-                          className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700"
+                          className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-[0.625rem] font-semibold text-blue-700"
                           title={load.documents.map(d => d.document_type).join(', ')}
                         >
                           <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
@@ -717,7 +717,7 @@ export default function LoadsPage() {
                   )}
                   <td className="relative px-0.5 py-1" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-0.5" data-row-menu>
-                      {svcLabel && <span className="text-gray-400 truncate text-[10px]">{svcLabel}</span>}
+                      {svcLabel && <span className="text-gray-400 truncate text-[0.625rem]">{svcLabel}</span>}
                       <button
                         title="Load actions"
                         aria-haspopup="menu"
@@ -733,7 +733,7 @@ export default function LoadsPage() {
                           <MenuItem onClick={() => { setRowMenuId(null); handleCopyLoad(load) }}>Copy Load</MenuItem>
                           <MenuItem onClick={() => { setRowMenuId(null); showOnMap(load) }}>Show on Map</MenuItem>
                           <button role="menuitem" onClick={() => { setRowMenuId(null); handleDeleteLoad(load) }}
-                            className="block w-full px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+                            className="block w-full px-3 py-2 text-left text-[0.6875rem] font-medium text-red-600 transition-colors hover:bg-red-50">
                             Delete Load
                           </button>
                         </div>
@@ -763,7 +763,7 @@ export default function LoadsPage() {
               return start + i
             }).map(p => (
               <button key={p} onClick={() => setFilters(prev => ({ ...prev, page: p }))}
-                className={`w-5 h-5 rounded text-[11px] font-medium transition-colors ${
+                className={`w-5 h-5 rounded text-[0.6875rem] font-medium transition-colors ${
                   p === (filters.page || 1) ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}>
                 {p}
@@ -777,21 +777,21 @@ export default function LoadsPage() {
             </PagBtn>
           </div>
 
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[0.6875rem] text-gray-500">
             Showing {total === 0 ? 0 : startEntry}–{endEntry} of {total} entries
           </span>
 
           <button onClick={() => setShowOnlyActive(p => !p)}
-            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${showOnlyActive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
+            className={`rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold transition ${showOnlyActive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
             {showOnlyActive ? 'Show all loads' : 'Show only active loads'}
           </button>
         </div>
 
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          <span className="px-1.5 text-[0.625rem] font-medium text-slate-400">Rows</span>
           {PAGE_SIZE_OPTIONS.map(n => (
             <button key={n} onClick={() => setFilters(p => ({ ...p, page: 1, page_size: n }))}
-              className={`rounded-md px-2 py-1 text-[10px] transition ${(filters.page_size || 50) === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+              className={`rounded-md px-2 py-1 text-[0.625rem] transition ${(filters.page_size || 50) === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
               {n}
             </button>
           ))}
@@ -847,7 +847,7 @@ const COLUMN_DEFS: { key: string; label: string; sort?: string; align?: 'center'
 function MenuItem({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <button role="menuitem" onClick={onClick}
-      className="block w-full px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+      className="block w-full px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">
       {children}
     </button>
   )
@@ -875,7 +875,7 @@ function FilterPanel({ initial, entities, onApply, onReset, onClose }: {
   return (
     <div className="flex-shrink-0 border-b border-slate-200/80 bg-slate-50/60 px-4 py-3.5 lg:px-5">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Advanced filters</span>
+        <span className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Advanced filters</span>
         <button onClick={onClose} aria-label="Close filters" className="rounded p-1 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600">
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
@@ -900,28 +900,28 @@ function FilterPanel({ initial, entities, onApply, onReset, onClose }: {
           onChange={v => set({ direct_billing: v === '' ? undefined : v === 'true' })}
           options={[['true', 'Yes'], ['false', 'No']]} />
         <div>
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Date from</label>
+          <label className="mb-1 block text-[0.625rem] font-semibold uppercase tracking-wide text-slate-400">Date from</label>
           <input type="date" value={draft.date_from || ''} onChange={e => set({ date_from: e.target.value || undefined })}
-            className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200" />
+            className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[0.6875rem] text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200" />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Date to</label>
+          <label className="mb-1 block text-[0.625rem] font-semibold uppercase tracking-wide text-slate-400">Date to</label>
           <input type="date" value={draft.date_to || ''} onChange={e => set({ date_to: e.target.value || undefined })}
-            className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200" />
+            className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[0.6875rem] text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200" />
         </div>
       </div>
 
       <div className="mt-3.5 flex items-center justify-end gap-2">
         <button onClick={onReset}
-          className="inline-flex h-8 items-center rounded-lg px-3 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-200/60 hover:text-slate-700">
+          className="inline-flex h-8 items-center rounded-lg px-3 text-[0.6875rem] font-semibold text-slate-500 transition-colors hover:bg-slate-200/60 hover:text-slate-700">
           Reset all
         </button>
         <button onClick={onClose}
-          className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-3.5 text-[11px] font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+          className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-3.5 text-[0.6875rem] font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
           Cancel
         </button>
         <button onClick={() => onApply(draft)}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-4 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-blue-700">
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-4 text-[0.6875rem] font-bold text-white shadow-sm transition-colors hover:bg-blue-700">
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
           Apply filters
         </button>
@@ -938,9 +938,9 @@ function PanelSelect({ label, value, onChange, options }: {
 }) {
   return (
     <div>
-      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</label>
+      <label className="mb-1 block text-[0.625rem] font-semibold uppercase tracking-wide text-slate-400">{label}</label>
       <select value={value === undefined ? '' : String(value)} onChange={e => onChange(e.target.value)}
-        className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200">
+        className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[0.6875rem] text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200">
         <option value="">All</option>
         {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
@@ -952,7 +952,7 @@ function SummaryStat({ label, value, dot, strong }: { label: string; value: numb
   return (
     <div className={`flex h-9 items-center gap-2 rounded-lg border px-3 shadow-sm ${strong ? 'border-blue-100 bg-blue-50' : 'border-slate-200 bg-white'}`}>
       {dot && <span className={`h-2 w-2 flex-shrink-0 rounded-full ${dot}`} />}
-      <span className={`text-[10px] font-semibold uppercase tracking-wide ${strong ? 'text-blue-500' : 'text-slate-400'}`}>{label}</span>
+      <span className={`text-[0.625rem] font-semibold uppercase tracking-wide ${strong ? 'text-blue-500' : 'text-slate-400'}`}>{label}</span>
       <span className={`whitespace-nowrap text-xs font-bold ${strong ? 'text-blue-800' : 'text-slate-800'}`}>{formatCurrency(value)}</span>
     </div>
   )

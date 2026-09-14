@@ -3,6 +3,7 @@ import { loadsApi, loadsApiExtended, type Invoice } from '@/api/loads'
 import type { Load, LoadNote, LoadService } from '@/types'
 import { formatCurrency, formatDate, formatDateTime, STATUS_COLORS, BILLING_COLORS } from '@/utils'
 import toast from 'react-hot-toast'
+import client from '@/api/client'
 import type { useEntities } from '@/hooks/useEntities'
 
 type Entities = ReturnType<typeof useEntities>
@@ -193,7 +194,7 @@ function InlineEntitySelect({
   }
   if (editing || saving) return (
     <span className="inline-flex items-center">
-      <select autoFocus className={`${editInputCls} max-w-[170px]`} disabled={saving}
+      <select autoFocus className={`${editInputCls} max-w-[10.625rem]`} disabled={saving}
         defaultValue={value ?? ''} onChange={e => save(e.target.value)} onBlur={() => { if (!saving) setEditing(false) }}
         onKeyDown={e => { if (e.key === 'Escape') setEditing(false) }}>
         <option value="">— none —</option>
@@ -241,7 +242,7 @@ function SvcRow({ svc, onDelete }: { svc: LoadService; onDelete: () => void }) {
       <td className="px-3 py-2 font-medium text-gray-800">{svc.service_type} <span className="text-gray-400">({svc.add_deduct})</span></td>
       <td className="px-3 py-2 text-gray-700">{formatCurrency(svc.invoice_amount)}</td>
       <td className="px-3 py-2 text-gray-700">{formatCurrency(svc.drivers_payable)}</td>
-      <td className="px-3 py-2 text-gray-500 max-w-[120px] truncate">{svc.notes || '—'}</td>
+      <td className="px-3 py-2 text-gray-500 max-w-[7.5rem] truncate">{svc.notes || '—'}</td>
       <td className="px-3 py-2 text-right">
         <button onClick={onDelete} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"><Trash /></button>
       </td>
@@ -452,18 +453,18 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
     ? load.rate / (load.total_miles || load.loaded_miles) : 0
 
   // ✅ CORRECT: always use the historical snapshot — never live driver profile fields
-  const driversPayable = load.drivers_payable_snapshot
-    ?? ((load.loaded_miles * (load.pay_rate_loaded_snapshot ?? 0.65))
-      + (load.empty_miles * (load.pay_rate_empty_snapshot ?? 0.30)))
+  const driversPayable = load.drivers_payable_snapshot ?? 0
 
-  const payDesc = load.pay_type_snapshot === 'percentage'
+  const payDesc = load.driver_pay_override ? `Override: ${load.driver_pay_override.type}` : load.pay_type_snapshot === 'percentage'
     ? `freight percentage: ${formatCurrency(load.rate)} ${load.freight_percentage_snapshot ?? 0}%`
-    : load.pay_type_snapshot === 'flatpay'
-    ? `flat pay`
+    : load.pay_type_snapshot === 'flatpay' || load.pay_type_snapshot === 'hourly'
+    ? `period pay recorded separately in payroll`
     : `rate: $${(load.pay_rate_loaded_snapshot ?? 0.65).toFixed(2)}/$${(load.pay_rate_empty_snapshot ?? 0.30).toFixed(2)} per mile`
 
-  const totalInvoice = load.rate + load.services.reduce((s, svc) =>
-    svc.add_deduct === 'Add' ? s + svc.invoice_amount : s - svc.invoice_amount, 0)
+  const totalInvoice = load.invoice_total ?? load.rate
+  const quickpayAmount = load.quickpay_amount ?? 0
+  const otherPayable = (load.additional_payees || []).reduce((sum, entry) => sum + entry.amount, 0)
+  const margin = totalInvoice - driversPayable - otherPayable - quickpayAmount
 
   const STATUS_OPTIONS = ['New', 'Canceled', 'TONU', 'Dispatched', 'En Route', 'Picked-up', 'Delivered', 'Closed']
   const BILLING_OPTIONS = ['Pending', 'Canceled', 'BOL received', 'Invoiced', 'Sent to factoring', 'Funded', 'Paid']
@@ -476,7 +477,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
         <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-5 py-3 flex-shrink-0">
           <div className="flex min-w-0 items-center gap-3">
             <h2 className="whitespace-nowrap text-sm font-bold text-slate-900">Load #{load.load_number}</h2>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[load.status] || 'bg-slate-100 text-slate-500'}`}>{load.status}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[0.625rem] font-bold ${STATUS_COLORS[load.status] || 'bg-slate-100 text-slate-500'}`}>{load.status}</span>
             <span className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-slate-500 sm:flex">
               <span className="truncate font-medium">{pickupLabel}</span>
               <ArrowRight />
@@ -500,23 +501,23 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                   {idx > 0 && (
                     <div className="flex flex-col items-center px-1 text-slate-400">
                       <ArrowRight />
-                      <span className="text-[10px] font-medium">{load.loaded_miles} mi</span>
+                      <span className="text-[0.625rem] font-medium">{load.loaded_miles} mi</span>
                     </div>
                   )}
                   <div className={`rounded-lg border bg-white px-3.5 py-2 text-center shadow-sm ${stop.stop_type === 'pickup' ? 'border-blue-200' : 'border-emerald-200'}`} style={{ minWidth: 140 }}>
-                    <div className={`mb-0.5 text-[10px] font-bold uppercase tracking-wide ${stop.stop_type === 'pickup' ? 'text-blue-500' : 'text-emerald-600'}`}>
+                    <div className={`mb-0.5 text-[0.625rem] font-bold uppercase tracking-wide ${stop.stop_type === 'pickup' ? 'text-blue-500' : 'text-emerald-600'}`}>
                       #{stop.stop_order} {stop.stop_type}
                     </div>
                     <div className="flex items-center justify-center gap-1">
                       <MapPin color={stop.stop_type === 'pickup' ? '#2563eb' : '#059669'} />
-                      <span className="max-w-[130px] truncate text-sm font-bold uppercase text-slate-900">
+                      <span className="max-w-[8.125rem] truncate text-sm font-bold uppercase text-slate-900">
                         {stop.city}, {stop.state}
                       </span>
                     </div>
                     {(stop.stop_time || stop.stop_date) && (
                       <div className="mt-0.5 flex items-center justify-center gap-1">
                         <Clock />
-                        <span className="text-[11px] text-slate-500">
+                        <span className="text-[0.6875rem] text-slate-500">
                           {stop.stop_time && `${stop.stop_time} `}{formatDate(stop.stop_date)}
                         </span>
                       </div>
@@ -524,6 +525,8 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                   </div>
                 </div>
               ))}
+
+              <StopsEditor load={load} onSaved={() => {refetch(); onSaved()}} />
 
               <div className="ml-auto flex flex-wrap items-center gap-2">
                 <button
@@ -653,7 +656,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
           {/* ── Notes section ── */}
           <div className="border border-gray-200 rounded mb-4">
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
-              <div className="grid text-xs font-semibold text-gray-400 uppercase tracking-wide" style={{ gridTemplateColumns: '130px 100px 1fr' }}>
+              <div className="grid text-xs font-semibold text-gray-400 uppercase tracking-wide" style={{ gridTemplateColumns: '8.125rem 6.25rem 1fr' }}>
                 <span>Created On</span>
                 <span>Created By</span>
                 <span>Notes</span>
@@ -999,6 +1002,8 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                     </table>
                   </div>
 
+                  {load.driver && <DriverPayOverrideEditor key={JSON.stringify(load.driver_pay_override)} load={load} onSaved={() => {refetch(); onSaved()}} />}
+
                   {/* Other Payable */}
                   <div>
                     <h4 className="font-semibold text-gray-900 text-sm mb-2">Other Payable</h4>
@@ -1011,7 +1016,9 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                         </tr>
                       </thead>
                       <tbody>
-                        <tr><td colSpan={3} className="py-6 text-center text-xs text-gray-400">No records</td></tr>
+                        {(load.additional_payees || []).map(entry => <tr key={entry.id} className="border-b"><td className="px-3 py-2">{formatDate(load.load_date)}</td><td>{entry.payable_to} · {entry.rate_pct}% of freight</td><td className="px-3 py-2 text-right">{formatCurrency(entry.amount)}</td></tr>)}
+                        {!!load.quickpay_rate_snapshot && <tr><td className="px-3 py-2">{formatDate(load.load_date)}</td><td>Quick Pay · {load.quickpay_rate_snapshot}% of invoice</td><td className="px-3 py-2 text-right">{formatCurrency(quickpayAmount)}</td></tr>}
+                        {!load.additional_payees?.length && !load.quickpay_rate_snapshot && <tr><td colSpan={3} className="py-6 text-center text-xs text-gray-400">No records</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -1053,7 +1060,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
           <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
             <span>Total invoice: <span className="font-bold text-slate-800">{formatCurrency(totalInvoice)}</span></span>
             <span>Driver pay: <span className="font-bold text-slate-800">{formatCurrency(driversPayable)}</span></span>
-            <span className="hidden sm:inline">Margin: <span className={`font-bold ${totalInvoice - driversPayable < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{formatCurrency(totalInvoice - driversPayable)}</span></span>
+            <span className="hidden sm:inline">Margin: <span className={`font-bold ${margin < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{formatCurrency(margin)}</span></span>
           </div>
           <button onClick={onClose}
             className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-900">
@@ -1109,3 +1116,61 @@ function UploadBtn({
 }
 
 
+
+
+function DriverPayOverrideEditor({load, onSaved}: {load: Load; onSaved: () => void}) {
+  const current = load.driver_pay_override
+  const [type, setType] = useState(current?.type || 'fixed')
+  const [values, setValues] = useState<Record<string, string>>({amount: String(current?.amount ?? ''), base: String(current?.base ?? load.rate), percentage: String(current?.percentage ?? ''), loaded_rate: String(current?.loaded_rate ?? ''), empty_rate: String(current?.empty_rate ?? ''), extra_stop_rate: String(current?.extra_stop_rate ?? load.extra_stop_rate_snapshot ?? 0)})
+  const [busy, setBusy] = useState(false)
+  const fields = type === 'fixed' ? [['amount', 'Base pay']] : type === 'percentage' ? [['base', 'Freight base'], ['percentage', 'Percentage']] : [['loaded_rate', 'Loaded rate / mile'], ['empty_rate', 'Empty rate / mile'], ['extra_stop_rate', 'Per extra stop']]
+  const save = async (reset = false) => {
+    if (!reset && fields.some(([key]) => values[key] === '' || !Number.isFinite(Number(values[key])) || Number(values[key]) < 0)) {toast.error('Enter all override amounts'); return}
+    setBusy(true)
+    try {
+      await client.put(`/api/v1/loads/${load.id}/driver-pay-override`, reset ? {type: null} : {type, ...Object.fromEntries(fields.map(([key]) => [key, Number(values[key])]))})
+      toast.success(reset ? 'Original pay rules restored' : 'Driver pay override saved'); onSaved()
+    } catch (e: any) {toast.error(e.response?.data?.detail || e.message || 'Unable to update driver pay')}
+    finally {setBusy(false)}
+  }
+  return <details className="border rounded p-3 text-xs"><summary className="cursor-pointer font-semibold">Driver pay override{current ? ' (active)' : ''}</summary>
+    <p className="my-2 text-gray-500">Override the base pay for this load. Service additions and deductions are included separately.</p>
+    <div className="flex flex-wrap gap-2 items-end"><label>Method<select className="input-base block" value={type} onChange={e => setType(e.target.value)}><option value="fixed">Fixed</option><option value="percentage">Percentage</option><option value="per_mile">Per mile</option></select></label>
+      {fields.map(([key, label]) => <label key={key}>{label}<input className="input-base block w-32" type="number" min="0" step="0.01" value={values[key]} onChange={e => setValues(v => ({...v, [key]: e.target.value}))} /></label>)}
+      <button disabled={busy} className="btn-primary" onClick={() => save()}>Save override</button>{current && <button disabled={busy} className="text-blue-600 p-2" onClick={() => save(true)}>Restore original</button>}
+    </div></details>
+}
+
+
+function StopsEditor({load, onSaved}: {load: Load; onSaved: () => void}) {
+  const [open, setOpen] = useState(false)
+  const [rows, setRows] = useState(load.stops.map(s => ({...s})))
+  const [busy, setBusy] = useState(false)
+  const save = async () => {
+    setBusy(true)
+    try {
+      await loadsApi.update(load.id, {stops: rows.map((s, i) => ({...s, stop_order: i + 1, stop_date: s.stop_date || undefined}))} as any)
+      toast.success('Route and extra-stop pay updated'); setOpen(false); onSaved()
+    } catch (e: any) {toast.error(e.message)} finally {setBusy(false)}
+  }
+  return <div>
+    <button className="text-xs text-blue-600" onClick={() => {setRows(load.stops.map(s => ({...s}))); setOpen(true)}}>Edit stops</button>
+    {open && <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center" onClick={() => setOpen(false)}>
+      <div className="bg-white rounded-xl p-5 w-[850px] max-w-[95vw] max-h-[85vh] overflow-auto space-y-3" onClick={e => e.stopPropagation()}>
+        <h3 className="font-bold">Route stops</h3>
+        {rows.map((s, i) => <div key={i} className="flex flex-wrap gap-2 border-b pb-2 items-center">
+          <span className="text-xs">{i+1}</span>
+          <select className="input-base w-28" value={s.stop_type} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, stop_type: e.target.value as any} : r))}><option value="pickup">Pickup</option><option value="delivery">Delivery</option><option value="other">Other</option></select>
+          <input aria-label="Stop city" className="input-base w-32" placeholder="City" value={s.city || ''} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, city: e.target.value} : r))}/>
+          <input aria-label="Stop state" className="input-base w-16" placeholder="State" value={s.state || ''} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, state: e.target.value} : r))}/>
+          <input aria-label="Stop date" type="date" className="input-base" value={s.stop_date || ''} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, stop_date: e.target.value} : r))}/>
+          {s.stop_type === 'other' && <label className="text-xs flex gap-1 items-center"><input type="checkbox" checked={!!s.is_payable} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, is_payable: e.target.checked} : r))}/>Pay extra stop</label>}
+          <button disabled={i===0} className="text-blue-600" onClick={() => setRows(v => {const a=[...v]; [a[i-1],a[i]]=[a[i],a[i-1]]; return a})}>↑</button>
+          <button className="text-red-600 text-xs" onClick={() => setRows(v => v.filter((_, n) => n !== i))}>Remove</button>
+        </div>)}
+        <button className="text-blue-600 text-sm" onClick={() => setRows(v => [...v, {id: 0, stop_type: 'delivery', stop_order: v.length+1, city:'', state:'', is_payable:false}])}>+ Add stop</button>
+        <div className="flex gap-3 justify-end"><button onClick={() => setOpen(false)}>Cancel</button><button disabled={busy} className="btn-primary" onClick={save}>Save route</button></div>
+      </div>
+    </div>}
+  </div>
+}

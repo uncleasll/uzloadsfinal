@@ -20,6 +20,14 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+from app.crud.payroll import PayrollError
+
+
+@app.exception_handler(PayrollError)
+async def handle_payroll_error(request: Request, exc: PayrollError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
 @app.middleware("http")
 async def handle_options(request: Request, call_next):
     origin = request.headers.get("origin", "")
@@ -79,10 +87,8 @@ def startup_fix_snapshots():
         for name, email, password, role in default_users:
             user = db.query(User).filter(User.email == email).first()
             if user:
-                user.name = name
-                user.hashed_password = hash_password(password)
-                user.role = role
-                user.is_active = True
+                # Deploying must preserve existing account passwords and roles.
+                continue
             else:
                 db.add(
                     User(
@@ -94,17 +100,8 @@ def startup_fix_snapshots():
                     )
                 )
 
-        loads = db.query(Load).filter(
-            Load.driver_id.isnot(None),
-            Load.is_active == True,
-            Load.drivers_payable_snapshot.is_(None)
-        ).all()
-        if loads:
-            for load in loads:
-                try:
-                    take_snapshot(db, load)
-                except Exception:
-                    pass
+        # Historical pay must be reconciled explicitly; startup must not assign
+        # today's driver rates to old loads that lack a snapshot.
         db.commit()
         db.close()
     except Exception:
@@ -114,3 +111,21 @@ def startup_fix_snapshots():
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "Karvan TMS API", "version": "1.0.0"}
+
+
+@app.on_event('startup')
+async def start_payroll_scheduler():
+    import asyncio
+    from app.services.payroll_scheduler import scheduled_payroll_loop
+    app.state.payroll_scheduler = asyncio.create_task(scheduled_payroll_loop())
+
+
+@app.on_event('shutdown')
+async def stop_payroll_scheduler():
+    import asyncio
+    from contextlib import suppress
+    task = getattr(app.state, 'payroll_scheduler', None)
+    if task:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task

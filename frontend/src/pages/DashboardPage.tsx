@@ -197,38 +197,38 @@ export default function DashboardPage() {
         <div className="mr-1 flex-shrink-0">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-slate-950">Dashboard</h1>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.625rem] font-bold text-slate-500">
               {dateFrom === defaultRange.from && dateTo === defaultRange.to ? 'This month' : 'Custom period'}
             </span>
             {loading && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />}
           </div>
-          <p className="mt-0.5 text-[11px] font-medium text-slate-400">Live overview of revenue, fleet activity, and driver performance</p>
+          <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Live overview of revenue, fleet activity, and driver performance</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
             {([['overview', 'Overview'], ['reports', 'Reports']] as Array<['overview' | 'reports', string]>).map(([key, label]) => (
               <button key={key} onClick={() => setTab(key)}
-                className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${tab === key ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
+                className={`rounded-md px-3 py-1.5 text-[0.6875rem] font-semibold transition ${tab === key ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
                 {label}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
+              className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[0.6875rem] shadow-sm focus:outline-none focus:border-blue-400" />
             <span className="text-gray-300">—</span>
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[11px] shadow-sm focus:outline-none focus:border-blue-400" />
+              className="h-9 w-28 rounded-md border border-slate-200 px-2 text-[0.6875rem] shadow-sm focus:outline-none focus:border-blue-400" />
           </div>
           <button onClick={resetFilters}
-            className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500 transition hover:border-blue-200 hover:text-blue-700">
+            className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.625rem] font-semibold text-slate-500 transition hover:border-blue-200 hover:text-blue-700">
             Reset filters
           </button>
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto bg-slate-50/60">
-        <div className="mx-auto max-w-[1920px] px-4 py-4">
+        <div className="mx-auto max-w-[120rem] px-4 py-4">
         {tab === 'overview' && (<>
 
         {/* Filters */}
@@ -294,7 +294,7 @@ export default function DashboardPage() {
             ) : (
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  <tr className="border-b border-slate-200 text-left text-[0.6875rem] font-semibold uppercase tracking-wide text-slate-400">
                     <th className="pb-2">Truck #</th>
                     <th className="pb-2 text-right">Days</th>
                   </tr>
@@ -416,12 +416,12 @@ function ProfitReports({ loads, loading }: { loads: LoadListItem[]; loading: boo
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
           {PROFIT_MODES.map(m => (
             <button key={m.key} onClick={() => setMode(m.key)}
-              className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${mode === m.key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              className={`rounded-md px-3 py-1.5 text-[0.6875rem] font-semibold transition ${mode === m.key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
               {m.label}
             </button>
           ))}
         </div>
-        <span className="text-[11px] text-slate-400">{sorted.length} {mode === 'customer' ? 'customers' : mode === 'unit' ? 'units' : 'drivers'} in period · computed from loads</span>
+        <span className="text-[0.6875rem] text-slate-400">{sorted.length} {mode === 'customer' ? 'customers' : mode === 'unit' ? 'units' : 'drivers'} in period · computed from loads</span>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
@@ -508,7 +508,7 @@ function groupTop(loads: LoadListItem[], getLabel: (load: LoadListItem) => strin
 function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: Array<[string, string]> }) {
   return (
     <div>
-      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</label>
+      <label className="mb-1 block text-[0.6875rem] font-semibold uppercase tracking-wide text-slate-400">{label}</label>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -559,7 +559,7 @@ function StatusPanel({ title, unit, rows, total }: { title: string; unit: string
       <h2 className="mb-3 text-center text-sm font-bold text-slate-700">{title}</h2>
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          <tr className="border-b border-slate-200 text-left text-[0.6875rem] font-semibold uppercase tracking-wide text-slate-400">
             <th className="pb-2">{unit}</th>
             <th className="pb-2 text-right"># of {unit}</th>
           </tr>

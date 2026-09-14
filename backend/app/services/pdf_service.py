@@ -409,8 +409,8 @@ def generate_settlement_pdf(settlement, db=None) -> bytes:
         elif pay_type == "flatpay":
             rate_str = f"Flat pay  =  ${amount:,.2f}"
         else:
-            rate_l   = load.pay_rate_loaded_snapshot or 0.65
-            rate_e   = load.pay_rate_empty_snapshot  or 0.30
+            rate_l   = load.pay_rate_loaded_snapshot if load.pay_rate_loaded_snapshot is not None else 0.65
+            rate_e   = load.pay_rate_empty_snapshot if load.pay_rate_empty_snapshot is not None else 0.30
             rate_str = f"${load.rate:,.2f}  (${rate_l}/mi loaded, ${rate_e}/mi empty)"
 
         # stop info
@@ -468,9 +468,9 @@ def generate_settlement_pdf(settlement, db=None) -> bytes:
     story.append(Spacer(1, 4))
 
     # ── recurring deductions ──────────────────────────────────────────────────
-    adjustments = list(settlement.adjustments or [])
+    adjustments = [adj for adj in (settlement.adjustments or []) if adj.adj_type != "advanced_payment"]
     if adjustments:
-        story.append(P("Recurring Deduction", ded_h))
+        story.append(P("Additions and Deductions", ded_h))
         story.append(Spacer(1, 4))
         ded_rows = []
         for adj in adjustments:
@@ -492,10 +492,13 @@ def generate_settlement_pdf(settlement, db=None) -> bytes:
         story.append(Spacer(1, 10))
 
     # ── total pay ─────────────────────────────────────────────────────────────
-    total_pay = subtotal + sum(
-        (adj.amount if adj.adj_type == "addition" else -adj.amount)
-        for adj in (settlement.adjustments or [])
-    )
+    for entries, sign, label in (
+        (settlement.outgoing_carryovers, 1, "Carryover to next settlement"),
+        (settlement.incoming_carryovers, -1, "Carryover from previous settlement"),
+    ):
+        for entry in entries:
+            story.append(P(f"{label}: ${sign * entry.amount:,.2f}", val_s))
+    total_pay = settlement.settlement_total or 0.0
     total_pay_str = f"${total_pay:,.2f}" if total_pay >= 0 else f"-${abs(total_pay):,.2f}"
     total_tbl = Table([[P("TOTAL PAY:", total_s), P(total_pay_str, total_r)]], colWidths=[5.4 * inch, 1.8 * inch])
     total_tbl.setStyle(TableStyle([
@@ -507,6 +510,12 @@ def generate_settlement_pdf(settlement, db=None) -> bytes:
         ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
     ]))
     story.append(total_tbl)
+    applied_advances = sum(adj.amount for adj in (settlement.adjustments or []) if adj.adj_type == "advanced_payment") + sum(p.amount for p in settlement.legacy_advances if p.is_active and p.payment_type == "advanced_payment")
+    actual_payments = sum(payment.amount for payment in (settlement.payments or []))
+    story.append(Spacer(1, 6))
+    story.append(P(f"Applied advance payments: ${applied_advances:,.2f}", val_s))
+    story.append(P(f"Settlement payments: ${actual_payments:,.2f}", val_s))
+    story.append(P(f"Balance due: ${settlement.balance_due or 0:,.2f}", val_rb))
     story.append(Spacer(1, 16))
 
     # ── footer ────────────────────────────────────────────────────────────────

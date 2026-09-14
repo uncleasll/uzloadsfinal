@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import Optional
 from datetime import date as _date, date
 
 from app.db.session import get_db
+from app.services.scheduled_payroll import available_dates, refresh_counters, amount_for_date, run_schedules, generate_occurrences, unassigned_occurrences
+from pydantic import BaseModel, Field
 from app.schemas.payroll_schemas import (
     SettlementCreate, SettlementUpdate, SettlementOut,
     SettlementPaymentCreate, SettlementAdjustmentCreate,
@@ -14,7 +16,7 @@ from app.crud import payroll as crud
 from app.services.pdf_service import generate_settlement_pdf
 from app.models.models import (
     Settlement, SettlementItem, SettlementAdjustment, SettlementPayment,
-    SettlementHistory, Driver, Load, DriverScheduledTransaction, AdvancedPayment,
+    SettlementHistory, Driver, Load, DriverScheduledTransaction, AdvancedPayment, PayrollCarryover, DriverTimeReport, DriverProfile,
 )
 
 router = APIRouter(prefix="/payroll", tags=["payroll"])
@@ -76,6 +78,14 @@ def _s_val(s) -> str:
 
 
 def _serialize(s) -> dict:
+    carryovers = [
+        {"id": -entry.id, "adj_type": kind, "category": "Carryover",
+         "description": f"Carryover {direction} settlement",
+         "amount": entry.amount, "date": str(entry.date), "is_carryover": True}
+        for entries, kind, direction in ((s.outgoing_carryovers, "addition", "to next"),
+                                          (s.incoming_carryovers, "deduction", "from previous"))
+        for entry in entries
+    ]
     return {
         "id": s.id,
         "settlement_number": s.settlement_number,
@@ -91,7 +101,11 @@ def _serialize(s) -> dict:
         "created_at": s.created_at.isoformat() if s.created_at else None,
         "driver": {"id": s.driver.id, "name": s.driver.name, "driver_type": s.driver.driver_type} if s.driver else None,
         "items": [_ser_item(i) for i in (s.items or [])],
-        "adjustments": [_ser_adj(a) for a in (s.adjustments or [])],
+        "adjustments": [_ser_adj(a) for a in (s.adjustments or [])] + carryovers + [
+            {"id": -p.id, "adj_type": "advanced_payment", "category": "Legacy advance",
+             "amount": p.amount, "date": str(p.payment_date), "description": f"Payment #{p.payment_number}", "legacy_payment_id": p.id}
+            for p in s.legacy_advances if p.is_active and p.payment_type == "advanced_payment"
+        ],
         "payments": [_ser_payment(p) for p in (s.payments or [])],
         "history": [_ser_history(h) for h in (s.history or [])],
     }
@@ -110,6 +124,8 @@ VALID_TRANSITIONS = {
 
 def _require_preparing(s, action="edit"):
     sv = _s_val(s.status)
+    if s.outgoing_carryovers and action not in ("edit",):
+        raise HTTPException(400, "Reverse the outgoing carryover before changing this settlement.")
     if sv != "Preparing":
         raise HTTPException(
             400,
@@ -171,7 +187,7 @@ def get_open_balances(
     driver_id: Optional[int] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
-    date_type: str = Query("pickup"),
+    date_type: str = Query("pickup", pattern="^(pickup|delivery)$"),
     db: Session = Depends(get_db),
 ):
     balances = crud.get_open_balances(db, driver_id=driver_id, date_from=date_from,
@@ -291,15 +307,27 @@ def update_adjustment(settlement_id: int, adj_id: int, data: dict, db: Session =
     ).first()
     if not adj:
         raise HTTPException(404, "Adjustment not found")
+    if adj.load_payee_id is not None:
+        raise HTTPException(400, "Remove the additional-payee entry before changing its load")
+    if adj.time_report_id is not None:
+        raise HTTPException(400, "Remove the time report before editing its work record.")
+    if adj.scheduled_transaction_id is not None:
+        raise HTTPException(400, "Remove the scheduled occurrence before changing its source schedule.")
+    if adj.adj_type == "advanced_payment":
+        raise HTTPException(400, "Remove and reapply the advance to change its amount.")
     if data.get("amount") is not None:
+        import math
         amount = float(data["amount"])
-        if amount <= 0:
+        if not math.isfinite(amount) or amount <= 0:
             raise HTTPException(400, "amount must be > 0")
         adj.amount = amount
     for field in ("date", "category", "description"):
         if field in data:
-            setattr(adj, field, data[field] or None)
-    db.commit()
+            value = data[field] or None
+            if field == "date" and isinstance(value, str):
+                value = date.fromisoformat(value)
+            setattr(adj, field, value)
+    db.flush()
     crud._recalculate(db, settlement_id)
     _add_history(db, settlement_id, f"Adjustment edited: {adj.category or adj.adj_type} (${adj.amount:.2f})")
     db.refresh(adj)
@@ -361,7 +389,7 @@ def download_settlement_pdf(settlement_id: int, db: Session = Depends(get_db)):
         joinedload(Settlement.items).joinedload(SettlementItem.load),
         joinedload(Settlement.adjustments),
         joinedload(Settlement.payments),
-    ).filter(Settlement.id == settlement_id).first()
+    ).filter(Settlement.id == settlement_id, Settlement.is_active == True).first()
     if not s:
         raise HTTPException(404, "Settlement not found")
     pdf = generate_settlement_pdf(s, db=db)
@@ -386,7 +414,7 @@ def change_status(settlement_id: int, data: dict, db: Session = Depends(get_db))
     s = db.query(Settlement).options(
         joinedload(Settlement.items),
         joinedload(Settlement.payments),
-    ).filter(Settlement.id == settlement_id).first()
+    ).filter(Settlement.id == settlement_id, Settlement.is_active == True).first()
     if not s:
         raise HTTPException(404, "Settlement not found")
 
@@ -401,15 +429,18 @@ def change_status(settlement_id: int, data: dict, db: Session = Depends(get_db))
         raise HTTPException(400, f"Cannot transition from '{current}' to '{new_status}'. Allowed: {allowed}")
 
     # Ready → Paid: balance must be zero
-    if current == "Ready" and new_status == "Paid":
-        if abs(s.balance_due or 0.0) > 0.01:
+    if new_status == "Paid":
+        if crud.money(s.balance_due) != 0:
             raise HTTPException(400, f"Balance due is ${s.balance_due:.2f}. Record a payment first.")
+
+    if new_status == "Void" and (s.payments or s.adjustments or s.outgoing_carryovers or s.incoming_carryovers or s.legacy_advances):
+        raise HTTPException(400, "Remove financial applications before voiding this settlement.")
 
     # Preparing → Ready: must have items
     if current == "Preparing" and new_status == "Ready":
         has_items = bool(s.items or [adj for adj in (s.adjustments or []) if adj.adj_type not in ("advanced_payment",)])
         # Allow even with only advanced payment adjustments
-        if not has_items and not s.adjustments:
+        if not has_items and not s.adjustments and not s.incoming_carryovers:
             raise HTTPException(400, "Cannot move to Ready: no items in settlement")
 
     from app.models.models import SettlementStatus
@@ -432,6 +463,7 @@ def get_candidates(
     settlement_id: int,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    date_type: str = Query("pickup", pattern="^(pickup|delivery)$"),
     db: Session = Depends(get_db),
 ):
     """
@@ -440,26 +472,27 @@ def get_candidates(
     2. Active scheduled recurring transactions
     3. Unapplied advanced payments (from advanced_payments table)
     """
-    s = db.query(Settlement).filter(Settlement.id == settlement_id).first()
+    s = db.query(Settlement).filter(Settlement.id == settlement_id, Settlement.is_active == True).first()
     if not s:
         raise HTTPException(404, "Settlement not found")
 
     driver_id = s.driver_id
 
     # 1. Loads already in ANY settlement (excluding current so re-adding is prevented)
-    settled_load_ids_q = db.query(SettlementItem.load_id).filter(
-        SettlementItem.load_id.isnot(None)
-    ).subquery()
+    settled_load_ids_q = crud.active_settled_load_ids(db)
 
     load_q = db.query(Load).options(joinedload(Load.stops)).filter(
         Load.driver_id == driver_id,
+        or_(Load.payable_to_snapshot.is_(None), Load.payable_to_snapshot == s.payable_to),
         Load.is_active == True,
         Load.id.notin_(settled_load_ids_q),
     )
+    from app.services.load_dates import payroll_date_column
+    date_col = payroll_date_column(date_type)
     if date_from:
-        load_q = load_q.filter(Load.load_date >= date_from)
+        load_q = load_q.filter(date_col >= date_from)
     if date_to:
-        load_q = load_q.filter(Load.load_date <= date_to)
+        load_q = load_q.filter(date_col <= date_to)
 
     loads = load_q.order_by(Load.load_date.desc()).all()
     available_loads = []
@@ -479,24 +512,18 @@ def get_candidates(
             "status": _s_val(l.status) if l.status else None,
             "billing_status": _s_val(l.billing_status) if l.billing_status else None,
             "rate": l.rate,
-            "amount": l.drivers_payable_snapshot if l.drivers_payable_snapshot is not None else 0.0,
+            "amount": crud.stored_driver_pay(l),
         })
 
-    # 2. Scheduled recurring transactions
-    scheduled = db.query(DriverScheduledTransaction).filter(
-        DriverScheduledTransaction.driver_id == driver_id,
-        DriverScheduledTransaction.is_active == True,
-    ).order_by(DriverScheduledTransaction.created_at.desc()).all()
+    # Generated entries remain payable when their source schedule is paused.
+    run_schedules(db, _date.today(), driver_id)
+    db.commit()
     scheduled_transactions = [{
-        "id": t.id,
-        "trans_type": t.trans_type,
-        "category": t.category,
-        "description": t.description or t.settlement_description,
-        "amount": t.amount,
-        "schedule": t.schedule,
-        "next_due": t.next_due.isoformat() if t.next_due else None,
-        "start_date": t.start_date.isoformat() if t.start_date else None,
-    } for t in scheduled]
+        'id': row.scheduled_transaction_id, 'occurrence_id': row.id,
+        'trans_type': row.adj_type, 'category': row.category, 'description': row.description,
+        'amount': row.amount, 'next_due': row.date.isoformat(), 'due_date': row.date.isoformat(),
+    } for row in unassigned_occurrences(db, s)
+       if (not date_from or row.date >= date_from) and (not date_to or row.date <= date_to)]
 
     # 3. Unapplied advanced payments from the AdvancedPayment table
     adv_payments = db.query(AdvancedPayment).filter(
@@ -533,9 +560,9 @@ def apply_advanced_payment(
 ):
     """
     Apply an advanced payment to a settlement.
-    Creates a SettlementAdjustment with adj_type='advanced_payment' that reduces total.
+    Records an advance application that reduces balance due, not earnings.
     """
-    s = db.query(Settlement).filter(Settlement.id == settlement_id).first()
+    s = db.query(Settlement).filter(Settlement.id == settlement_id, Settlement.is_active == True).first()
     if not s:
         raise HTTPException(404, "Settlement not found")
     if _s_val(s.status) == "Paid":
@@ -545,21 +572,22 @@ def apply_advanced_payment(
     ap = db.query(AdvancedPayment).filter(
         AdvancedPayment.id == ap_id,
         AdvancedPayment.is_active == True,
-    ).first()
+    ).with_for_update().first()
     if not ap:
         raise HTTPException(404, "Advanced payment not found")
     if ap.driver_id != s.driver_id:
         raise HTTPException(400, "Advanced payment belongs to a different driver")
 
     remaining = round((ap.amount or 0.0) - (ap.applied_amount or 0.0), 2)
-    if remaining <= 0.01:
+    if remaining <= 0:
         raise HTTPException(400, "Advanced payment already fully applied")
 
     apply_amount = float((data or {}).get("amount", remaining))
-    if apply_amount <= 0 or apply_amount > remaining + 0.01:
+    import math
+    if not math.isfinite(apply_amount) or round(apply_amount, 2) <= 0 or round(apply_amount, 2) > remaining:
         raise HTTPException(400, f"Amount must be between 0 and ${remaining:.2f}")
 
-    # Create adjustment — deduction-like, reduces total
+    # Kept in the legacy application table; classified as payment in the totals.
     adj = SettlementAdjustment(
         settlement_id=settlement_id,
         adj_type="advanced_payment",
@@ -567,6 +595,7 @@ def apply_advanced_payment(
         category="Advanced Payment",
         description=f"Applied AP #{ap.payment_number}: {(ap.description or ap.category or '').strip()}",
         amount=round(apply_amount, 2),
+        advanced_payment_id=ap.id,
     )
     db.add(adj)
     db.flush()
@@ -575,7 +604,7 @@ def apply_advanced_payment(
     if ap.applied_amount >= (ap.amount or 0.0) - 0.01:
         ap.applied_to_settlement_id = settlement_id
 
-    db.commit()
+    db.flush()
     crud._recalculate(db, settlement_id)
     _add_history(db, settlement_id, f"Applied advanced payment AP #{ap.payment_number} (${apply_amount:.2f})")
     return _ser_adj(adj)
@@ -589,7 +618,7 @@ def remove_advanced_payment(settlement_id: int, adj_id: int, db: Session = Depen
     Remove an applied advanced payment from a settlement.
     Restores the AP's applied_amount so it can be used again.
     """
-    s = db.query(Settlement).filter(Settlement.id == settlement_id).first()
+    s = db.query(Settlement).filter(Settlement.id == settlement_id, Settlement.is_active == True).first()
     if not s:
         raise HTTPException(404, "Settlement not found")
     if _s_val(s.status) == "Paid":
@@ -604,20 +633,11 @@ def remove_advanced_payment(settlement_id: int, adj_id: int, db: Session = Depen
     if not adj:
         raise HTTPException(404, "Applied advanced payment not found")
 
-    # Restore AP applied_amount by matching payment_number in description
-    import re
-    m = re.search(r"AP #(\d+)", adj.description or "")
-    if m:
-        ap_num = int(m.group(1))
-        ap = db.query(AdvancedPayment).filter(AdvancedPayment.payment_number == ap_num).first()
-        if ap:
-            ap.applied_amount = max(0.0, round((ap.applied_amount or 0.0) - adj.amount, 2))
-            if ap.applied_amount < (ap.amount or 0.0) - 0.01:
-                ap.applied_to_settlement_id = None
+    crud.restore_advance(db, adj)
 
     removed_amount = adj.amount
     db.delete(adj)
-    db.commit()
+    db.flush()
     crud._recalculate(db, settlement_id)
     _add_history(db, settlement_id, f"Removed advanced payment (${removed_amount:.2f})")
     return {"message": "Removed"}
@@ -625,38 +645,214 @@ def remove_advanced_payment(settlement_id: int, adj_id: int, db: Session = Depen
 
 # ── Apply Scheduled Transaction ───────────────────────────────────────────────
 
+class ScheduledApplicationIn(BaseModel):
+    due_date: date
+
+
 @router.post("/{settlement_id}/scheduled/{tx_id}/apply", status_code=201)
-def apply_scheduled(settlement_id: int, tx_id: int, db: Session = Depends(get_db)):
-    """Apply a scheduled recurring deduction/addition to a settlement."""
-    s = db.query(Settlement).filter(Settlement.id == settlement_id).first()
+def apply_scheduled(settlement_id: int, tx_id: int, data: ScheduledApplicationIn, db: Session = Depends(get_db)):
+    s = db.query(Settlement).filter(Settlement.id == settlement_id, Settlement.is_active == True).with_for_update().first()
     if not s:
         raise HTTPException(404, "Settlement not found")
     _require_preparing(s, "apply scheduled transaction")
-
-    tx = db.query(DriverScheduledTransaction).filter(
-        DriverScheduledTransaction.id == tx_id,
-        DriverScheduledTransaction.is_active == True,
-    ).first()
+    tx = db.query(DriverScheduledTransaction).filter(DriverScheduledTransaction.id == tx_id).with_for_update().first()
     if not tx:
         raise HTTPException(404, "Scheduled transaction not found")
-    if tx.driver_id != s.driver_id:
-        raise HTTPException(400, "Scheduled transaction belongs to a different driver")
-
-    adj_type = "addition" if tx.trans_type == "addition" else "deduction"
+    if tx.driver_id != s.driver_id or (tx.payable_to and tx.payable_to != s.payable_to):
+        raise HTTPException(400, "Scheduled transaction belongs to a different driver or payee")
+    existing = db.query(SettlementAdjustment).filter(
+        SettlementAdjustment.scheduled_transaction_id == tx.id,
+        SettlementAdjustment.date == data.due_date,
+    ).first()
+    if existing:
+        if existing.settlement_id == s.id:
+            return _ser_adj(existing)
+        raise HTTPException(400, "This scheduled occurrence is already in another settlement")
+    if data.due_date > min(s.date, _date.today()):
+        raise HTTPException(400, "Occurrence is not due yet")
+    from app.models.models import ScheduledPayrollOccurrence
+    generate_occurrences(db, tx, min(s.date, _date.today()))
+    occurrence = db.query(ScheduledPayrollOccurrence).filter(
+        ScheduledPayrollOccurrence.scheduled_transaction_id == tx.id, ScheduledPayrollOccurrence.date == data.due_date,
+        ScheduledPayrollOccurrence.payable_to == s.payable_to).first()
+    if not occurrence or data.due_date > min(s.date, _date.today()):
+        raise HTTPException(400, "Occurrence is not due, is paused, or needs legacy reconciliation")
+    from app.services.driver_pay_service import money
+    import math
+    if not tx.amount or not math.isfinite(tx.amount) or money(tx.amount) <= 0:
+        raise HTTPException(400, "Scheduled amount must be positive")
     adj = SettlementAdjustment(
-        settlement_id=settlement_id,
-        adj_type=adj_type,
-        date=_date.today(),
-        category=tx.category or tx.trans_type,
-        description=f"[Recurring] {tx.settlement_description or tx.description or tx.category or ''}".strip(),
-        amount=tx.amount,
+        settlement_id=s.id, scheduled_transaction_id=tx.id,
+        adj_type=occurrence.adj_type, date=data.due_date,
+        category=occurrence.category,
+        description=f"[Recurring] {occurrence.description}".strip(),
+        amount=occurrence.amount,
     )
     db.add(adj)
-    tx.times_applied = (tx.times_applied or 0) + 1
-    tx.last_applied = _date.today()
-    if tx.repeat_type == "times" and tx.repeat_times and tx.times_applied >= tx.repeat_times:
-        tx.is_active = False
+    refresh_counters(db, tx)
+    crud._recalculate(db, s.id)
+    _add_history(db, s.id, f"Applied recurring '{tx.category or tx.trans_type}' for {data.due_date} (${adj.amount:.2f})")
+    return _ser_adj(adj)
+
+
+@router.post("/{settlement_id}/carryover", status_code=201)
+def create_carryover(settlement_id: int, db: Session = Depends(get_db)):
+    entry = crud.create_carryover(db, settlement_id)
+    return {"id": entry.id, "amount": entry.amount, "source_settlement_id": entry.source_settlement_id}
+
+
+@router.delete("/{settlement_id}/carryover/{carryover_id}")
+def remove_carryover(settlement_id: int, carryover_id: int, db: Session = Depends(get_db)):
+    crud.remove_carryover(db, settlement_id, carryover_id)
+    return {"message": "Carryover reversed"}
+
+
+class TimeReportIn(BaseModel):
+    date: date
+    hours: float = Field(gt=0, le=24, allow_inf_nan=False)
+    description: str = Field(default='', max_length=2000)
+    request_key: str = Field(min_length=16, max_length=100)
+
+
+def _time_report(row):
+    return {key: getattr(row, key) for key in ('id', 'driver_id', 'payable_to', 'date', 'hours', 'hourly_rate', 'amount', 'description')}
+
+
+@router.get('/{settlement_id}/time-reports')
+def available_time_reports(settlement_id: int, db: Session = Depends(get_db)):
+    s = crud.get_settlement(db, settlement_id)
+    if not s:
+        raise HTTPException(404, 'Settlement not found')
+    used = db.query(SettlementAdjustment.time_report_id).filter(SettlementAdjustment.time_report_id.isnot(None))
+    rows = db.query(DriverTimeReport).filter(DriverTimeReport.driver_id == s.driver_id,
+        DriverTimeReport.payable_to == s.payable_to, DriverTimeReport.is_active == True,
+        DriverTimeReport.date <= s.date, DriverTimeReport.id.notin_(used)).order_by(DriverTimeReport.date, DriverTimeReport.id).all()
+    profile = db.query(DriverProfile).filter(DriverProfile.driver_id == s.driver_id).first()
+    return {'hourly_enabled': bool(profile and profile.pay_type == 'hourly'),
+            'hourly_rate': profile.hourly_rate if profile else 0, 'rows': [_time_report(r) for r in rows]}
+
+
+@router.post('/{settlement_id}/time-reports', status_code=201)
+def create_time_report(settlement_id: int, data: TimeReportIn, db: Session = Depends(get_db)):
+    s = db.query(Settlement).filter(Settlement.id == settlement_id, Settlement.is_active == True).with_for_update().first()
+    if not s:
+        raise HTTPException(404, 'Settlement not found')
+    _require_preparing(s, 'record work hours')
+    driver = db.query(Driver).filter(Driver.id == s.driver_id).with_for_update().one()
+    existing = db.query(DriverTimeReport).filter(DriverTimeReport.request_key == data.request_key).first()
+    if existing:
+        if existing.driver_id != s.driver_id or existing.payable_to != s.payable_to or existing.date != data.date or existing.hours != data.hours or existing.description != data.description or not existing.is_active:
+            raise HTTPException(409, 'Request key already belongs to a different time report')
+        return _time_report(existing)
+    profile = db.query(DriverProfile).filter(DriverProfile.driver_id == s.driver_id).first()
+    if not profile or profile.pay_type != 'hourly':
+        raise HTTPException(400, 'Driver must have an hourly pay profile')
+    if (profile.payable_to or driver.name) != s.payable_to:
+        raise HTTPException(400, 'Create a settlement for the current hourly payee')
+    if data.date > min(s.date, _date.today()):
+        raise HTTPException(400, 'Work date cannot be in the future or after the settlement date')
+    from decimal import Decimal
+    from app.services.driver_pay_service import money
+    import math
+    recorded_hours = db.query(func.coalesce(func.sum(DriverTimeReport.hours), 0)).filter(
+        DriverTimeReport.driver_id == s.driver_id, DriverTimeReport.date == data.date, DriverTimeReport.is_active == True).scalar()
+    if Decimal(str(recorded_hours)) + Decimal(str(data.hours)) > 24:
+        raise HTTPException(400, "Total work hours cannot exceed 24 in one day")
+    rate = profile.hourly_rate or 0
+    if not math.isfinite(rate) or rate < 0:
+        raise HTTPException(400, 'Hourly rate must be nonnegative')
+    row = DriverTimeReport(driver_id=s.driver_id, payable_to=s.payable_to, date=data.date,
+        hours=data.hours, hourly_rate=rate, amount=money(Decimal(str(data.hours)) * Decimal(str(rate))),
+        description=data.description, request_key=data.request_key)
+    db.add(row); db.commit(); db.refresh(row)
+    return _time_report(row)
+
+
+@router.post('/{settlement_id}/time-reports/{report_id}/apply')
+def apply_time_report(settlement_id: int, report_id: int, db: Session = Depends(get_db)):
+    s = db.query(Settlement).filter(Settlement.id == settlement_id, Settlement.is_active == True).with_for_update().first()
+    if not s:
+        raise HTTPException(404, 'Settlement not found')
+    _require_preparing(s, 'apply time report')
+    row = db.query(DriverTimeReport).filter(DriverTimeReport.id == report_id, DriverTimeReport.is_active == True).with_for_update().first()
+    if not row:
+        raise HTTPException(404, 'Time report not found')
+    if row.driver_id != s.driver_id or row.payable_to != s.payable_to or row.date > s.date:
+        raise HTTPException(400, 'Time report does not belong to this driver, payee or period')
+    existing = db.query(SettlementAdjustment).filter(SettlementAdjustment.time_report_id == report_id).first()
+    if existing:
+        if existing.settlement_id == s.id:
+            return _ser_adj(existing)
+        raise HTTPException(400, 'Time report already belongs to another settlement')
+    adj = SettlementAdjustment(settlement_id=s.id, time_report_id=row.id, adj_type='addition',
+        date=row.date, amount=row.amount, category='Driver payments',
+        description=f'{row.hours:g} hours × ${row.hourly_rate:.2f}/hour. {row.description or ""}'.strip())
+    db.add(adj); db.flush(); crud._recalculate(db, s.id)
+    _add_history(db, s.id, f'Applied time report #{row.id}')
+    return _ser_adj(adj)
+
+
+@router.delete('/{settlement_id}/time-reports/{report_id}')
+def delete_time_report(settlement_id: int, report_id: int, db: Session = Depends(get_db)):
+    s = db.query(Settlement).filter(Settlement.id == settlement_id, Settlement.is_active == True).with_for_update().first()
+    if not s:
+        raise HTTPException(404, 'Settlement not found')
+    _require_preparing(s, 'delete time report')
+    row = db.query(DriverTimeReport).filter(DriverTimeReport.id == report_id, DriverTimeReport.is_active == True).with_for_update().first()
+    if not row or row.driver_id != s.driver_id or row.payable_to != s.payable_to:
+        raise HTTPException(404, 'Time report not found')
+    if db.query(SettlementAdjustment).filter(SettlementAdjustment.time_report_id == report_id).first():
+        raise HTTPException(400, 'Remove the time report from payroll before deleting it')
+    row.is_active = False; db.commit()
+    return {'message': 'Deleted'}
+
+
+@router.post('/{settlement_id}/scheduled/run')
+def run_driver_schedule(settlement_id: int, db: Session = Depends(get_db)):
+    s = crud.get_settlement(db, settlement_id)
+    if not s:
+        raise HTTPException(404, 'Settlement not found')
+    _require_preparing(s, 'generate scheduled transactions')
+    count = run_schedules(db, _date.today(), s.driver_id)
     db.commit()
-    crud._recalculate(db, settlement_id)
-    _add_history(db, settlement_id, f"Applied recurring '{tx.category or tx.trans_type}' (${tx.amount:.2f})")
+    return {'created': count}
+
+
+@router.get('/{settlement_id}/additional-payees')
+def available_additional_payees(settlement_id: int, db: Session = Depends(get_db)):
+    from app.models.models import LoadAdditionalPayee
+    s = crud.get_settlement(db, settlement_id)
+    if not s:
+        raise HTTPException(404, 'Settlement not found')
+    used = db.query(SettlementAdjustment.load_payee_id).filter(SettlementAdjustment.load_payee_id.isnot(None))
+    rows = db.query(LoadAdditionalPayee).join(Load).filter(Load.is_active == True,
+        LoadAdditionalPayee.driver_id == s.driver_id, LoadAdditionalPayee.payable_to == s.payable_to,
+        LoadAdditionalPayee.id.notin_(used), LoadAdditionalPayee.date <= s.date).all()
+    return [{'id': r.id, 'load_id': r.load_id, 'load_number': r.load.load_number, 'date': r.date,
+             'rate_pct': r.rate_pct, 'amount': r.amount, 'base_amount': r.base_amount, 'payable_to': r.payable_to} for r in rows]
+
+
+@router.post('/{settlement_id}/additional-payees/{entry_id}/apply')
+def apply_additional_payee(settlement_id: int, entry_id: int, db: Session = Depends(get_db)):
+    from app.models.models import LoadAdditionalPayee
+    s = db.query(Settlement).filter(Settlement.id == settlement_id, Settlement.is_active == True).with_for_update().first()
+    if not s:
+        raise HTTPException(404, 'Settlement not found')
+    _require_preparing(s, 'add additional payee')
+    entry = db.query(LoadAdditionalPayee).filter(LoadAdditionalPayee.id == entry_id).first()
+    if not entry:
+        raise HTTPException(404, 'Payee entry not found')
+    load = db.query(Load).filter(Load.id == entry.load_id, Load.is_active == True).with_for_update().first()
+    if not load or entry.driver_id != s.driver_id or entry.payable_to != s.payable_to or entry.date > s.date:
+        raise HTTPException(400, 'Additional-payee entry does not belong to this driver, payee or period')
+    existing = db.query(SettlementAdjustment).filter(SettlementAdjustment.load_payee_id == entry_id).first()
+    if existing:
+        if existing.settlement_id == s.id:
+            return _ser_adj(existing)
+        raise HTTPException(400, 'Additional-payee entry is already in another settlement')
+    adj = SettlementAdjustment(settlement_id=s.id, load_payee_id=entry.id, adj_type='addition', date=entry.date,
+        category='Additional payee', amount=entry.amount,
+        description=f'Load #{load.load_number}: {entry.rate_pct:g}% of freight ${entry.base_amount:.2f}')
+    db.add(adj); db.flush(); crud._recalculate(db, s.id)
+    _add_history(db, s.id, f'Applied additional payee for load #{load.load_number}')
     return _ser_adj(adj)

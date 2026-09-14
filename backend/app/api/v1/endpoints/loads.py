@@ -94,8 +94,11 @@ def update_load(load_id: int, load_in: LoadUpdate, db: Session = Depends(get_db)
 
 @router.delete("/{load_id}")
 def delete_load(load_id: int, db: Session = Depends(get_db)):
-    if not crud.delete_load(db, load_id):
-        raise HTTPException(404, "Load not found")
+    try:
+        if not crud.delete_load(db, load_id):
+            raise HTTPException(404, "Load not found")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     return {"message": "Load deactivated"}
 
 
@@ -103,13 +106,19 @@ def delete_load(load_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{load_id}/services", response_model=LoadServiceOut, status_code=201)
 def add_service(load_id: int, service_in: LoadServiceCreate, db: Session = Depends(get_db)):
-    return crud.add_service(db, load_id, service_in)
+    try:
+        return crud.add_service(db, load_id, service_in)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @router.delete("/{load_id}/services/{service_id}")
 def delete_service(load_id: int, service_id: int, db: Session = Depends(get_db)):
-    if not crud.delete_service(db, service_id):
-        raise HTTPException(404, "Service not found")
+    try:
+        if not crud.delete_service(db, service_id, load_id=load_id):
+            raise HTTPException(404, "Service not found")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     return {"message": "Service deleted"}
 
 
@@ -294,36 +303,9 @@ def get_pay_breakdown(load_id: int, db: Session = Depends(get_db)):
     if not load:
         raise HTTPException(404, "Load not found")
 
-    pay_type = load.pay_type_snapshot or "per_mile"
-    lines = []
-
-    if pay_type == "percentage":
-        pct = load.freight_percentage_snapshot or 0.0
-        base = (load.rate or 0.0) * pct / 100.0
-        lines.append({
-            "label": f"{pct:g}% of freight ${load.rate or 0:,.2f}",
-            "amount": round(base, 2),
-        })
-        for s in (load.services or []):
-            if s.drivers_payable:
-                sign = 1 if s.add_deduct == "Add" else -1
-                lines.append({
-                    "label": f"Service — {s.service_type} ({s.add_deduct})",
-                    "amount": round(sign * s.drivers_payable, 2),
-                })
-    elif pay_type == "flatpay":
-        lines.append({"label": "Flat pay", "amount": round(load.flatpay_snapshot or 0.0, 2)})
-    else:  # per_mile
-        loaded_rate = load.pay_rate_loaded_snapshot or 0.65
-        empty_rate = load.pay_rate_empty_snapshot or 0.30
-        lines.append({
-            "label": f"{load.loaded_miles or 0:g} loaded mi × ${loaded_rate:,.2f}/mi",
-            "amount": round((load.loaded_miles or 0) * loaded_rate, 2),
-        })
-        lines.append({
-            "label": f"{load.empty_miles or 0:g} empty mi × ${empty_rate:,.2f}/mi",
-            "amount": round((load.empty_miles or 0) * empty_rate, 2),
-        })
+    from app.services.driver_pay_service import driver_pay_lines
+    pay_type = load.pay_type_snapshot or "unconfigured"
+    lines = driver_pay_lines(load)
 
     return {
         "load_number": load.load_number,
@@ -377,6 +359,9 @@ def retake_driver_snapshot(
             f"Load #{load.load_number} is locked (billing: {load.billing_status}). "
             "Cannot update snapshot for a locked load."
         )
+    from app.services.driver_pay_service import is_in_settlement
+    if is_in_settlement(db, load)[0]:
+        raise HTTPException(400, "Remove the load from its settlement before refreshing pay rules.")
     take_snapshot(db, load)
     history = LoadHistory(
         load_id=load_id,
@@ -393,3 +378,43 @@ def retake_driver_snapshot(
         "drivers_payable_snapshot": load.drivers_payable_snapshot,
     }
 
+
+from pydantic import BaseModel, Field, model_validator
+from typing import Literal
+
+
+class DriverPayOverrideIn(BaseModel):
+    type: Optional[Literal['fixed', 'percentage', 'per_mile']] = None
+    amount: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+    base: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+    percentage: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+    loaded_rate: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+    empty_rate: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+    extra_stop_rate: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+
+    @model_validator(mode='after')
+    def required_values(self):
+        required = {'fixed': ('amount',), 'percentage': ('base', 'percentage'), 'per_mile': ('loaded_rate', 'empty_rate')}
+        if self.type and any(getattr(self, key) is None for key in required[self.type]):
+            raise ValueError('All rates required for this override must be supplied')
+        return self
+
+
+@router.put('/{load_id}/driver-pay-override')
+def set_driver_pay_override(load_id: int, data: DriverPayOverrideIn, db: Session = Depends(get_db)):
+    from app.models.models import Load
+    from app.services.driver_pay_service import is_locked, is_in_settlement, compute_driver_pay
+    load = db.query(Load).filter(Load.id == load_id, Load.is_active == True).with_for_update().first()
+    if not load:
+        raise HTTPException(404, 'Load not found')
+    if not load.driver_id:
+        raise HTTPException(400, 'Assign a driver before overriding pay')
+    if is_locked(load) or is_in_settlement(db, load)[0]:
+        raise HTTPException(400, 'Remove the load from payroll and unlock billing before overriding pay')
+    old = load.drivers_payable_snapshot
+    load.driver_pay_override = data.model_dump(exclude_none=True) if data.type else None
+    load.snapshot_overridden = bool(data.type)
+    load.drivers_payable_snapshot = compute_driver_pay(load)
+    db.add(LoadHistory(load_id=load.id, author='Dispatcher', description=f'Driver pay override {data.type or "removed"}: ${old or 0:.2f} to ${load.drivers_payable_snapshot:.2f}'))
+    db.commit()
+    return {'driver_pay_override': load.driver_pay_override, 'drivers_payable_snapshot': load.drivers_payable_snapshot}

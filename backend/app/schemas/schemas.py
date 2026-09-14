@@ -223,6 +223,8 @@ class DispatcherOut(DispatcherBase):
 class LoadStopBase(BaseModel):
     stop_type: StopType
     stop_order: int
+    is_payable: bool = False
+    title: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
     zip_code: Optional[str] = None
@@ -351,6 +353,17 @@ class LoadUpdate(BaseModel):
     stops: Optional[List[LoadStopCreate]] = None
 
 
+class LoadPayeeOut(BaseModel):
+    id: int
+    vendor_id: int
+    payable_to: str
+    rate_pct: float
+    base_amount: float
+    amount: float
+    class Config:
+        from_attributes = True
+
+
 class LoadOut(BaseModel):
     id: int
     load_number: int
@@ -373,9 +386,16 @@ class LoadOut(BaseModel):
     pay_rate_empty_snapshot: Optional[float] = None
     freight_percentage_snapshot: Optional[float] = None
     flatpay_snapshot: Optional[float] = None
+    extra_stop_rate_snapshot: Optional[float] = None
+    extra_stop_count_snapshot: Optional[int] = None
     drivers_payable_snapshot: Optional[float] = None
     snapshot_taken_at: Optional[datetime] = None
+    quickpay_rate_snapshot: Optional[float] = None
+    quickpay_amount: float = 0
+    invoice_total: float = 0
+    additional_payees: List[LoadPayeeOut] = []
     snapshot_overridden: bool = False
+    driver_pay_override: Optional[dict] = None
     driver: Optional[DriverOut] = None
     truck: Optional[TruckOut] = None
     trailer: Optional[TrailerOut] = None

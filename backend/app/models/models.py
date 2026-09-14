@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, Integer, String, Float, Date, DateTime, Text,
-    ForeignKey, Boolean, Enum as SAEnum, func
+    ForeignKey, Boolean, Enum as SAEnum, func, UniqueConstraint, JSON
 )
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -40,6 +40,7 @@ class BillingStatus(str, enum.Enum):
 class StopType(str, enum.Enum):
     PICKUP = "pickup"
     DELIVERY = "delivery"
+    OTHER = "other"
 
 
 class ServiceType(str, enum.Enum):
@@ -250,12 +251,17 @@ class Load(Base):
 
     # ── Historical compensation snapshot ──────────────────────────────────────
     pay_type_snapshot = Column(String(50), nullable=True)
+    payable_to_snapshot = Column(String(200), nullable=True)
     pay_rate_loaded_snapshot = Column(Float, nullable=True)
     pay_rate_empty_snapshot = Column(Float, nullable=True)
     freight_percentage_snapshot = Column(Float, nullable=True)
     flatpay_snapshot = Column(Float, nullable=True)
+    extra_stop_rate_snapshot = Column(Float, nullable=True)
+    extra_stop_count_snapshot = Column(Integer, nullable=True)
     drivers_payable_snapshot = Column(Float, nullable=True)
     snapshot_taken_at = Column(DateTime, nullable=True)
+    quickpay_rate_snapshot = Column(Float, nullable=True)
+    driver_pay_override = Column(JSON, nullable=True)
     snapshot_overridden = Column(Boolean, default=False)
 
     created_at = Column(DateTime, server_default=func.now())
@@ -266,11 +272,23 @@ class Load(Base):
     trailer = relationship("Trailer", back_populates="loads")
     broker = relationship("Broker", back_populates="loads")
     dispatcher = relationship("Dispatcher", back_populates="loads")
+    additional_payees = relationship("LoadAdditionalPayee", back_populates="load", cascade="all, delete-orphan")
     stops = relationship("LoadStop", back_populates="load", cascade="all, delete-orphan", order_by="LoadStop.stop_order")
     services = relationship("LoadService", back_populates="load", cascade="all, delete-orphan")
     documents = relationship("LoadDocument", back_populates="load", cascade="all, delete-orphan")
     history = relationship("LoadHistory", back_populates="load", cascade="all, delete-orphan", order_by="LoadHistory.created_at.desc()")
     notes_list = relationship("LoadNote", back_populates="load", cascade="all, delete-orphan")
+
+
+    @property
+    def quickpay_amount(self):
+        from app.services.load_financials import quickpay_fee
+        return quickpay_fee(self)
+
+    @property
+    def invoice_total(self):
+        from app.services.load_financials import invoice_amount
+        return invoice_amount(self)
 
 
 class LoadStop(Base):
@@ -280,6 +298,8 @@ class LoadStop(Base):
     load_id = Column(Integer, ForeignKey("loads.id"), nullable=False)
     stop_type = Column(enum_column(StopType, "stoptype"), nullable=False)
     stop_order = Column(Integer, nullable=False)
+    is_payable = Column(Boolean, default=False, nullable=False)
+    title = Column(String(200), nullable=True)
     city = Column(String(100))
     state = Column(String(50))
     zip_code = Column(String(20))
@@ -377,6 +397,9 @@ class Settlement(Base):
     payments = relationship("SettlementPayment", back_populates="settlement", cascade="all, delete-orphan")
     adjustments = relationship("SettlementAdjustment", back_populates="settlement", cascade="all, delete-orphan")
     history = relationship("SettlementHistory", back_populates="settlement", cascade="all, delete-orphan", order_by="SettlementHistory.created_at.desc()")
+    legacy_advances = relationship("Payment", foreign_keys="Payment.applied_settlement_id", viewonly=True)
+    outgoing_carryovers = relationship("PayrollCarryover", foreign_keys="PayrollCarryover.source_settlement_id")
+    incoming_carryovers = relationship("PayrollCarryover", foreign_keys="PayrollCarryover.target_settlement_id")
 
 
 class SettlementItem(Base):
@@ -404,6 +427,7 @@ class SettlementItem(Base):
 class SettlementAdjustment(Base):
     """Manual additions and deductions to a settlement."""
     __tablename__ = "settlement_adjustments"
+    __table_args__ = (UniqueConstraint("scheduled_transaction_id", "date", name="uq_scheduled_application_date"),)
 
     id = Column(Integer, primary_key=True, index=True)
     settlement_id = Column(Integer, ForeignKey("settlements.id"), nullable=False)
@@ -412,6 +436,10 @@ class SettlementAdjustment(Base):
     category = Column(String(100), nullable=True)
     description = Column(Text, nullable=True)
     amount = Column(Float, default=0.0)
+    advanced_payment_id = Column(Integer, ForeignKey("advanced_payments.id"), nullable=True)
+    scheduled_transaction_id = Column(Integer, ForeignKey("driver_scheduled_transactions.id"), nullable=True)
+    time_report_id = Column(Integer, ForeignKey("driver_time_reports.id"), unique=True, nullable=True)
+    load_payee_id = Column(Integer, ForeignKey("load_additional_payees.id"), unique=True, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
     settlement = relationship("Settlement", back_populates="adjustments")
@@ -430,6 +458,18 @@ class SettlementPayment(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     settlement = relationship("Settlement", back_populates="payments")
+
+
+class PayrollCarryover(Base):
+    """A debt transfer, never a cash payment. Both sides are linked and auditable."""
+    __tablename__ = "payroll_carryovers"
+
+    id = Column(Integer, primary_key=True)
+    source_settlement_id = Column(Integer, ForeignKey("settlements.id"), nullable=False, unique=True)
+    target_settlement_id = Column(Integer, ForeignKey("settlements.id"), nullable=True)
+    amount = Column(Float, nullable=False)
+    date = Column(Date, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
 
 
 class SettlementHistory(Base):
@@ -543,6 +583,8 @@ class DriverProfile(Base):
     per_extra_stop = Column(Float, default=0.0)
     freight_percentage = Column(Float, default=0.0)
     flatpay = Column(Float, default=0.0)
+    flatpay_period = Column(String(20), nullable=True)
+    flatpay_start_date = Column(Date, nullable=True)
     hourly_rate = Column(Float, default=0.0)
     notes = Column(Text, nullable=True)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -583,12 +625,15 @@ class DriverScheduledTransaction(Base):
     """Recurring payroll addition/deduction tied to a driver."""
     __tablename__ = "driver_scheduled_transactions"
 
+    source_key = Column(String(100), unique=True, nullable=True)
+
     id = Column(Integer, primary_key=True, index=True)
     driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=False)
     trans_type = Column(String(20), nullable=False)   # addition | deduction | loan | escrow
     category = Column(String(100), nullable=True)
     description = Column(Text, nullable=True)
     amount = Column(Float, default=0.0)
+    deduct_by = Column(Float, nullable=True)
     schedule = Column(String(50), nullable=True)      # daily | weekly | biweekly | monthly | annually
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
@@ -702,3 +747,59 @@ class AdvancedPayment(Base):
     driver = relationship("Driver", foreign_keys=[driver_id])
     vendor = relationship("Vendor", foreign_keys=[vendor_id])
     applied_to_settlement = relationship("Settlement", foreign_keys=[applied_to_settlement_id])
+
+
+class DriverTimeReport(Base):
+    __tablename__ = 'driver_time_reports'
+    id = Column(Integer, primary_key=True)
+    driver_id = Column(Integer, ForeignKey('drivers.id'), nullable=False)
+    payable_to = Column(String(200), nullable=False)
+    date = Column(Date, nullable=False)
+    hours = Column(Float, nullable=False)
+    hourly_rate = Column(Float, nullable=False)
+    amount = Column(Float, nullable=False)
+    description = Column(Text, nullable=True)
+    request_key = Column(String(100), unique=True, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class ScheduledPayrollOccurrence(Base):
+    __tablename__ = 'scheduled_payroll_occurrences'
+    __table_args__ = (UniqueConstraint('scheduled_transaction_id', 'date', name='uq_payroll_occurrence_date'),)
+    id = Column(Integer, primary_key=True)
+    scheduled_transaction_id = Column(Integer, ForeignKey('driver_scheduled_transactions.id'), nullable=False)
+    driver_id = Column(Integer, ForeignKey('drivers.id'), nullable=False)
+    payable_to = Column(String(200), nullable=False)
+    date = Column(Date, nullable=False)
+    amount = Column(Float, nullable=False)
+    adj_type = Column(String(20), nullable=False)
+    category = Column(String(100), nullable=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class DriverAdditionalPayee(Base):
+    __tablename__ = 'driver_additional_payees'
+    __table_args__ = (UniqueConstraint('driver_id', 'vendor_id', name='uq_driver_additional_vendor'),)
+    id = Column(Integer, primary_key=True)
+    driver_id = Column(Integer, ForeignKey('drivers.id'), nullable=False)
+    vendor_id = Column(Integer, ForeignKey('vendors.id'), nullable=False)
+    rate_pct = Column(Float, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    vendor = relationship('Vendor')
+
+
+class LoadAdditionalPayee(Base):
+    __tablename__ = 'load_additional_payees'
+    __table_args__ = (UniqueConstraint('load_id', 'vendor_id', name='uq_load_additional_vendor'),)
+    id = Column(Integer, primary_key=True)
+    load_id = Column(Integer, ForeignKey('loads.id'), nullable=False)
+    driver_id = Column(Integer, ForeignKey('drivers.id'), nullable=False)
+    vendor_id = Column(Integer, ForeignKey('vendors.id'), nullable=False)
+    payable_to = Column(String(200), nullable=False)
+    rate_pct = Column(Float, nullable=False)
+    base_amount = Column(Float, nullable=False)
+    amount = Column(Float, nullable=False)
+    date = Column(Date, nullable=False)
+    load = relationship('Load', back_populates='additional_payees')

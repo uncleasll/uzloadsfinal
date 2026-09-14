@@ -4,7 +4,7 @@ Advanced Payments endpoint.
 Business rule (per Easy Loads spec):
   1. Dispatcher creates an advanced payment (com-check, fuel advance, pre-pay) here.
   2. It sits as "unapplied" until someone opens a settlement and clicks the + button.
-  3. When applied, the settlement_total is reduced by that amount (it counts against what
+  3. When applied, the balance_due is reduced by that amount, while settlement_total stays unchanged (it counts against what
      the driver is owed this cycle).
   4. Applied amount is tracked on the AdvancedPayment row so partial applications are
      possible and "remaining" can be shown.

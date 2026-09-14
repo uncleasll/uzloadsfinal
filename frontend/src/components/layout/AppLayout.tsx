@@ -148,13 +148,13 @@ export default function AppLayout() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-600/[0.12] to-transparent" />
 
       {/* Brand — logo keeps a fixed position in both states */}
-      <div className="relative flex h-[52px] shrink-0 items-center border-b border-white/[0.08] px-[13px]">
+      <div className="relative flex h-[3.25rem] shrink-0 items-center border-b border-white/[0.08] px-[0.8125rem]">
         <div className="shrink-0" style={{ width: 26, height: 26 }}>
           <img src={karvanLogo} alt="Karvan" className="h-full w-full object-contain" />
         </div>
         <div className={`ml-2 min-w-0 ${labelCls} ${expanded ? '' : 'pointer-events-none'}`}>
-          <div className="text-[13px] font-bold leading-tight tracking-tight text-white">Karvan</div>
-          <div className="text-[9.5px] font-medium leading-tight text-slate-400">Fleet operations</div>
+          <div className="text-[0.8125rem] font-bold leading-tight tracking-tight text-white">Karvan</div>
+          <div className="text-[0.59375rem] font-medium leading-tight text-slate-400">Fleet operations</div>
         </div>
         {isMobile && (
           <button
@@ -174,7 +174,7 @@ export default function AppLayout() {
         {NAV.map(item => {
           const active = isActive(item)
           const open = !!openMenus[item.label]
-          const iconWrap = `grid h-6 w-6 shrink-0 place-items-center transition-colors duration-150 [&>svg]:h-[10px] [&>svg]:w-[10px] ${
+          const iconWrap = `grid h-6 w-6 shrink-0 place-items-center transition-colors duration-150 [&>svg]:h-[0.625rem] [&>svg]:w-[0.625rem] ${
             active ? 'text-white' : 'text-slate-400 group-hover:text-slate-100'
           }`
 
@@ -185,7 +185,7 @@ export default function AppLayout() {
                 to={item.to!}
                 title={expanded ? undefined : item.label}
                 className={({ isActive: ia }) =>
-                  `group relative flex h-8 items-center rounded-md px-2 text-[9.5px] transition-colors duration-150 ${
+                  `group relative flex h-8 items-center rounded-md px-2 text-[0.59375rem] transition-colors duration-150 ${
                     ia
                       ? 'bg-brand-600 font-semibold text-white shadow-sm shadow-blue-950/30'
                       : 'font-medium text-slate-300 hover:bg-white/[0.07] hover:text-white'
@@ -193,7 +193,7 @@ export default function AppLayout() {
                 }
               >
                 {!expanded && active && (
-                  <span className="absolute -left-1.5 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-full bg-blue-400" />
+                  <span className="absolute -left-1.5 top-1/2 h-4 w-[0.125rem] -translate-y-1/2 rounded-r-full bg-blue-400" />
                 )}
                 <span className={iconWrap}>{item.icon}</span>
                 <span className={`ml-2 min-w-0 truncate ${labelCls}`}>{item.label}</span>
@@ -207,14 +207,14 @@ export default function AppLayout() {
                 onClick={() => handleGroupClick(item)}
                 title={expanded ? undefined : item.label}
                 aria-expanded={open}
-                className={`group relative flex h-8 w-full items-center rounded-md px-2 text-[9.5px] transition-colors duration-150 ${
+                className={`group relative flex h-8 w-full items-center rounded-md px-2 text-[0.59375rem] transition-colors duration-150 ${
                   active
                     ? 'bg-white/[0.08] font-semibold text-white'
                     : 'font-medium text-slate-300 hover:bg-white/[0.07] hover:text-white'
                 }`}
               >
                 {!expanded && active && (
-                  <span className="absolute -left-1.5 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-full bg-blue-400" />
+                  <span className="absolute -left-1.5 top-1/2 h-4 w-[0.125rem] -translate-y-1/2 rounded-r-full bg-blue-400" />
                 )}
                 <span className={iconWrap}>{item.icon}</span>
                 <span className={`ml-2 min-w-0 flex-1 truncate text-left ${labelCls}`}>{item.label}</span>
@@ -236,7 +236,7 @@ export default function AppLayout() {
                         to={child.to}
                         tabIndex={open && expanded ? 0 : -1}
                         className={({ isActive: ia }) =>
-                          `relative flex h-7 items-center rounded-md px-2 text-[9px] transition-colors duration-150 ${
+                          `relative flex h-7 items-center rounded-md px-2 text-[0.5625rem] transition-colors duration-150 ${
                             ia
                               ? 'bg-blue-500/[0.15] font-semibold text-blue-200'
                               : 'font-medium text-slate-400 hover:bg-white/[0.05] hover:text-slate-100'
@@ -244,7 +244,7 @@ export default function AppLayout() {
                         }
                       >
                         {isChildActive(child.to) && (
-                          <span className="absolute -left-[11px] top-1/2 h-3.5 w-[2px] -translate-y-1/2 rounded-full bg-blue-400" />
+                          <span className="absolute -left-[0.6875rem] top-1/2 h-3.5 w-[0.125rem] -translate-y-1/2 rounded-full bg-blue-400" />
                         )}
                         <span className="truncate">{child.label}</span>
                       </NavLink>
@@ -279,7 +279,7 @@ export default function AppLayout() {
           <div
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
-            className={`fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[2px] transition-opacity duration-300 ${
+            className={`fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[0.125rem] transition-opacity duration-300 ${
               mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
           />
@@ -298,7 +298,7 @@ export default function AppLayout() {
       {/* Main area */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 
-        <header className="z-20 flex h-[52px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-4">
+        <header className="z-20 flex h-[3.25rem] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-4">
           <button
             onClick={toggleSidebar}
             title={isMobile ? 'Open menu' : expanded ? 'Collapse sidebar' : 'Expand sidebar'}
@@ -306,11 +306,11 @@ export default function AppLayout() {
             className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
           >
             {isMobile ? (
-              <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-[1.125rem] w-[1.125rem]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
               </svg>
             ) : (
-              <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <svg className="h-[1.125rem] w-[1.125rem]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <rect x="3" y="4" width="18" height="16" rx="2"/>
                 <path strokeLinecap="round" d="M9 4v16"/>
               </svg>
@@ -323,12 +323,12 @@ export default function AppLayout() {
               onClick={() => setShowUserMenu(v => !v)}
               aria-expanded={showUserMenu}
               aria-haspopup="menu"
-              className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-[3px] pl-2.5 pr-1 transition-colors hover:border-slate-300 hover:bg-slate-100"
+              className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-[0.1875rem] pl-2.5 pr-1 transition-colors hover:border-slate-300 hover:bg-slate-100"
             >
               <span className="hidden text-xs font-semibold text-slate-700 sm:block">
                 {displayName}
               </span>
-              <span className="grid h-[30px] w-[30px] shrink-0 place-items-center overflow-hidden rounded-full bg-brand-600">
+              <span className="grid h-[1.875rem] w-[1.875rem] shrink-0 place-items-center overflow-hidden rounded-full bg-brand-600">
                 <span className="text-xs font-bold text-white">{initial}</span>
               </span>
             </button>
@@ -340,7 +340,7 @@ export default function AppLayout() {
               >
                 <div className="border-b border-slate-100 px-4 py-2.5">
                   <div className="text-xs font-bold text-slate-900">{displayName}</div>
-                  <div className="truncate text-[11px] text-slate-500">{user?.email || 'Karvan · Fleet operations'}</div>
+                  <div className="truncate text-[0.6875rem] text-slate-500">{user?.email || 'Karvan · Fleet operations'}</div>
                 </div>
                 <button
                   role="menuitem"

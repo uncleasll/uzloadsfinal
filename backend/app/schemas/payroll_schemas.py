@@ -1,15 +1,27 @@
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, List, Literal
 from datetime import date, datetime
 from app.models.models import SettlementStatus
 
 
-class SettlementAdjustmentCreate(BaseModel):
-    adj_type: str   # 'addition' | 'deduction'
+class PositiveMoneyInput(BaseModel):
+    amount: float = Field(gt=0, allow_inf_nan=False)
+
+    @field_validator('amount')
+    @classmethod
+    def round_cents(cls, value):
+        from decimal import Decimal, ROUND_HALF_UP
+        value = float(Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+        if value <= 0:
+            raise ValueError('Amount must be at least one cent')
+        return value
+
+
+class SettlementAdjustmentCreate(PositiveMoneyInput):
+    adj_type: Literal["addition", "deduction"]
     date: Optional[date] = None
     category: Optional[str] = None
     description: Optional[str] = None
-    amount: float
 
 
 class SettlementAdjustmentOut(BaseModel):
@@ -25,10 +37,9 @@ class SettlementAdjustmentOut(BaseModel):
         from_attributes = True
 
 
-class SettlementPaymentCreate(BaseModel):
+class SettlementPaymentCreate(PositiveMoneyInput):
     payment_number: Optional[str] = None
     description: Optional[str] = None
-    amount: float
     payment_date: Optional[date] = None
     is_carryover: bool = False
 
@@ -89,6 +100,13 @@ class SettlementUpdate(BaseModel):
     status: Optional[SettlementStatus] = None
     date: Optional[date] = None
     notes: Optional[str] = None
+
+    @field_validator('driver_id', 'date', 'status')
+    @classmethod
+    def reject_explicit_null(cls, value):
+        if value is None:
+            raise ValueError('This field cannot be null')
+        return value
 
 
 class SettlementOut(BaseModel):

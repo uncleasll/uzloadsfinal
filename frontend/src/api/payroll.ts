@@ -3,6 +3,12 @@ import client from './client'
 const BASE = '/api/v1/payroll'
 
 export const payrollApi = {
+  removeCarryover: async (id: number, carryoverId: number) => {
+    const { data } = await client.delete(`/api/v1/payroll/${id}/carryover/${carryoverId}`); return data
+  },
+  createCarryover: async (id: number) => {
+    const { data } = await client.post(`/api/v1/payroll/${id}/carryover`); return data
+  },
   list: async (params: Record<string, string | number> = {}) => {
     const { data } = await client.get(BASE, { params })
     return data
@@ -97,7 +103,7 @@ export const payrollApi = {
       }>
       scheduled_transactions: Array<{
         id: number; trans_type: string; category?: string; description?: string
-        amount: number; schedule?: string; next_due?: string
+        amount: number; schedule?: string; next_due?: string; due_date: string
       }>
       advanced_payments: Array<{
         id: number; payment_number: number; payment_date?: string; amount: number
@@ -117,8 +123,8 @@ export const payrollApi = {
   },
 
   // ── Apply scheduled transaction ─────────────────────────────────────────────
-  applyScheduled: async (settlementId: number, txId: number) => {
-    const { data } = await client.post(`${BASE}/${settlementId}/scheduled/${txId}/apply`)
+  applyScheduled: async (settlementId: number, txId: number, dueDate: string) => {
+    const { data } = await client.post(`${BASE}/${settlementId}/scheduled/${txId}/apply`, { due_date: dueDate })
     return data
   },
 
@@ -167,6 +173,8 @@ export interface SettlementItem {
 }
 
 export interface SettlementAdjustment {
+  is_carryover?: boolean
+  legacy_payment_id?: number
   id: number
   adj_type: string
   date?: string

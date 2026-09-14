@@ -61,7 +61,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
   return (
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
       <div className="flex-1 bg-black/40"/>
-      <div className="w-[1000px] bg-white flex flex-col h-full shadow-2xl overflow-hidden" onClick={e=>e.stopPropagation()}>
+      <div className="w-[62.5rem] bg-white flex flex-col h-full shadow-2xl overflow-hidden" onClick={e=>e.stopPropagation()}>
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-lg font-bold text-gray-900">New Settlement</h2>
@@ -88,7 +88,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
                   onChange={e=>{
                     const v=e.target.value; setDriverId(v)
                     const d=drivers.find(x=>String(x.id)===v)
-                    setPayableTo(d ? d.name : '')
+                    setPayableTo('')
                   }}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                   <option value=""></option>
@@ -103,7 +103,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
                 <select value={payableTo} onChange={e=>setPayableTo(e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
                   <option value=""></option>
-                  {drivers.map(d=><option key={d.id} value={d.name}>{d.name}</option>)}
+                  {Array.from(new Set(balances.map(b=>b.payable_to))).map(name=><option key={name} value={name}>{name}</option>)}
                 </select>
                 <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
               </div>
@@ -163,7 +163,7 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
                       No open balances found for this filter
                     </td></tr>
                   ) : visibleBalances.map(b=>(
-                    <tr key={b.driver_id} className="hover:bg-gray-50">
+                    <tr key={`${b.driver_id}-${b.payable_to}`} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium text-gray-900">{b.driver_name} [{b.driver_type}]</td>
                       <td className="px-4 py-3 text-gray-600">{b.payable_to}</td>
                       <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(b.balance)}</td>
@@ -186,8 +186,12 @@ export default function NewSettlementModal({ drivers, onClose, onSaved }: Props)
           <button onClick={onClose} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded hover:bg-gray-900">
             <IcoX/> Close
           </button>
-          <button disabled title="Settlements are created from the Open Balance rows"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-400 text-white text-sm font-medium rounded opacity-50 cursor-not-allowed">
+          <button disabled={!driverId || creating !== null} onClick={()=>{
+            setCreating(Number(driverId))
+            payrollApi.create({driver_id:Number(driverId), payable_to:payableTo || undefined, status:'Preparing', date:new Date().toISOString().slice(0,10)})
+              .then(s=>onSaved(s.id)).catch(e=>toast.error(e.message)).finally(()=>setCreating(null))
+          }} title="Create an empty settlement for the selected driver"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded disabled:opacity-50">
             <IcoCheck/> Save
           </button>
         </div>

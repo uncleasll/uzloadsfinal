@@ -24,7 +24,7 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 
 # ── openpyxl ──────────────────────────────────────────────────────────────────
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import (
     Font, PatternFill, Alignment, Border, Side, numbers
 )
@@ -378,7 +378,7 @@ def generate_rate_per_mile_pdf(report_data: dict, filters: dict) -> bytes:
     avg_rpm      = total_rate / total_miles if total_miles else 0
 
     totals = ["","","","","","","Total:",
-              _fmt_num(0), _fmt_num(total_loaded), _fmt_num(total_miles),
+              _fmt_num(sum(r.get("empty_miles", 0) for r in report_data.get("rows", []))), _fmt_num(total_loaded), _fmt_num(total_miles),
               _fmt_currency(total_rate), _fmt_currency(avg_rpm)]
 
     avail = 10.1 * inch
@@ -387,6 +387,7 @@ def generate_rate_per_mile_pdf(report_data: dict, filters: dict) -> bytes:
     cw = [x/total*avail for x in cw]
 
     _data_table(story, headers, rows_out, totals, col_widths=cw, right_align_cols=right_cols)
+    _pdf_group_summary(story, report_data)
     doc.build(story)
     buf.seek(0)
     return buf.read()
@@ -415,8 +416,8 @@ def generate_rate_per_mile_xlsx(report_data: dict, filters: dict) -> bytes:
     total_loaded = sum(r.get("loaded_miles",0) for r in report_data.get("rows",[]))
     total_rate = s.get("total_revenue",0)
     avg_rpm = total_rate/total_miles if total_miles else 0
-    totals = ["","","","","","","Total:", 0, total_loaded, total_miles, total_rate, avg_rpm]
-    return _xlsx_workbook("Rate per Mile", meta, headers, rows_out, totals)
+    totals = ["","","","","","","Total:", sum(r.get("empty_miles", 0) for r in report_data.get("rows", [])), total_loaded, total_miles, total_rate, avg_rpm]
+    return _xlsx_group_summary(_xlsx_workbook("Rate per Mile", meta, headers, rows_out, totals), report_data)
 
 
 def generate_total_revenue_pdf(report_data: dict, filters: dict, columns: list) -> bytes:
@@ -462,6 +463,7 @@ def generate_total_revenue_pdf(report_data: dict, filters: dict, columns: list) 
     avail = 10.1 * inch
     cw = [avail/len(headers)]*len(headers)
     _data_table(story, headers, rows_out, totals if any(t for t in totals) else None, col_widths=cw, right_align_cols=right_cols)
+    _pdf_group_summary(story, report_data)
     doc.build(story)
     buf.seek(0)
     return buf.read()
@@ -479,8 +481,12 @@ def generate_total_revenue_xlsx(report_data: dict, filters: dict, columns: list)
         route = f"{r.get('pickup_city','')}, {r.get('pickup_state','')} - {r.get('delivery_city','')}, {r.get('delivery_state','')}"
         rows_out.append([_fmt_date(r.get("pickup_date")),_fmt_date(r.get("actual_delivery_date")),r.get("load_number",""),route,r.get("broker",""),r.get("po_number",""),r.get("rate",0),r.get("driver",""),r.get("truck",""),r.get("driver_pay",0),r.get("status",""),r.get("billing_status","")])
     s = report_data.get("summary",{})
-    totals = ["","","","","","","Total",_fmt_currency(s.get("total_revenue",0)),"","","",""]
-    return _xlsx_workbook("Total Revenue Report", meta, headers, rows_out, totals)
+    totals = [''] * len(headers)
+    totals[5] = 'Total'
+    totals[6] = s.get('total_revenue', 0)
+    totals[9] = sum(r.get('driver_pay', 0) for r in report_data.get('rows', []))
+
+    return _xlsx_group_summary(_xlsx_workbook("Total Revenue Report", meta, headers, rows_out, totals), report_data)
 
 
 def generate_gross_profit_pdf(report_data: dict, filters: dict) -> bytes:
@@ -501,6 +507,8 @@ def generate_gross_profit_pdf(report_data: dict, filters: dict) -> bytes:
         ["Loads Revenue",     _fmt_currency(s.get("loads_revenue",0))],
         ["Other Revenue",     _fmt_currency(s.get("other_revenue",0))],
         ["Driver Payments",   _fmt_currency(s.get("driver_payments",0))],
+        ["Additional Payees", _fmt_currency(s.get("additional_payees",0))],
+        ["Quick Pay Fees", _fmt_currency(s.get("quickpay_fees",0))],
         ["Fuel",              _fmt_currency(s.get("fuel",0))],
         ["Tolls",             _fmt_currency(s.get("tolls",0))],
         ["Gross Profit",      _fmt_currency(s.get("gross_profit",0))],
@@ -522,7 +530,7 @@ def generate_gross_profit_xlsx(report_data: dict, filters: dict) -> bytes:
         ["Total Revenue",   s.get("total_revenue",0)],
         ["Loads Revenue",   s.get("loads_revenue",0)],
         ["Other Revenue",   s.get("other_revenue",0)],
-        ["Driver Payments", s.get("driver_payments",0)],
+        ["Driver Payments", s.get("driver_payments",0)],["Additional Payees",s.get("additional_payees",0)],["Quick Pay Fees",s.get("quickpay_fees",0)],
         ["Fuel",            s.get("fuel",0)],
         ["Tolls",           s.get("tolls",0)],
         ["Gross Profit",    s.get("gross_profit",0)],
@@ -543,8 +551,8 @@ def generate_gross_profit_per_load_pdf(report_data: dict, filters: dict) -> byte
     meta.append(f"Billing status: {filters.get('billing_statuses','All')}")
     _header_table(story, "Gross Profit per Load Report", meta)
 
-    headers = ["Pickup date","Delivery date","Load #","Truck #","Driver","Route","Total miles","Invoice","QP/Fac fee","Lumpers+Other","Driver Pay","Gross Profit"]
-    right_cols = [6,7,8,9,10,11]
+    headers = ["Pickup date","Delivery date","Load #","Truck #","Driver","Route","Total miles","Invoice","QP/Fac fee","Lumpers+Other","Driver Pay","Additional Payees","Gross Profit"]
+    right_cols = [6,7,8,9,10,11,12]
     rows_out = []
     for r in report_data.get("rows",[]):
         route = f"{r.get('pickup_city','')}, {r.get('pickup_state','')} - {r.get('delivery_city','')}, {r.get('delivery_state','')}"
@@ -554,20 +562,21 @@ def generate_gross_profit_per_load_pdf(report_data: dict, filters: dict) -> byte
             route, _fmt_num(r.get("total_miles",0)),
             _fmt_currency(r.get("rate",0)), _fmt_currency(r.get("qp_fee",0)),
             _fmt_currency(float(r.get("lumpers",0))+float(r.get("other_add_ded",0))),
-            _fmt_currency(r.get("driver_pay",0)), _fmt_currency(r.get("gross_profit",0)),
+            _fmt_currency(r.get("driver_pay",0)), _fmt_currency(r.get("additional_payee",0)), _fmt_currency(r.get("gross_profit",0)),
         ])
 
     s = report_data.get("summary",{})
     totals = ["","","","","","Total:",
               _fmt_num(sum(r.get("total_miles",0) for r in report_data.get("rows",[]))),
-              _fmt_currency(s.get("total_revenue",0)), "$0.00","$0.00",
-              _fmt_currency(s.get("total_driver_pay",0)),
+              _fmt_currency(s.get("total_revenue",0)), _fmt_currency(sum(r.get("qp_fee",0) for r in report_data.get("rows",[]))), _fmt_currency(sum(r.get("lumpers",0)+r.get("other_add_ded",0) for r in report_data.get("rows",[]))),
+              _fmt_currency(s.get("total_driver_pay",0)), _fmt_currency(s.get("total_additional_payees",0)),
               _fmt_currency(s.get("total_gross_profit",0))]
 
     avail = 10.1*inch
-    cw_raw = [0.65,0.65,0.5,0.6,1.1,1.4,0.6,0.7,0.6,0.7,0.7,0.7]
+    cw_raw = [0.65,0.65,0.5,0.6,1.1,1.4,0.6,0.7,0.6,0.7,0.7,0.7,0.7]
     t=sum(cw_raw); cw=[x/t*avail for x in cw_raw]
     _data_table(story, headers, rows_out, totals, col_widths=cw, right_align_cols=right_cols)
+    _pdf_group_summary(story, report_data)
     doc.build(story)
     buf.seek(0)
     return buf.read()
@@ -577,14 +586,14 @@ def generate_gross_profit_per_load_xlsx(report_data: dict, filters: dict) -> byt
     meta = [f"Dates range: {_fmt_date(report_data.get('date_from'))} {_fmt_date(report_data.get('date_to'))}"]
     if report_data.get("driver_name"): meta.append(f"Driver: {report_data['driver_name']}")
     if report_data.get("truck_unit"):  meta.append(f"Truck: {report_data['truck_unit']}")
-    headers = ["Pickup date","Delivery date","Load #","Truck #","Driver","Route","Total miles","Invoice","QP/Fac fee","Lumpers+Other","Driver Pay","Gross Profit"]
+    headers = ["Pickup date","Delivery date","Load #","Truck #","Driver","Route","Total miles","Invoice","QP/Fac fee","Lumpers+Other","Driver Pay","Additional Payees","Gross Profit"]
     rows_out = []
     for r in report_data.get("rows",[]):
         route = f"{r.get('pickup_city','')}, {r.get('pickup_state','')} - {r.get('delivery_city','')}, {r.get('delivery_state','')}"
-        rows_out.append([_fmt_date(r.get("pickup_date")),_fmt_date(r.get("actual_delivery_date")),r.get("load_number",""),r.get("truck",""),r.get("driver",""),route,r.get("total_miles",0),r.get("rate",0),r.get("qp_fee",0),float(r.get("lumpers",0))+float(r.get("other_add_ded",0)),r.get("driver_pay",0),r.get("gross_profit",0)])
+        rows_out.append([_fmt_date(r.get("pickup_date")),_fmt_date(r.get("actual_delivery_date")),r.get("load_number",""),r.get("truck",""),r.get("driver",""),route,r.get("total_miles",0),r.get("rate",0),r.get("qp_fee",0),float(r.get("lumpers",0))+float(r.get("other_add_ded",0)),r.get("driver_pay",0),r.get("additional_payee",0),r.get("gross_profit",0)])
     s = report_data.get("summary",{})
-    totals=["","","","","","Total",sum(r.get("total_miles",0) for r in report_data.get("rows",[])),s.get("total_revenue",0),0,0,s.get("total_driver_pay",0),s.get("total_gross_profit",0)]
-    return _xlsx_workbook("Gross Profit per Load", meta, headers, rows_out, totals)
+    totals=["","","","","","Total",sum(r.get("total_miles",0) for r in report_data.get("rows",[])),s.get("total_revenue",0),sum(r.get("qp_fee",0) for r in report_data.get("rows",[])),sum(r.get("lumpers",0)+r.get("other_add_ded",0) for r in report_data.get("rows",[])),s.get("total_driver_pay",0),s.get("total_additional_payees",0),s.get("total_gross_profit",0)]
+    return _xlsx_group_summary(_xlsx_workbook("Gross Profit per Load", meta, headers, rows_out, totals), report_data)
 
 
 def generate_revenue_by_dispatcher_pdf(report_data: dict, filters: dict) -> bytes:
@@ -682,6 +691,8 @@ def generate_profit_loss_pdf(report_data: dict, filters: dict) -> bytes:
         ["Loads Revenue",  _fmt_currency(s.get("loads_revenue",0))],
         ["Other Revenue",  _fmt_currency(s.get("other_revenue",0))],
         ["Driver Payments",_fmt_currency(s.get("driver_payments",0))],
+        ["Additional Payees", _fmt_currency(s.get("additional_payees",0))],
+        ["Quick Pay Fees", _fmt_currency(s.get("quickpay_fees",0))],
         ["Fuel",           _fmt_currency(s.get("fuel",0))],
         ["Tolls",          _fmt_currency(s.get("tolls",0))],
         ["Expenses",       _fmt_currency(s.get("expenses",0))],
@@ -701,5 +712,40 @@ def generate_profit_loss_xlsx(report_data: dict, filters: dict) -> bytes:
     if report_data.get("truck_unit"):  meta.append(f"Truck: {report_data['truck_unit']}")
     s=report_data.get("summary",{})
     headers=["Category","Amount"]
-    rows_out=[["Total Revenue",s.get("total_revenue",0)],["Loads Revenue",s.get("loads_revenue",0)],["Other Revenue",s.get("other_revenue",0)],["Driver Payments",s.get("driver_payments",0)],["Fuel",s.get("fuel",0)],["Tolls",s.get("tolls",0)],["Expenses",s.get("expenses",0)],["Gross Profit",s.get("gross_profit",0)],["Net Profit",s.get("net_profit",0)]]
+    rows_out=[["Total Revenue",s.get("total_revenue",0)],["Loads Revenue",s.get("loads_revenue",0)],["Other Revenue",s.get("other_revenue",0)],["Driver Payments",s.get("driver_payments",0)],["Additional Payees",s.get("additional_payees",0)],["Quick Pay Fees",s.get("quickpay_fees",0)],["Fuel",s.get("fuel",0)],["Tolls",s.get("tolls",0)],["Expenses",s.get("expenses",0)],["Gross Profit",s.get("gross_profit",0)],["Net Profit",s.get("net_profit",0)]]
     return _xlsx_workbook("Profit & Loss Report",meta,headers,rows_out)
+
+
+def _pdf_group_summary(story, data):
+    groups = data.get('groups') or []
+    if not groups:
+        return
+    story.append(Spacer(1, 16))
+    headers = [data['group_by'].title(), 'Loads', 'Revenue', 'Miles', 'Rate / mile', 'Driver pay', 'Gross profit']
+    rows = [[g['label'], g['summary']['total_loads'], _fmt_currency(g['summary']['total_revenue']),
+             _fmt_num(g['summary']['total_miles']), _fmt_currency(g['summary']['rate_per_mile']),
+             _fmt_currency(g['summary']['driver_pay']), _fmt_currency(g['summary']['gross_profit'])] for g in groups]
+    _data_table(story, headers, rows, None, col_widths=[2.3*inch]+[1.3*inch]*6, right_align_cols=[1,2,3,4,5,6])
+
+
+def _xlsx_group_summary(content, data):
+    groups = data.get('groups') or []
+    if not groups:
+        return content
+    wb = load_workbook(io.BytesIO(content))
+    ws = wb.create_sheet('Group summary')
+    ws.append([data['group_by'].title(), 'Loads', 'Revenue', 'Miles', 'Rate / mile', 'Driver pay', 'Gross profit'])
+    for g in groups:
+        summary = g['summary']
+        ws.append([g['label'], summary['total_loads'], summary['total_revenue'], summary['total_miles'],
+                   summary['rate_per_mile'], summary['driver_pay'], summary['gross_profit']])
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color='FFFFFF'); cell.fill = PatternFill('solid', fgColor='1E3A5F')
+    for row in ws.iter_rows(min_row=2):
+        for cell in row[1:]:
+            cell.number_format = '#,##0' if cell.column in (2,4) else '#,##0.00'
+    ws.column_dimensions['A'].width = 32
+    for col in 'BCDEFG': ws.column_dimensions[col].width = 18
+    ws.freeze_panes = 'B2'; ws.auto_filter.ref = ws.dimensions
+    buf = io.BytesIO(); wb.save(buf)
+    return buf.getvalue()

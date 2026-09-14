@@ -113,7 +113,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
   if (loading) return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/40" onClick={onClose}/>
-      <div className="w-[1060px] bg-white flex items-center justify-center h-full">
+      <div className="w-[66.25rem] bg-white flex items-center justify-center h-full">
         <span className="text-gray-400">Loading settlement…</span>
       </div>
     </div>
@@ -121,7 +121,9 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
   if (!settlement) return null
 
   const loadItems   = settlement.items.filter(i=>i.item_type==='load')
-  const payTotal    = settlement.payments.reduce((a,p)=>a+p.amount,0)
+  const earningsAdjustments = settlement.adjustments.filter(a => a.adj_type !== 'advanced_payment')
+  const advanceTotal = settlement.adjustments.filter(a => a.adj_type === 'advanced_payment').reduce((a,p)=>a+p.amount,0)
+  const payTotal    = settlement.payments.reduce((a,p)=>a+p.amount,0) + advanceTotal
   const curLoadIds  = loadItems.map(i=>i.load_id).filter(Boolean) as number[]
   // Server rules: items/adjustments editable only in Preparing; payments recorded in Ready/Sent,
   // deleted only in Preparing.
@@ -133,7 +135,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
     <>
       <div className="fixed inset-0 z-50 flex">
         <div className="flex-1 bg-black/40" onClick={()=>{if(!dirty)onClose()}}/>
-        <div className="w-[1060px] bg-white flex flex-col h-full shadow-2xl overflow-hidden">
+        <div className="w-[66.25rem] bg-white flex flex-col h-full shadow-2xl overflow-hidden">
 
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0">
@@ -167,7 +169,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
               </div>
               <div className="w-52">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Settlement Status</label>
-                <div className="flex h-[34px] items-center" title="Status changes through the workflow buttons below">
+                <div className="flex h-[2.125rem] items-center" title="Status changes through the workflow buttons below">
                   <span className={'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ' + (
                     settlement.status==='Paid' ? 'bg-emerald-100 text-emerald-700' :
                     settlement.status==='Ready' ? 'bg-amber-100 text-amber-700' :
@@ -195,7 +197,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                 </div>
               </div>
               {locked && (
-                <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500" title="Move back to Preparing to edit">
+                <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[0.6875rem] font-semibold text-slate-500" title="Move back to Preparing to edit">
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                   Locked — only notes editable
                 </span>
@@ -231,6 +233,9 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                 )}
               </section>
             )}
+
+            <AdditionalPayeeSection key={`payees:${settlement.adjustments.length}`} settlementId={settlementId} canEdit={!locked} onChanged={refetch} />
+            <HourlySection key={`hours:${settlement.adjustments.length}`} settlementId={settlementId} canEdit={!locked} onChanged={refetch} />
 
             {/* Scheduled recurring charges — set up in Driver profile, applied here */}
             <ScheduledSection
@@ -279,17 +284,18 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                   </tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {loadItems.map(item=><LoadItemRow key={item.id} item={item} onRemove={()=>removeItem(item.id)} onOpenLoad={()=>openLoad(item.load_id)} onShowBreakdown={()=>item.load_id&&setBreakdownLoadId(item.load_id)}/>)}
-                    {settlement.adjustments.map(adj=><AdjRow key={adj.id} adj={adj} onDelete={()=>deleteAdj(adj.id)}
+                    {earningsAdjustments.map(adj=><AdjRow key={adj.id} adj={adj} onDelete={()=>{if(adj.is_carryover){payrollApi.removeCarryover(settlementId,-adj.id).then(refetch).catch(e=>toast.error(e.message));return}deleteAdj(adj.id)}}
                       onEdit={()=>{
                         if(locked){toast.error('Move back to Preparing to edit');return}
+                        if(adj.is_carryover){toast.error('Carryover is a linked debt transfer');return}
                         if(adj.adj_type==='advanced_payment'){toast.error('Applied advances are managed in the Advanced Payments section above');return}
                         setShowAdj({type: adj.adj_type==='addition'?'addition':'deduction', adj})
                       }}/>)}
-                    {loadItems.length===0 && settlement.adjustments.length===0 && (
+                    {loadItems.length===0 && earningsAdjustments.length===0 && (
                       <tr><td colSpan={8} className="py-6 text-center text-gray-400">No records</td></tr>
                     )}
                   </tbody>
-                  {(loadItems.length>0||settlement.adjustments.length>0) && (
+                  {(loadItems.length>0||earningsAdjustments.length>0) && (
                     <tfoot>
                       <tr className="border-t border-gray-200 bg-gray-50">
                         <td colSpan={6} className="px-3 py-2 text-xs font-bold text-gray-700">TOTAL:</td>
@@ -322,7 +328,7 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                         </tbody>
                       </table>
                   }
-                  <p className="text-[10px] text-gray-400 px-3 py-1.5 border-t border-gray-100">* The following data is available starting from April 3, 2025, when the feature was introduced.</p>
+                  <p className="text-[0.625rem] text-gray-400 px-3 py-1.5 border-t border-gray-100">* The following data is available starting from April 3, 2025, when the feature was introduced.</p>
                 </div>
               )}
             </section>
@@ -332,10 +338,10 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-gray-900 text-sm">Payments</h3>
                 <div className="flex gap-2">
-                  <button onClick={()=>setShowPay(true)} disabled={!canPay}
+                  <button onClick={()=>setShowPay(true)} disabled={!canPay || settlement.balance_due <= 0}
                     title={!canPay ? 'Move settlement to Ready for Payment first' : undefined}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"><IcoPencil/> New Payment</button>
-                  <button onClick={()=>setShowCarry(true)} disabled={!canPay}
+                  <button onClick={()=>setShowCarry(true)} disabled={!canPay || settlement.balance_due >= 0}
                     title={!canPay ? 'Move settlement to Ready for Payment first' : undefined}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"><IcoCarry/> Create Carryover</button>
                 </div>
@@ -344,7 +350,8 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
                 <table className="w-full text-xs">
                   <thead><tr className="bg-white border-b border-gray-200"><TH ch="DATE"/><TH ch="PAYMENT #"/><TH ch="DESCRIPTION"/><TH ch="AMOUNT" right/><th className="w-10"/></tr></thead>
                   <tbody className="divide-y divide-gray-100">
-                    {settlement.payments.length===0
+                    {advanceTotal > 0 && <tr><td colSpan={3} className="px-3 py-2">Applied advance payments</td><td className="px-3 py-2 text-right">{formatCurrency(advanceTotal)}</td><td/></tr>}
+                    {settlement.payments.length===0 && advanceTotal===0
                       ? <tr><td colSpan={5} className="py-5 text-center text-gray-400">No records</td></tr>
                       : settlement.payments.map((p:SettlementPayment)=>(
                           <tr key={p.id} className="hover:bg-gray-50 group">
@@ -486,21 +493,29 @@ export default function SettlementModal({settlementId,onClose,onSaved,drivers,on
 function AvailableLoads({settlementId,driverId,currentIds,onAdd,onOpenLoad,onShowBreakdown}:{settlementId:number;driverId:number;currentIds:number[];onAdd:(id:number)=>void;onOpenLoad:(id:number)=>void;onShowBreakdown:(id:number)=>void}) {
   const [loads,setLoads] = useState<any[]>([])
   const [loading,setLoading] = useState(true)
+  const [dateFrom,setDateFrom] = useState('')
+  const [dateTo,setDateTo] = useState('')
+  const [dateType,setDateType] = useState('pickup')
 
   useEffect(()=>{
     if (!driverId) { setLoads([]); setLoading(false); return }
     setLoading(true)
-    client.get('/api/v1/payroll/' + settlementId + '/candidates')
+    client.get('/api/v1/payroll/' + settlementId + '/candidates', {params: {date_type: dateType, date_from: dateFrom || undefined, date_to: dateTo || undefined}})
       .then(r=>{
         const items=(r.data.available_loads||[]) as any[]
         setLoads(items.filter((l:any)=>!currentIds.includes(l.id)))
       })
       .catch(()=>setLoads([]))
       .finally(()=>setLoading(false))
-  },[settlementId, driverId, currentIds.join(',')])
+  },[settlementId, driverId, currentIds.join(','), dateFrom, dateTo, dateType])
 
   return (
     <div className="border border-gray-200 rounded overflow-hidden">
+      <div className="flex gap-3 p-3 border-b text-xs">
+        <label>Date basis <select aria-label="Available loads date basis" value={dateType} onChange={e=>setDateType(e.target.value)} className="ml-2 border rounded p-1"><option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></label>
+        <label>From <input aria-label="Available loads from" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} className="ml-2 border rounded p-1"/></label>
+        <label>To <input aria-label="Available loads to" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} className="ml-2 border rounded p-1"/></label>
+      </div>
       <table className="w-full text-xs">
         <thead><tr className="bg-white border-b border-gray-200">
           <TH ch="DATE"/><TH ch="DELIVERY"/><TH ch="LOAD #"/><TH ch="DESCRIPTION"/>
@@ -527,7 +542,7 @@ function AvailableLoads({settlementId,driverId,currentIds,onAdd,onOpenLoad,onSho
                     <td className="px-3 py-2">
                       <button onClick={()=>onOpenLoad(l.id)} className="text-blue-600 font-medium hover:underline">{l.load_number}</button>
                     </td>
-                    <td className="px-3 py-2 text-gray-700 truncate max-w-[200px]">{desc}</td>
+                    <td className="px-3 py-2 text-gray-700 truncate max-w-[12.5rem]">{desc}</td>
                     <td className="px-3 py-2"><span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{l.status}</span></td>
                     <td className="px-3 py-2 text-gray-500">{l.billing_status}</td>
                     <td className="px-3 py-2 text-right">
@@ -558,7 +573,7 @@ function LoadItemRow({item,onRemove,onOpenLoad,onShowBreakdown}:{item:Settlement
           ? <button onClick={onOpenLoad} className="text-blue-600 font-medium hover:underline">{item.load.load_number}</button>
           : <span className="text-gray-400">—</span>}
       </td>
-      <td className="px-3 py-2 text-gray-700 truncate max-w-[200px]">{item.description}</td>
+      <td className="px-3 py-2 text-gray-700 truncate max-w-[12.5rem]">{item.description}</td>
       <td className="px-3 py-2">{item.load_status&&<span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{item.load_status}</span>}</td>
       <td className="px-3 py-2 text-gray-500">{item.load_billing_status||'—'}</td>
       <td className="px-3 py-2 text-right">
@@ -611,7 +626,7 @@ function PayBreakdownModal({loadId,onClose}:{loadId:number;onClose:()=>void}) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose}/>
-      <div className="relative bg-white rounded-xl shadow-2xl w-[440px]">
+      <div className="relative bg-white rounded-xl shadow-2xl w-[27.5rem]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <h3 className="font-bold text-gray-900">
             Driver Pay — Load #{data?.load_number ?? '…'}
@@ -651,14 +666,14 @@ function PayBreakdownModal({loadId,onClose}:{loadId:number;onClose:()=>void}) {
                   </tr>
                   {Math.abs(data.stored_total - data.total) > 0.01 && (
                     <tr>
-                      <td colSpan={2} className="pb-1 text-[11px] text-amber-600">
+                      <td colSpan={2} className="pb-1 text-[0.6875rem] text-amber-600">
                         Formula gives {formatCurrency(data.total)} — the stored amount was adjusted manually.
                       </td>
                     </tr>
                   )}
                 </tfoot>
               </table>
-              <p className="mt-2 text-[11px] text-gray-400">
+              <p className="mt-2 text-[0.6875rem] text-gray-400">
                 Rates are frozen on the load when the driver is assigned. Changed the driver's rates? Use <strong>Recalculate</strong> inside the load.
               </p>
             </>
@@ -699,7 +714,7 @@ function AdjModal({type,adj,settlementId,onClose,onSaved}:{type:'addition'|'dedu
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose}/>
-      <div className="relative bg-white rounded-xl shadow-2xl w-[460px]">
+      <div className="relative bg-white rounded-xl shadow-2xl w-[28.75rem]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <h3 className="font-bold text-gray-900 capitalize">{title}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><IcoX/></button>
@@ -757,7 +772,7 @@ function PayModal({settlementId,settlement,onClose,onSaved}:{settlementId:number
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose}/>
-      <div className="relative bg-white rounded-xl shadow-2xl w-[480px]">
+      <div className="relative bg-white rounded-xl shadow-2xl w-[30rem]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <h3 className="font-bold text-gray-900">Make Payment</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><IcoX/></button>
@@ -794,13 +809,11 @@ function PayModal({settlementId,settlement,onClose,onSaved}:{settlementId:number
 }
 
 function CarryModal({settlementId,balanceDue,num,onClose,onSaved}:{settlementId:number;balanceDue:number;num:number;onClose:()=>void;onSaved:()=>void}) {
-  const [date,setDate]   = useState(new Date().toISOString().slice(0,10))
-  const [amount,setAmt]  = useState(String(Math.abs(balanceDue)))
   const [saving,setSaving]=useState(false)
 
   const save = () => {
     setSaving(true)
-    payrollApi.addPayment(settlementId,{description:'Carryover Adjustment: Settlement #'+num,amount:parseFloat(amount),payment_date:date||undefined,is_carryover:true})
+    payrollApi.createCarryover(settlementId)
       .then(()=>{toast.success('Carryover created');onSaved()})
       .catch(e=>toast.error(e.message))
       .finally(()=>setSaving(false))
@@ -809,24 +822,14 @@ function CarryModal({settlementId,balanceDue,num,onClose,onSaved}:{settlementId:
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose}/>
-      <div className="relative bg-white rounded-xl shadow-2xl w-[380px]">
+      <div className="relative bg-white rounded-xl shadow-2xl w-[23.75rem]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <h3 className="font-bold text-gray-900">Create Carryover</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><IcoX/></button>
         </div>
         <div className="px-5 py-4 space-y-3">
           <p className="text-sm text-gray-600">Create a carryover entry for the remaining balance of <strong>{formatCurrency(balanceDue)}</strong> from settlement #{num}.</p>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date</label>
-            <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Amount</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-              <input type="number" step="0.01" value={amount} onChange={e=>setAmt(e.target.value)} className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-            </div>
-          </div>
+          <p className="text-sm text-gray-600">The full negative balance will be applied once to the next settlement for this driver and payable to. No cash payment is recorded.</p>
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
           <button onClick={onClose} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm rounded font-medium"><IcoX/> Close</button>
@@ -862,7 +865,7 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose}/>
-      <div className="relative bg-white rounded-xl shadow-2xl w-[900px] max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-xl shadow-2xl w-[56.25rem] max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
           <h3 className="font-bold text-gray-900">Email</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><IcoX/></button>
@@ -891,7 +894,7 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Body</label>
-              <div className="border border-gray-200 rounded p-5 bg-white text-sm text-gray-800 min-h-[200px]">
+              <div className="border border-gray-200 rounded p-5 bg-white text-sm text-gray-800 min-h-[12.5rem]">
                 <div className="flex justify-center mb-5">
                   <div className="text-center"><div className="text-2xl font-black text-red-600 tracking-tight">TOPTRUCK</div><div className="text-xs text-gray-500 font-semibold tracking-widest">COMPANY</div></div>
                 </div>
@@ -914,7 +917,7 @@ function EmailModal({settlement,pdfUrl,onClose}:{settlement:Settlement;pdfUrl:st
               </div>
             </div>
           </div>
-          <div className="w-[280px] px-5 py-4 bg-gray-50">
+          <div className="w-[17.5rem] px-5 py-4 bg-gray-50">
             <div className="text-center mb-5"><div className="text-2xl font-black text-red-600 tracking-tight">TOPTRUCK</div><div className="text-xs text-gray-500 font-semibold tracking-widest">COMPANY</div></div>
             <hr className="border-blue-500 mb-4"/>
             <p className="font-semibold text-sm mb-2">Hello {driverName}</p>
@@ -952,8 +955,8 @@ function ScheduledSection({ settlementId, driverId, canEdit, onChanged }: {
 
   useEffect(() => { loadTxs() }, [loadTxs, driverId])
 
-  const handleApply = (txId: number) => {
-    payrollApi.applyScheduled(settlementId, txId)
+  const handleApply = (txId: number, dueDate: string) => {
+    payrollApi.applyScheduled(settlementId, txId, dueDate)
       .then(() => { toast.success('Recurring charge applied'); loadTxs(); onChanged() })
       .catch((e: any) => toast.error(e.response?.data?.detail || e.message))
   }
@@ -980,14 +983,14 @@ function ScheduledSection({ settlementId, driverId, canEdit, onChanged }: {
           </thead>
           <tbody className="divide-y divide-blue-100">
             {txs.map((t: any) => (
-              <tr key={t.id} className="hover:bg-blue-50">
+              <tr key={`${t.id}:${t.due_date}`} className="hover:bg-blue-50">
                 <td className="px-3 py-2">
-                  <span className={'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold ' + (t.trans_type === 'addition' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600')}>
+                  <span className={'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold ' + (t.trans_type === 'addition' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600')}>
                     {t.trans_type}
                   </span>
                 </td>
                 <td className="px-3 py-2 text-gray-700">{t.category || '—'}</td>
-                <td className="px-3 py-2 text-gray-700 truncate max-w-[200px]">{t.description || '—'}</td>
+                <td className="px-3 py-2 text-gray-700 truncate max-w-[12.5rem]">{t.description || '—'}</td>
                 <td className="px-3 py-2 text-gray-500 capitalize">{t.schedule || '—'}</td>
                 <td className="px-3 py-2 text-gray-500">{t.next_due ? formatDate(t.next_due) : '—'}</td>
                 <td className={'px-3 py-2 text-right font-semibold ' + (t.trans_type === 'addition' ? 'text-emerald-700' : 'text-red-600')}>
@@ -995,7 +998,7 @@ function ScheduledSection({ settlementId, driverId, canEdit, onChanged }: {
                 </td>
                 <td className="px-3 py-2 text-center">
                   {canEdit && (
-                    <button onClick={() => handleApply(t.id)} title="Apply to this settlement"
+                    <button onClick={() => handleApply(t.id, t.due_date)} title="Apply to this settlement"
                       className="w-6 h-6 flex items-center justify-center text-blue-600 hover:text-white hover:bg-blue-600 rounded font-bold text-lg leading-none transition-colors">+</button>
                   )}
                 </td>
@@ -1034,7 +1037,11 @@ function AdvancedPaymentsSection({ settlementId, driverId, appliedAdjustments, c
 
   const handleRemove = (adjId: number) => {
     if (!confirm('Remove this applied advanced payment?')) return
-    payrollApi.removeAdvancedPayment(settlementId, adjId)
+    const adj = appliedAdjustments.find(a => a.id === adjId)
+    const request = adj?.legacy_payment_id
+      ? client.post(`/api/v1/payments/${adj.legacy_payment_id}/unapply`)
+      : payrollApi.removeAdvancedPayment(settlementId, adjId)
+    request
       .then(() => { toast.success('Removed'); loadCandidates(); onChanged() })
       .catch((e: any) => toast.error(e.response?.data?.detail || e.message))
   }
@@ -1094,7 +1101,7 @@ function AdvancedPaymentsSection({ settlementId, driverId, appliedAdjustments, c
                   <td className="px-3 py-2 text-blue-600 font-semibold">{ap.payment_number}</td>
                   <td className="px-3 py-2 text-gray-500">{formatDate(ap.payment_date)}</td>
                   <td className="px-3 py-2 text-gray-700">{ap.category || '—'}</td>
-                  <td className="px-3 py-2 text-gray-700 truncate max-w-[240px]">{ap.description || '—'}</td>
+                  <td className="px-3 py-2 text-gray-700 truncate max-w-[15rem]">{ap.description || '—'}</td>
                   <td className="px-3 py-2 text-right font-semibold text-amber-700">{formatCurrency(ap.remaining)}</td>
                   <td className="px-3 py-2 text-center">
                     <button onClick={() => handleApply(ap.id)} className="w-6 h-6 flex items-center justify-center text-blue-600 hover:text-white hover:bg-blue-600 rounded font-bold text-lg leading-none transition-colors">+</button>
@@ -1107,4 +1114,71 @@ function AdvancedPaymentsSection({ settlementId, driverId, appliedAdjustments, c
       )}
     </section>
   )
+}
+
+
+function HourlySection({settlementId, canEdit, onChanged}: {settlementId: number; canEdit: boolean; onChanged: () => void}) {
+  const [data, setData] = useState<{hourly_enabled: boolean; hourly_rate: number; rows: any[]} | null>(null)
+  const [workDate, setWorkDate] = useState(new Date().toISOString().slice(0, 10))
+  const [hours, setHours] = useState('')
+  const [description, setDescription] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [requestKey, setRequestKey] = useState(() => crypto.randomUUID())
+  const base = `/api/v1/payroll/${settlementId}/time-reports`
+  const reload = useCallback(() => client.get(base).then(r => setData(r.data)).catch(e => toast.error(e.response?.data?.detail || e.message || 'Unable to load time reports')), [base])
+  useEffect(() => { reload() }, [reload])
+  const save = async () => {
+    setBusy(true)
+    try {
+      await client.post(base, {date: workDate, hours: Number(hours), description, request_key: requestKey})
+      setHours(''); setDescription(''); setRequestKey(crypto.randomUUID()); await reload()
+      toast.success('Work hours saved')
+    } catch (e: any) { toast.error(e.response?.data?.detail || e.message || 'Unable to save work hours') }
+    finally { setBusy(false) }
+  }
+  const act = async (id: number, remove = false) => {
+    setBusy(true)
+    try {
+      if (remove) await client.delete(`${base}/${id}`)
+      else await client.post(`${base}/${id}/apply`)
+      await reload(); onChanged()
+    } catch (e: any) { toast.error(e.response?.data?.detail || e.message || 'Unable to update time report') }
+    finally { setBusy(false) }
+  }
+  if (!data || (!data.hourly_enabled && !data.rows.length)) return null
+  return <section className="space-y-3">
+    <h3 className="font-bold text-sm">Hourly work</h3>
+    {canEdit && data.hourly_enabled && <div className="flex flex-wrap items-end gap-2">
+      <label className="text-xs">Work date<input aria-label="Work date" type="date" className="input-base block" value={workDate} onChange={e => {setWorkDate(e.target.value); setRequestKey(crypto.randomUUID())}} /></label>
+      <label className="text-xs">Hours<input aria-label="Hours worked" type="number" min="0.01" max="24" step="0.01" className="input-base block w-24" value={hours} onChange={e => {setHours(e.target.value); setRequestKey(crypto.randomUUID())}} /></label>
+      <label className="text-xs">Description<input className="input-base block" value={description} onChange={e => {setDescription(e.target.value); setRequestKey(crypto.randomUUID())}} /></label>
+      <span className="text-sm py-2">{formatCurrency(data.hourly_rate || 0)}/hour</span>
+      <button disabled={busy || !workDate || Number(hours) <= 0} onClick={save} className="btn-primary text-xs">Save hours</button>
+    </div>}
+    {data.rows.length > 0 && <table className="w-full text-xs"><thead><tr><TH ch="DATE"/><TH ch="HOURS"/><TH ch="RATE"/><TH ch="AMOUNT"/><TH ch="DESCRIPTION"/><th /></tr></thead>
+      <tbody>{data.rows.map(row => <tr key={row.id} className="border-b">
+        <td className="py-2">{formatDate(row.date)}</td><td>{row.hours}</td><td>{formatCurrency(row.hourly_rate)}</td><td>{formatCurrency(row.amount)}</td><td>{row.description}</td>
+        <td>{canEdit && <div className="flex gap-3"><button disabled={busy} className="text-blue-600" onClick={() => act(row.id)}>Add to payroll</button><button disabled={busy} className="text-red-600" onClick={() => act(row.id, true)}>Delete</button></div>}</td>
+      </tr>)}</tbody></table>}
+  </section>
+}
+
+function AdditionalPayeeSection({settlementId, canEdit, onChanged}: {settlementId: number; canEdit: boolean; onChanged: () => void}) {
+  const [rows, setRows] = useState<any[]>([])
+  const [busy, setBusy] = useState(false)
+  const base = `/api/v1/payroll/${settlementId}/additional-payees`
+  useEffect(() => { client.get(base).then(r => setRows(r.data)).catch(e => toast.error(e.message)) }, [base])
+  const apply = async (id: number) => {
+    setBusy(true)
+    try { await client.post(`${base}/${id}/apply`); onChanged() }
+    catch (e: any) { toast.error(e.message) }
+    finally { setBusy(false) }
+  }
+  if (!rows.length) return null
+  return <section className="space-y-2"><h3 className="font-bold text-sm">Additional payee</h3>
+    {rows.map(row => <div key={row.id} className="flex items-center justify-between border-b py-2 text-sm">
+      <span>Load #{row.load_number} · {row.rate_pct}% of freight {formatCurrency(row.base_amount)}</span>
+      <span>{formatCurrency(row.amount)} {canEdit && <button disabled={busy} className="ml-3 text-blue-600" onClick={() => apply(row.id)}>Add to payroll</button>}</span>
+    </div>)}
+  </section>
 }

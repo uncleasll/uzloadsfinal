@@ -67,12 +67,12 @@ function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel }: {
       {open && (
         <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
           <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-50">
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">
             <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
             {editLabel}
           </button>
           <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50">
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-red-600 transition-colors hover:bg-red-50">
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             {deleteLabel}
           </button>
@@ -149,18 +149,18 @@ export default function TrucksPage() {
   const endEntry = Math.min(safePage * pageSize, sorted.length)
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
       {/* Header */}
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
         <div className="mr-1 flex-shrink-0">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-slate-950">Trucks</h1>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{filtered.length}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.625rem] font-bold text-slate-500">{filtered.length}</span>
           </div>
-          <p className="mt-0.5 text-[11px] font-medium text-slate-400">Fleet units, documents and assignments</p>
+          <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Fleet units, documents and assignments</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <div className="relative min-w-[220px] flex-1 sm:flex-none">
+          <div className="relative min-w-[13.75rem] flex-1 sm:flex-none">
             <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
             <input type="search" placeholder="Search trucks..." value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
@@ -210,9 +210,9 @@ export default function TrucksPage() {
                   <td className="px-1.5 py-1">
                     <div className="flex items-center gap-1 min-w-0">
                       {warn ? <span className="flex-shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5"><IcoWarn/></span> : <span className="flex-shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5"><IcoOk/></span>}
-                      <span className="font-semibold text-blue-600 truncate hover:underline text-[11px]">
+                      <span className="font-semibold text-blue-600 truncate hover:underline text-[0.6875rem]">
                         {t.unit_number}
-                        {!t.is_active && <span className="ml-1 text-[10px] font-normal text-slate-400">(inactive)</span>}
+                        {!t.is_active && <span className="ml-1 text-[0.625rem] font-normal text-slate-400">(inactive)</span>}
                       </span>
                     </div>
                   </td>
@@ -225,14 +225,14 @@ export default function TrucksPage() {
                   <td className="px-1.5 py-1 text-gray-600 truncate">{t.eld_provider || <span className="text-gray-300">—</span>}</td>
                   <td className="px-1.5 py-1 text-gray-600">{t.ownership || <span className="text-gray-300">—</span>}</td>
                   <td className="px-1.5 py-1">
-                    <span className={'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold ' + (t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')}>
+                    <span className={'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold ' + (t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')}>
                       {t.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-1.5 py-1">
                     {warn
-                      ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600"><span className="h-1.5 w-1.5 rounded-full bg-current" />Docs missing</span>
-                      : <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600"><span className="h-1.5 w-1.5 rounded-full bg-current" />Complete</span>}
+                      ? <span className="inline-flex items-center gap-1 text-[0.625rem] font-semibold text-amber-600"><span className="h-1.5 w-1.5 rounded-full bg-current" />Docs missing</span>
+                      : <span className="inline-flex items-center gap-1 text-[0.625rem] font-semibold text-emerald-600"><span className="h-1.5 w-1.5 rounded-full bg-current" />Complete</span>}
                   </td>
                   <td className="px-1 py-1" onClick={e => e.stopPropagation()}>
                     <RowActionMenu
@@ -256,22 +256,22 @@ export default function TrucksPage() {
             <button onClick={() => setPage(1)} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></button>
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => { const s = Math.max(1, Math.min(safePage - 2, totalPages - 4)); return s + i }).map(p => (
-              <button key={p} onClick={() => setPage(p)} className={`w-5 h-5 rounded text-[11px] font-medium transition-colors ${p === safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{p}</button>
+              <button key={p} onClick={() => setPage(p)} className={`w-5 h-5 rounded text-[0.6875rem] font-medium transition-colors ${p === safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{p}</button>
             ))}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></button>
             <button onClick={() => setPage(totalPages)} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></button>
           </div>
-          <span className="text-[11px] text-gray-500">Showing {startEntry}–{endEntry} of {sorted.length} entries</span>
+          <span className="text-[0.6875rem] text-gray-500">Showing {startEntry}–{endEntry} of {sorted.length} entries</span>
           <button onClick={() => { setShowInactive(v => !v); setPage(1) }}
-            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
+            className={`rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold transition ${showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
             {showInactive ? 'Hide inactive trucks' : 'Show inactive trucks'}
           </button>
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-          <span className="px-1.5 text-[10px] font-medium text-slate-400">Rows</span>
+          <span className="px-1.5 text-[0.625rem] font-medium text-slate-400">Rows</span>
           {[10, 25, 50, 100].map(n => (
             <button key={n} onClick={() => { setPageSize(n); setPage(1) }}
-              className={`rounded-md px-2 py-1 text-[10px] transition ${pageSize === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+              className={`rounded-md px-2 py-1 text-[0.625rem] transition ${pageSize === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
               {n}
             </button>
           ))}
@@ -335,7 +335,7 @@ function TruckPanel({ truck, drivers, onClose, onSaved }: {
   return (
     <div className="fixed inset-0 z-40 flex">
       <div className="flex-1 bg-black/30" onClick={onClose}/>
-      <div className="w-[1100px] bg-white flex flex-col h-full shadow-2xl overflow-hidden border-l border-gray-200">
+      <div className="w-[68.75rem] bg-white flex flex-col h-full shadow-2xl overflow-hidden border-l border-gray-200">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0">
@@ -485,7 +485,7 @@ function TruckPanel({ truck, drivers, onClose, onSaved }: {
           {/* History */}
           <div>
             <h3 className="text-base font-bold text-gray-900 mb-2">History</h3>
-            <div className="border border-gray-200 rounded p-3 text-xs text-gray-400 min-h-[60px]">
+            <div className="border border-gray-200 rounded p-3 text-xs text-gray-400 min-h-[3.75rem]">
               {isNew ? 'History will appear after saving.' : 'No history entries.'}
             </div>
           </div>
@@ -551,7 +551,7 @@ function DocSection({ docType, docs, truckId, isNew, onSaved, onDeleted }: {
               <span>{doc.exp_date||'—'}</span>
               {docType.hasNameNotes && <span>{doc.name||'—'}</span>}
               {docType.hasNameNotes && <span>{doc.notes||'—'}</span>}
-              {doc.original_filename && <span className="text-blue-600 hover:underline cursor-pointer truncate max-w-[200px]">{doc.original_filename}</span>}
+              {doc.original_filename && <span className="text-blue-600 hover:underline cursor-pointer truncate max-w-[12.5rem]">{doc.original_filename}</span>}
               <button onClick={()=>{ if(truckId) trucksApi.deleteDocument(truckId,doc.id).then(()=>onDeleted(doc.id)).catch(e=>toast.error(e.message)) }}
                 className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 ml-1">✕</button>
             </div>
@@ -560,31 +560,31 @@ function DocSection({ docType, docs, truckId, isNew, onSaved, onDeleted }: {
           {/* Add form row */}
           <div className="flex items-center gap-2 mt-1">
             <div className="flex flex-col gap-0.5">
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Issue Date</label>
+              <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Issue Date</label>
               <input type="date" value={rowForm.issue_date} onChange={e=>setRowForm(p=>({...p,issue_date:e.target.value}))}
                 className="border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 w-32" placeholder="MM/DD/YYYY"/>
             </div>
             <div className="flex flex-col gap-0.5">
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Exp Date</label>
+              <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Exp Date</label>
               <input type="date" value={rowForm.exp_date} onChange={e=>setRowForm(p=>({...p,exp_date:e.target.value}))}
                 className="border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 w-32" placeholder="MM/DD/YYYY"/>
             </div>
             {docType.hasNameNotes && (
               <>
                 <div className="flex flex-col gap-0.5">
-                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Name</label>
+                  <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Name</label>
                   <input value={rowForm.name} onChange={e=>setRowForm(p=>({...p,name:e.target.value}))}
                     className="border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 w-28"/>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Notes</label>
+                  <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Notes</label>
                   <input value={rowForm.notes} onChange={e=>setRowForm(p=>({...p,notes:e.target.value}))}
                     className="border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 w-36"/>
                 </div>
               </>
             )}
             <div className="flex flex-col gap-0.5 flex-1">
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Attachments</label>
+              <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Attachments</label>
               <input className="border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 w-full" readOnly placeholder=""/>
             </div>
             <input type="file" ref={fileRef} className="hidden"/>

@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Responsive UI scale: the whole app is rem-based, so bumping the root
+   font-size on larger displays scales text, spacing and icons together.
+   13" laptops keep the default 16px; 24/27/32" monitors scale up. */
+html { font-size: 16px; }
+@media (min-width: 1680px) { html { font-size: 17px; } }
+@media (min-width: 1920px) { html { font-size: 18px; } }
+@media (min-width: 2240px) { html { font-size: 19.5px; } }
+@media (min-width: 2560px) { html { font-size: 21px; } }
+@media (min-width: 3200px) { html { font-size: 24px; } }
+
 @layer base {
   * { box-sizing: border-box; }
 
