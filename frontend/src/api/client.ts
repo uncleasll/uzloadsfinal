@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { announceDataChange } from './dataChanges'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -20,7 +21,10 @@ client.interceptors.request.use(config => {
 })
 
 client.interceptors.response.use(
-  res => res,
+  res => {
+    if (['post', 'put', 'patch', 'delete'].includes(res.config.method?.toLowerCase() || '') && !res.config.url?.includes('/auth/')) announceDataChange()
+    return res
+  },
   err => {
     const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Request failed'
     if (err.response?.status === 401) {
