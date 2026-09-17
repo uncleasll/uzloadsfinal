@@ -108,3 +108,25 @@ Remaining significant gaps include expense/fuel/toll integration; report revenue
 - Offline PostgreSQL Alembic SQL generation through migration 018 passed; no database connection or live migration was performed.
 - Updated Gross Profit per Load PDF was rendered with Quartz and visually inspected: the added payee column and $1,080.75 total are legible. XLSX headers and totals were verified by reopening the workbook.
 - `git diff --check` passed. Existing staged user edits were preserved.
+
+## MVP server deployment — 2026-09-14
+
+This section supersedes earlier statements that deployment/migration had not been performed.
+User explicitly authorized updating the existing demo server. Release `f40ac924e0828dbe9b0bbd6c18a60d2e542576b7` was pushed to the existing main branch; Render reports live and Vercel reports successful deployment.
+
+- App: https://uzloadsfinal.vercel.app
+- API: https://uzloadsfinal-1.onrender.com
+- Verified public-schema PostgreSQL backup before applying migrations 010–018; backup retained privately under ignored `.backups/`.
+- Existing account passwords, roles and active flags are now preserved on restart; the new startup regression test passed alongside the 46 existing scenarios.
+- Historical settlement reconciliation preview found zero corrections to apply.
+- Live health, Loads, Drivers, Payroll, Reports and new OpenAPI routes responded successfully. Browser automation remained unavailable, so this is HTTP/build verification rather than a full visual browser walkthrough.
+- Full EZLoads parity and the previously documented production security/integration work remain outside this MVP deployment claim.
+
+## Dashboard system integration — 2026-09-16
+
+- Released dashboard layout/range/reconciliation in `0d7d255`, followed by Payroll integration and saved-data invalidation in `cf2c3ff`, based on the latest deployed main in an isolated release checkout. Existing local staged work was preserved.
+- Dashboard reads completed-load reports, expense records, invoices, current loads, entities and settlements from the existing API. No seed records or database migrations were applied.
+- Ready/Sent positive settlement balances are actionable through the existing SettlementModal. Payroll uses current balances and driver filter, explicitly excludes period/truck filtering, and is not subtracted again from operating result.
+- Successful API writes broadcast a same-tab event and a cross-tab storage signal. Dashboard reloads on these signals and when the browser becomes visible/focused. This is invalidation-based refresh, not server-pushed real-time synchronization.
+- Mocked browser checks passed for actual API-write invalidation, cross-tab invalidation, Payroll drilldown, date Apply, entity filter, CSV export, error handling and four viewport widths. Isolated production build passed.
+- Existing API read checks succeeded for all data sources, including six settlements. No financial records were modified during verification.

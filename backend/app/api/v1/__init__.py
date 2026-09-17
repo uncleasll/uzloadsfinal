@@ -10,6 +10,10 @@ from app.api.v1.endpoints import (
     loads_import,
     payments,
     advanced_payments,
+    weeks,
+    office,
+    maintenance,
+    dashboard,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -28,3 +32,7 @@ api_router.include_router(expenses.router)
 api_router.include_router(invoices.router)
 api_router.include_router(payments.router)
 api_router.include_router(advanced_payments.router)
+api_router.include_router(weeks.router)
+api_router.include_router(office.router)
+api_router.include_router(maintenance.router)
+api_router.include_router(dashboard.router)

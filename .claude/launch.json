@@ -2,16 +2,41 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "backend-local",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "DATABASE_URL=sqlite:////Users/macbookpro/Desktop/KARVAN/karvan/backend/local_dev.db",
+        "UPLOAD_DIR=/Users/macbookpro/Desktop/KARVAN/karvan/backend/uploads",
+        "/Users/macbookpro/Desktop/KARVAN/karvan/backend/venv/bin/uvicorn",
+        "app.main:app",
+        "--app-dir",
+        "backend",
+        "--port",
+        "8000"
+      ],
+      "port": 8000
+    },
+    {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
       "port": 5173
     },
     {
-      "name": "backend",
-      "runtimeExecutable": "uvicorn",
-      "runtimeArgs": ["--app-dir", "backend", "app.main:app", "--port", "8000"],
-      "port": 8000
+      "name": "booker-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "/Users/macbookpro/Desktop/KARVAN/booker/frontend"
+      ],
+      "port": 5174
     }
   ]
 }

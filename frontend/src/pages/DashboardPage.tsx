@@ -1,141 +1,195 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowRight, CalendarDays, CheckCircle2, ChevronRight, Download, FileCheck2, Filter, Info, RefreshCw, Truck as TruckIcon, Wallet, X } from 'lucide-react'
-import client from '@/api/client'
-import { DATA_CHANGED, DATA_VERSION } from '@/api/dataChanges'
-import SettlementModal from '@/components/payroll/SettlementModal'
-import { loadsApi, type Invoice } from '@/api/loads'
-import { reportsApi, payrollApi, type Settlement } from '@/api/payroll'
-import { driversApi, trucksApi, trailersApi, brokersApi, dispatchersApi } from '@/api/entities'
-import LoadModal from '@/components/loads/LoadModal'
-import type { Driver, Truck, Trailer, Broker, Dispatcher, LoadListItem } from '@/types'
-import { completed, transit, iso, round, dollars, count, getRange, validRange, loadRange, summarize, revenueOf, costOf, fetchEveryPage, csvDownload, type Range, type Period, type ReportRow, type ExpenseRow } from '@/components/dashboard/model'
-import './DashboardPage.css'
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, RefreshCw } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { dashboardApi, type DashboardData } from '@/api/dashboard'
+import { formatCurrency } from '@/utils'
+import { Money, StatusPill } from './WeekBoardPage'
+import type { StatementStatus } from '@/api/weeks'
 
-type Snapshot = { rows: ReportRow[]; expenses: ExpenseRow[]; current: LoadListItem[]; invoices: Invoice[]; settlements: Settlement[]; refreshed: Date }
-type Entities = { drivers: Driver[]; trucks: Truck[]; trailers: Trailer[]; brokers: Broker[]; dispatchers: Dispatcher[]; loading: boolean }
-type Detail = 'loads' | 'costs' | 'result' | 'invoices' | 'overdue' | 'pod' | 'uninvoiced' | 'active' | 'payroll' | null
-const presets: [Period,string][] = [['today','Today'],['this_week','This week'],['last_week','Last week'],['this_month','This month'],['last_month','Last month'],['this_year','This year'],['custom','Custom range']]
-const emptyEntities: Entities={drivers:[],trucks:[],trailers:[],brokers:[],dispatchers:[],loading:true}
-const shortDate=(s:string)=>s?new Date(s.slice(0,10)+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—'
-function Badge({value}:{value:string}) {return <span className={`kd-badge ${value.toLowerCase().replace(/[^a-z]+/g,'-')}`}>{value}</span>}
+const REVENUE = '#2563eb'
+const NET = '#d97706'
 
+/** One screen for the owner: this week, what needs paying, what is due, and the trend. */
 export default function DashboardPage() {
-  const navigate=useNavigate()
-  const [range,setRange]=useState<Range>(loadRange),[draft,setDraft]=useState<Range>(range)
-  const [entities,setEntities]=useState<Entities>(emptyEntities),[snapshot,setSnapshot]=useState<Snapshot|null>(null)
-  const [loading,setLoading]=useState(true),[error,setError]=useState(''),[refresh,setRefresh]=useState(0)
-  const [tab,setTab]=useState<'overview'|'operations'|'finance'>('overview'),[filtersOpen,setFiltersOpen]=useState(false)
-  const [driverId,setDriverId]=useState(''),[truckId,setTruckId]=useState(''),[detail,setDetail]=useState<Detail>(null)
-  const [loadId,setLoadId]=useState<number|null>(null),[group,setGroup]=useState<'truck'|'driver_name'|'broker'|'dispatcher'>('truck')
-  const [groupSearch,setGroupSearch]=useState('')
-  const [settlementId,setSettlementId]=useState<number|null>(null)
-  useEffect(()=>{
-    let timer:ReturnType<typeof setTimeout>
-    const update=()=>{clearTimeout(timer);timer=setTimeout(()=>setRefresh(n=>n+1),350)}
-    const visible=()=>{if(document.visibilityState==='visible')update()}
-    const changed=(e:StorageEvent)=>{if(e.key===DATA_VERSION)update()}
-    window.addEventListener(DATA_CHANGED,update)
-    window.addEventListener('storage',changed)
-    window.addEventListener('focus',visible)
-    document.addEventListener('visibilitychange',visible)
-    return()=>{clearTimeout(timer);window.removeEventListener(DATA_CHANGED,update);window.removeEventListener('storage',changed);window.removeEventListener('focus',visible);document.removeEventListener('visibilitychange',visible)}
-  },[])
-  const detailRef=useRef<HTMLElement>(null)
-  useEffect(()=>{let cancelled=false;setLoading(true);setError('');setSnapshot(null)
-    async function fetchData(){
-      const [report,expenses,current,invoices,settlements,drivers,trucks,trailers,brokers,dispatchers]=await Promise.all([
-        reportsApi.grossProfitPerLoad({date_from:range.from,date_to:range.to,date_type:range.basis,statuses:'Delivered,Closed',group_by:'none'}),
-        fetchEveryPage<ExpenseRow>(async page=>(await client.get('/api/v1/expenses',{params:{page,page_size:100,date_from:range.from,date_to:range.to}})).data),
-        fetchEveryPage<LoadListItem>(page=>loadsApi.list({page,page_size:100,show_only_active:true})),
-        fetchEveryPage<Invoice>(async page=>(await client.get('/api/v1/invoices',{params:{page,page_size:100}})).data),
-        fetchEveryPage<Settlement>(page=>payrollApi.list({page,page_size:100})),
-        driversApi.list(),trucksApi.list(),trailersApi.list(),brokersApi.list(),dispatchersApi.list(),
-      ])
-      if(!Array.isArray(report.rows))throw new Error('The revenue report did not return load details.')
-      const rows=report.rows as ReportRow[]
-      for(const r of rows)for(const key of ['rate','lumpers','other_add_ded','driver_pay','additional_payee','qp_fee','total_miles','empty_miles'] as const)if(r[key]==null||!Number.isFinite(Number(r[key])))throw new Error('The server returned incomplete financial data. Refresh or check the report API.')
-      if(expenses.some(e=>e.amount==null||!Number.isFinite(Number(e.amount)))||invoices.some(i=>i.amount==null||!Number.isFinite(Number(i.amount))))throw new Error('Expense or invoice amounts are incomplete.')
-      if(settlements.some(s=>s.balance_due==null||!Number.isFinite(Number(s.balance_due))))throw new Error('Settlement balances are incomplete.')
-      if(cancelled)return
-      setSnapshot({rows:rows.filter(r=>completed.has(r.status)),expenses,current,invoices,settlements,refreshed:new Date()})
-      setEntities({drivers,trucks,trailers,brokers,dispatchers,loading:false})
-    }
-    fetchData().catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:'Unable to load dashboard')}).finally(()=>{if(!cancelled)setLoading(false)})
-    return()=>{cancelled=true}
-  },[range.from,range.to,range.basis,refresh])
-  useEffect(()=>{try{localStorage.setItem('karvan.dashboard.range.v2',JSON.stringify(range))}catch{/* Date preferences are optional. */}},[range])
-  useEffect(()=>{if(detail)detailRef.current?.scrollIntoView({behavior:'smooth',block:'start'})},[detail])
-  const matches=(driver:number|null|undefined,truck:number|null|undefined)=>(!driverId||String(driver)===driverId)&&(!truckId||String(truck)===truckId)
-  const rows=(snapshot?.rows||[]).filter(r=>matches(r.driver_id,r.truck_id))
-  const expenses=(snapshot?.expenses||[]).filter(e=>matches(e.driver_id,e.truck_id))
-  const current=(snapshot?.current||[]).filter(l=>matches(l.driver?.id,l.truck?.id)&&l.status!=='Canceled')
-  const today=iso(new Date())
-  const invoices=(snapshot?.invoices||[]).filter(i=>!['paid','void','voided','canceled','cancelled'].includes(i.status.toLowerCase())&&(!i.invoice_date||i.invoice_date<=today)&&((!driverId&&!truckId)||current.some(l=>l.id===i.load_id)))
-  const settlements=(snapshot?.settlements||[]).filter(s=>s.status!=='Void'&&(!driverId||String(s.driver_id)===driverId))
-  const payable=settlements.filter(s=>['Ready','Sent'].includes(s.status)&&Number(s.balance_due)>0)
-  const payrollDue=round(payable.reduce((sum,s)=>sum+Number(s.balance_due),0))
-  const overdue=invoices.filter(i=>i.due_date&&i.due_date<today)
-  const missingPod=current.filter(l=>completed.has(l.status)&&!(l.documents||[]).some(d=>d.document_type==='POD'))
-  const uninvoiced=current.filter(l=>completed.has(l.status)&&!['Invoiced','Sent to factoring','Funded','Paid','Canceled'].includes(l.billing_status))
-  const active=current.filter(l=>transit.has(l.status)), stats=summarize(rows,expenses)
-  const invoiceTotal=round(invoices.reduce((s,i)=>s+Number(i.amount),0)), overdueTotal=round(overdue.reduce((s,i)=>s+Number(i.amount),0))
-  const dirty=JSON.stringify(draft)!==JSON.stringify(range)
-  const ready=!!snapshot&&!loading&&!error
-  const apply=()=>{if(!validRange(draft))return;setRange({...draft});setDetail(null)}
-  const reset=()=>{const r=getRange('this_month');setDraft(r);setRange(r);setDriverId('');setTruckId('');setDetail(null)}
-  const show=(d:Detail)=>{setDetail(d);if(d===detail)detailRef.current?.scrollIntoView({behavior:'smooth'})}
-  const openLoad=(id:number)=>setLoadId(id)
-  const grouped=useMemo(()=>{
-    const map=new Map<string,{name:string;rows:ReportRow[]}>()
-    rows.forEach(r=>{const name=r[group]||'Unassigned';const key=group==='truck'?String(r.truck_id??'none'):group==='driver_name'?String(r.driver_id??'none'):name;const g=map.get(key)||{name,rows:[]};g.rows.push(r);map.set(key,g)})
-    return [...map.values()].map(g=>({...g,stats:summarize(g.rows,[])})).sort((a,b)=>b.stats.revenue-a.stats.revenue)
-  },[snapshot,driverId,truckId,group])
-  const exportOverview=()=>csvDownload(`karvan-overview-${range.from}-${range.to}.csv`,[
-    ['Period start',range.from],['Period end',range.to],['Date basis',range.basis],['Driver filter',driverId||'All'],['Truck filter',truckId||'All'],
-    ['Completed revenue',stats.revenue],['Load costs',stats.loadCosts],['Expense ledger',stats.ledger],['Recorded costs',stats.costs],['Operating result (not net profit)',stats.result],['Unpaid invoice face value (current)',invoiceTotal],['Payroll ready/sent balance (current; all trucks)',payrollDue],
-    [],['Load','Revenue','Driver pay','Additional payees','QuickPay fees','Load contribution','Miles'],...rows.map(r=>[r.load_number,revenueOf(r),r.driver_pay,r.additional_payee,r.qp_fee,round(revenueOf(r)-costOf(r)),r.total_miles]),
-    [],['Expense date','Category','Description','Amount'],...expenses.map(e=>[e.expense_date,e.category,e.description,e.amount]),
-    [],['Unpaid invoice','Load','Due date','Face value'],...invoices.map(i=>[i.invoice_number,i.load_number||i.load_id,i.due_date||'',i.amount])])
-  const reportTable=(items:ReportRow[])=><div className="kd-table-scroll"><table><thead><tr><th>Load / customer</th><th>Route</th><th>Driver / truck</th><th>Date</th><th className="num">Revenue</th><th className="num">Load costs</th><th className="num">Contribution</th></tr></thead><tbody>{items.map(r=><tr key={r.load_id}><td><button className="kd-link" onClick={()=>openLoad(r.load_id)}>#{r.load_number}</button><small>{r.broker||'Unassigned'}</small></td><td>{r.pickup_city}, {r.pickup_state}<small>→ {r.delivery_city}, {r.delivery_state}</small></td><td>{r.driver_name||'Unassigned'}<small>Truck {r.truck||'—'}</small></td><td>{shortDate(range.basis==='delivery'?r.actual_delivery_date||'':r.pickup_date||r.load_date)}</td><td className="num">{dollars(revenueOf(r))}</td><td className="num">{dollars(costOf(r))}</td><td className={`num ${revenueOf(r)-costOf(r)<0?'negative':''}`}>{dollars(revenueOf(r)-costOf(r))}</td></tr>)}</tbody></table>{!items.length&&<Empty text="No completed loads match this period and filters."/>}</div>
-  const currentTable=(items:LoadListItem[])=><div className="kd-table-scroll"><table><thead><tr><th>Load / customer</th><th>Driver / truck</th><th>Pickup</th><th>Delivery</th><th>Status</th><th>Billing</th></tr></thead><tbody>{items.map(l=><tr key={l.id}><td><button className="kd-link" onClick={()=>openLoad(l.id)}>#{l.load_number}</button><small>{l.broker?.name||'Unassigned'}</small></td><td>{l.driver?.name||'Unassigned'}<small>Truck {l.truck?.unit_number||'—'}</small></td><td>{shortDate(l.stops.find(s=>s.stop_type==='pickup')?.stop_date||'')}</td><td>{shortDate(l.stops.find(s=>s.stop_type==='delivery')?.stop_date||'')}</td><td><Badge value={l.status}/></td><td><Badge value={l.billing_status}/></td></tr>)}</tbody></table>{!items.length&&<Empty text="No matching loads."/>}</div>
-  const payrollTable=()=> <><p className="kd-footnote" style={{padding:'0 17px'}}>Current Ready / Sent settlements with a positive balance. Driver filter applies; period and truck filters do not. Payments reduce the balance in Payroll; they are not charged again as dashboard expenses.</p><div className="kd-table-scroll"><table><thead><tr><th>Settlement</th><th>Driver</th><th>Date</th><th>Status</th><th className="num">Balance due</th></tr></thead><tbody>{payable.map(s=><tr key={s.id}><td><button className="kd-link" onClick={()=>setSettlementId(s.id)}>#{s.settlement_number}</button></td><td>{s.driver?.name||s.payable_to||'—'}</td><td>{shortDate(s.date)}</td><td><Badge value={s.status}/></td><td className="num">{dollars(Number(s.balance_due))}</td></tr>)}</tbody><tfoot><tr><th colSpan={4}>Ready / sent balance due</th><th className="num">{dollars(payrollDue)}</th></tr></tfoot></table>{!payable.length&&<Empty text="No ready or sent settlements awaiting payment."/>}</div></>
-  const invoiceTable=(items:Invoice[])=><div className="kd-table-scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Due date</th><th>Status</th><th className="num">Invoice value</th><th>Load</th></tr></thead><tbody>{items.map(i=><tr key={i.id}><td>#{i.invoice_number}</td><td>{i.broker_name||'—'}</td><td className={i.due_date&&i.due_date<today?'negative':''}>{shortDate(i.due_date||'')}</td><td><Badge value={i.status}/></td><td className="num">{dollars(i.amount)}</td><td><button className="kd-link" onClick={()=>openLoad(i.load_id)}>#{i.load_number||i.load_id}<ChevronRight size={12}/></button></td></tr>)}</tbody></table>{!items.length&&<Empty text="No matching unpaid invoices."/>}</div>
-  return <div className="karvan-dashboard">
-    <header className="kd-header"><div><div className="kd-title"><h1>Dashboard</h1><span>Company overview</span></div><p>Finances, operations and the next action — in one place.</p></div><div className="kd-header-actions"><button className="kd-button kd-nav-button" onClick={()=>navigate('/loads')}>Loads<ArrowRight size={13}/></button><button className="kd-button kd-nav-button" onClick={()=>navigate('/drivers')}>Drivers<ArrowRight size={13}/></button><span className="kd-updated">{snapshot&&!loading?`Updated ${snapshot.refreshed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`:''}</span><button className="kd-button" onClick={()=>setRefresh(n=>n+1)} disabled={loading}><RefreshCw size={14} className={loading?'kd-spin':''}/>Refresh</button><button className="kd-button" disabled={!ready} onClick={exportOverview}><Download size={14}/>Export</button></div></header>
-    <div className="kd-controls"><div className="kd-tabs" role="group" aria-label="Dashboard view">{(['overview','operations','finance'] as const).map(t=><button key={t} aria-pressed={tab===t} className={tab===t?'active':''} onClick={()=>{setTab(t);setDetail(null)}}>{t[0].toUpperCase()+t.slice(1)}</button>)}</div><div className="kd-period"><CalendarDays size={15}/><select aria-label="Period preset" value={draft.period} onChange={e=>{const p=e.target.value as Period;setDraft(p==='custom'?{...draft,period:p}:{...getRange(p),basis:draft.basis})}}>{presets.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select><input aria-label="Period start" type="date" value={draft.from} onChange={e=>setDraft({...draft,period:'custom',from:e.target.value})}/><span>—</span><input aria-label="Period end" type="date" value={draft.to} onChange={e=>setDraft({...draft,period:'custom',to:e.target.value})}/><select aria-label="Revenue date basis" value={draft.basis} onChange={e=>setDraft({...draft,basis:e.target.value as Range['basis']})}><option value="delivery">Actual delivery date</option><option value="pickup">Pickup date</option></select><button className="kd-primary" disabled={!validRange(draft)||!dirty} onClick={apply}>Apply</button></div><button className={`kd-button ${driverId||truckId?'selected':''}`} onClick={()=>setFiltersOpen(v=>!v)} aria-expanded={filtersOpen}><Filter size={14}/>Filters{(driverId||truckId)&&<b>{Number(!!driverId)+Number(!!truckId)}</b>}</button><button className="kd-reset" onClick={reset}>Reset</button></div>
-    {!validRange(draft)&&<div className="kd-warning" role="alert">Choose a valid start date on or before the end date.</div>}
-    {dirty&&validRange(draft)&&<div className="kd-pending">Date changes are not applied yet. Select Apply to update the report.</div>}
-    {filtersOpen&&<div className="kd-filters"><label>Driver<select aria-label="Filter driver" value={driverId} onChange={e=>{setDriverId(e.target.value);setDetail(null)}}><option value="">All drivers</option>{entities.drivers.map(d=><option key={d.id} value={d.id}>{d.name}{!d.is_active?' (inactive)':''}</option>)}</select></label><label>Truck<select aria-label="Filter truck" value={truckId} onChange={e=>{setTruckId(e.target.value);setDetail(null)}}><option value="">All trucks</option>{entities.trucks.map(t=><option key={t.id} value={t.id}>{t.unit_number}</option>)}</select></label><p>Load and expense figures use the same driver / truck filters. Unassigned shared expenses are excluded when filtered.</p></div>}
-    <div className="kd-body">
-    {loading?<div className="kd-loading" role="status"><RefreshCw size={23} className="kd-spin"/><strong>Loading a complete overview</strong><span>Checking revenue, expenses and current work…</span></div>:error?<div className="kd-error" role="alert"><strong>Dashboard could not be loaded</strong><p>{error}</p><button className="kd-primary" onClick={()=>setRefresh(n=>n+1)}>Try again</button><small>No partial totals are shown.</small></div>:snapshot&&<>
-      <div className="kd-scope"><span><CalendarDays size={13}/>{shortDate(range.from)} — {shortDate(range.to)}<b>·</b>{range.basis==='delivery'?'Actual delivery date':'Pickup date (load date fallback)'}</span><span>Current operations, invoices & payroll: {shortDate(today)}</span></div>
-      <div className="kd-kpis"><Metric label="Completed revenue" value={dollars(stats.revenue)} note={`${rows.length} delivered / closed loads · includes accessorials`} primary onClick={()=>show('loads')}/><Metric label="Recorded costs" value={dollars(stats.costs)} note="Load costs + expense ledger" onClick={()=>show('costs')}/><Metric label="Operating result" value={dollars(stats.result)} note="Before unrecorded costs · not net profit" negative={stats.result<0} onClick={()=>show('result')}/><Metric label="Unpaid invoices · current" value={dollars(invoiceTotal)} note={`${overdue.length} overdue · ${dollars(overdueTotal)}`} onClick={()=>show('invoices')}/></div>
-      <div className="kd-statline"><span>Completed loads <b>{rows.length}</b></span><span>Total miles <b>{count(stats.miles)}</b></span><span>RPM <b>{stats.rpm==null?'—':dollars(stats.rpm)}</b></span><span>Recorded CPM <b>{stats.cpm==null?'—':dollars(stats.cpm)}</b></span><span>Deadhead <b>{stats.deadhead==null?'—':`${stats.deadhead.toFixed(1)}%`}</b></span><span>Operating margin <b>{stats.margin==null?'—':`${stats.margin.toFixed(1)}%`}</b></span></div>
-      {tab==='overview'&&<><div className="kd-grid"><section className="kd-panel"><PanelTitle title="Revenue & recorded costs" note="Totals grouped across the selected period"/><PeriodChart rows={rows} expenses={expenses} range={range}/><div className="kd-chart-note"><span><i className="revenue"/>Revenue</span><span><i className="cost"/>Recorded costs</span><small>Expenses use expense date; load costs use the selected date basis.</small></div></section><section className="kd-panel"><PanelTitle title="Needs attention" note="Current work · independent of the period"/><Action icon={<Wallet size={16}/>} label="Overdue invoices" count={overdue.length} note={`${dollars(overdueTotal)} in unpaid invoice value`} onClick={()=>show('overdue')}/><Action icon={<FileCheck2 size={16}/>} label="Delivered, not invoiced" count={uninvoiced.length} note="Review billing and supporting documents" onClick={()=>show('uninvoiced')}/><Action icon={<Info size={16}/>} label="POD not attached" count={missingPod.length} note="Completed loads without a document tagged POD" onClick={()=>show('pod')}/><Action icon={<Wallet size={16}/>} label="Driver payroll due" count={payable.length} note={`${dollars(payrollDue)} · ready / sent settlements · all trucks`} onClick={()=>show('payroll')}/><Action icon={<TruckIcon size={16}/>} label="Active dispatches" count={active.length} note="Dispatched, en route or picked up" onClick={()=>show('active')}/></section></div>
-      <section className="kd-panel kd-performance"><PanelTitle title="Load performance" note="Contribution = revenue − driver pay − additional payees − QuickPay fees; excludes expense ledger." tools={<><input aria-label="Search performance" placeholder="Search names…" value={groupSearch} onChange={e=>setGroupSearch(e.target.value)}/><select aria-label="Group performance" value={group} onChange={e=>setGroup(e.target.value as typeof group)}><option value="truck">By truck</option><option value="driver_name">By driver</option><option value="broker">By customer</option><option value="dispatcher">By dispatcher</option></select></>}/><div className="kd-table-scroll"><table><thead><tr><th>{group==='driver_name'?'Driver':group==='broker'?'Customer':group==='dispatcher'?'Dispatcher':'Truck'}</th><th className="num">Loads</th><th className="num">Revenue</th><th className="num">Load costs</th><th className="num">Contribution</th><th className="num">Total miles</th><th className="num">RPM</th></tr></thead><tbody>{grouped.filter(g=>g.name.toLowerCase().includes(groupSearch.toLowerCase())).map(g=><tr key={g.name+'-'+g.rows[0].load_id}><td>{g.name}</td><td className="num">{g.rows.length}</td><td className="num">{dollars(g.stats.revenue)}</td><td className="num">{dollars(g.stats.loadCosts)}</td><td className={`num ${g.stats.result<0?'negative':''}`}>{dollars(g.stats.result)}</td><td className="num">{count(g.stats.miles)}</td><td className="num">{g.stats.rpm==null?'—':dollars(g.stats.rpm)}</td></tr>)}</tbody><tfoot><tr><th>All filtered loads</th><th className="num">{rows.length}</th><th className="num">{dollars(stats.revenue)}</th><th className="num">{dollars(stats.loadCosts)}</th><th className="num">{dollars(stats.revenue-stats.loadCosts)}</th><th className="num">{count(stats.miles)}</th><th className="num">{stats.rpm==null?'—':dollars(stats.rpm)}</th></tr></tfoot></table>{!grouped.length&&<Empty text="No completed loads in this period. Try a wider date range or pickup date."/>}</div></section></>}
-      {tab==='operations'&&<section className="kd-panel"><PanelTitle title="Current dispatches" note="All dates · no availability inferred from historical loads" tools={<button className="kd-button" onClick={()=>navigate('/dispatch')}>Open dispatch board<ArrowRight size={13}/></button>}/><div className="kd-current-stats"><span>Active dispatches <b>{active.length}</b></span><span>Unassigned new loads <b>{current.filter(l=>l.status==='New'&&!l.driver).length}</b></span><span>Pickup today <b>{current.filter(l=>l.stops.some(s=>s.stop_type==='pickup'&&s.stop_date?.slice(0,10)===today)).length}</b></span><span>Delivery today <b>{current.filter(l=>l.stops.some(s=>s.stop_type==='delivery'&&s.stop_date?.slice(0,10)===today)).length}</b></span></div>{currentTable(current.filter(l=>!completed.has(l.status)&&l.status!=='TONU'))}</section>}
-      {tab==='finance'&&<section className="kd-panel"><PanelTitle title="Unpaid invoices" note="Current full invoice values. Partial-payment balances are not available in this API." tools={<button className="kd-button" onClick={()=>navigate('/payroll')}>Driver settlements<ArrowRight size={13}/></button>}/>{invoiceTable(invoices)}<PanelTitle title="Driver payroll due" note="Current balances from Driver Payroll · click a settlement to manage it"/>{payrollTable()}</section>}
-      {detail&&<section ref={detailRef} className="kd-panel kd-detail" tabIndex={-1}><PanelTitle title={{loads:'Revenue details',costs:'Recorded cost details',result:'Operating result calculation',invoices:'Unpaid invoice details',overdue:'Overdue invoice details',pod:'Completed loads without POD',uninvoiced:'Delivered, not invoiced',active:'Active dispatches',payroll:'Driver payroll due'}[detail]} note={['invoices','overdue','pod','uninvoiced','active','payroll'].includes(detail)?'Current records; period filter does not apply.':'Same records used by the summary above.'} tools={<>{(detail==='costs'||detail==='result')&&<button className="kd-button" onClick={()=>navigate('/accounting/expenses')}>Manage expenses<ArrowRight size={13}/></button>}{detail==='payroll'&&<button className="kd-button" onClick={()=>navigate('/payroll')}>Open payroll<ArrowRight size={13}/></button>}<button className="kd-button" aria-label="Close details" onClick={()=>setDetail(null)}><X size={14}/></button></>}/>
-      {detail==='payroll'?payrollTable():detail==='loads'?reportTable(rows):detail==='invoices'||detail==='overdue'?invoiceTable(detail==='overdue'?overdue:invoices):detail==='pod'||detail==='uninvoiced'||detail==='active'?currentTable(detail==='pod'?missingPod:detail==='uninvoiced'?uninvoiced:active):<><div className="kd-reconcile"><span>Revenue <b>{dollars(stats.revenue)}</b></span><span>− Load costs <b>{dollars(stats.loadCosts)}</b></span><span>− Expense ledger <b>{dollars(stats.ledger)}</b></span><span>= Operating result <b>{dollars(stats.result)}</b></span></div>{reportTable(rows)}<div className="kd-table-scroll"><table><thead><tr><th>Expense date</th><th>Category</th><th>Description</th><th className="num">Amount</th></tr></thead><tbody>{expenses.map(e=><tr key={e.id}><td>{shortDate(e.expense_date)}</td><td>{e.category}</td><td>{e.description||'—'}</td><td className="num">{dollars(e.amount)}</td></tr>)}</tbody><tfoot><tr><th colSpan={3}>Expense ledger total</th><th className="num">{dollars(stats.ledger)}</th></tr></tfoot></table></div><p className="kd-footnote">Costs combine load pay/fees and expense records. Avoid entering the same cost in both places. Settlement-only adjustments and unrecorded costs are excluded.</p></>}
-      </section>}
-      <p className="kd-footnote">Revenue includes delivered/closed loads only. Expense ledger uses expense date. Unpaid invoices are current full values, not a historical or partial-payment balance.</p>
-    </>}
+  const [d, setD] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const load = useCallback(async () => {
+    setLoading(true)
+    try { setD(await dashboardApi.get()) }
+    catch (e) { toast.error((e as Error).message) }
+    finally { setLoading(false) }
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  const w = d?.this_week
+  const a = d?.attention
+  const delta = (now: number, before: number) => (before ? Math.round(((now - before) / Math.abs(before)) * 100) : null)
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 px-4 py-4 lg:px-5">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-slate-950">Dashboard</h1>
+            {w && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.6875rem] font-bold text-slate-500">Week {w.period}</span>}
+            {loading && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />}
+          </div>
+          <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">This week at a glance, what needs paying, and what is due</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link to={`/weeks?week=${w?.period_start || ''}`} className="btn-primary h-9 rounded-lg px-4 text-xs">Open weekly board<ArrowRight className="h-3.5 w-3.5" /></Link>
+          <button onClick={load} disabled={loading} className="btn-secondary h-9 rounded-lg px-3 text-xs"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />Refresh</button>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-auto bg-slate-50/70 p-3">
+        {!d ? <div className="py-16 text-center text-slate-400">Loading…</div> : (
+          <div className="mx-auto max-w-[100rem] space-y-3">
+            {/* This week */}
+            <section className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
+              <Stat label="Gross" value={formatCurrency(w!.gross)} sub={deltaText(delta(w!.gross, d.last_week.gross))} />
+              <Stat label="Deductions" value={formatCurrency(w!.deductions)} sub="fees, fixed, fuel, expenses" />
+              <Stat label="Driver payouts" value={formatCurrency(w!.driver_payouts)} sub={`${formatCurrency(w!.driver_pay)} earned`} tone="blue" />
+              <Stat label="Net to trucks" value={formatCurrency(w!.net)} sub={deltaText(delta(w!.net, d.last_week.net))} tone={w!.net < 0 ? 'red' : 'emerald'} />
+              <Stat label="Loads" value={String(w!.loads)} sub={`${w!.trucks_with_loads} of ${w!.trucks} trucks moving`} />
+              <Stat label="Rate per mile" value={w!.rpm != null ? `$${w!.rpm.toFixed(2)}` : '—'} sub={`${w!.miles.toLocaleString()} miles`} />
+            </section>
+
+            {/* Needs attention */}
+            <section className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+              <Attention to="/weeks" label="Statements ready to pay" count={a!.statements_ready.count} amount={formatCurrency(a!.statements_ready.driver_payouts)} note="driver payouts waiting for ACH" />
+              <Attention to="/dispatchers" label="Dispatchers to pay" count={a!.dispatchers_unpaid.count} amount={formatCurrency(a!.dispatchers_unpaid.amount)} note="this week's commissions" />
+              <Attention to="/bills" label="Bills unpaid this month" count={a!.bills.unpaid_count} amount={formatCurrency(a!.bills.remaining)} note={a!.bills.due_soon.some(b => b.overdue) ? `${a!.bills.due_soon.filter(b => b.overdue).length} overdue` : 'none overdue'} />
+              <Attention to="/maintenance" label="Service due" count={a!.maintenance.due} amount={a!.maintenance.soon ? `${a!.maintenance.soon} soon` : undefined} note={a!.maintenance.items[0] ? `${a!.maintenance.items[0].unit_number} ${a!.maintenance.items[0].service_type}` : 'nothing overdue'} />
+            </section>
+
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]">
+              {/* Trend */}
+              <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                  <div><h2 className="text-sm font-bold text-slate-900">Last 8 weeks</h2><p className="text-[0.6875rem] text-slate-400">Gross and net to trucks per week</p></div>
+                  <div className="flex items-center gap-3 text-[0.6875rem] font-medium text-slate-600">
+                    <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: REVENUE }} />Gross</span>
+                    <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: NET }} />Net</span>
+                  </div>
+                </header>
+                <Trend data={d.trend} />
+              </section>
+
+              {/* Watch list */}
+              <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <header className="border-b border-slate-100 px-4 py-3"><h2 className="text-sm font-bold text-slate-900">Watch this week</h2></header>
+                <div className="divide-y divide-slate-100 text-xs">
+                  <Row label="Trucks with a negative week" value={a!.negative_weeks.count ? `${a!.negative_weeks.count} · ${formatCurrency(a!.negative_weeks.amount)}` : 'None'} detail={a!.negative_weeks.units.join(', ')} tone={a!.negative_weeks.count ? 'red' : undefined} to="/weeks?filter=negative" />
+                  <Row label="Trucks without a load" value={a!.idle_trucks.count ? String(a!.idle_trucks.count) : 'None'} detail={a!.idle_trucks.units.join(', ')} tone={a!.idle_trucks.count ? 'amber' : undefined} to="/weeks" />
+                  {a!.bills.due_soon.map(b => (
+                    <Row key={b.label} label={`Bill · ${b.label}`} value={formatCurrency(b.amount)} detail={b.overdue ? `was due on the ${b.due_day}` : `due on the ${b.due_day}`} tone={b.overdue ? 'red' : 'amber'} to="/bills" />
+                  ))}
+                  {a!.maintenance.items.map(m => (
+                    <Row key={m.unit_number + m.service_type} label={`${m.unit_number} · ${m.service_type}`} value={m.miles_left != null ? (m.miles_left <= 0 ? `${Math.abs(m.miles_left).toLocaleString()} mi over` : `${m.miles_left.toLocaleString()} mi left`) : m.days_left != null ? (m.days_left <= 0 ? `${-m.days_left} d over` : `${m.days_left} d left`) : ''} tone={m.status === 'RED' ? 'red' : 'amber'} to="/maintenance" />
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            {/* Top trucks */}
+            <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <h2 className="text-sm font-bold text-slate-900">Trucks this week</h2>
+                <Link to={`/weeks?week=${w!.period_start}`} className="text-[0.6875rem] font-semibold text-blue-700 hover:underline">All trucks</Link>
+              </header>
+              <table className="w-full text-xs">
+                <thead><tr className="border-b border-slate-200 bg-slate-50/80 text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">
+                  <th className="px-3 py-2 text-left">Truck</th><th className="px-3 py-2 text-left">Driver</th><th className="px-3 py-2 text-right">Loads</th><th className="px-3 py-2 text-right">Gross</th><th className="px-3 py-2 text-right">RPM</th><th className="px-3 py-2 text-right">Net</th><th className="px-3 py-2 text-left">Status</th>
+                </tr></thead>
+                <tbody className="divide-y divide-slate-100">
+                  {d.top_trucks.map(t => (
+                    <tr key={t.truck_id} className="hover:bg-blue-50/40">
+                      <td className="px-3 py-2"><Link to={`/weeks/${w!.period_start}/trucks/${t.truck_id}`} className="font-bold text-slate-900 hover:text-blue-700">{t.unit_number}</Link></td>
+                      <td className="px-3 py-2 text-slate-700">{t.driver_name || '—'}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{t.loads}</td>
+                      <td className="px-3 py-2 text-right font-semibold"><Money value={t.gross} /></td>
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-600">{t.rpm != null ? `$${t.rpm.toFixed(2)}` : '—'}</td>
+                      <td className="px-3 py-2 text-right"><Money value={t.net} strong /></td>
+                      <td className="px-3 py-2"><StatusPill status={t.status as StatementStatus} /></td>
+                    </tr>
+                  ))}
+                  {d.top_trucks.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-slate-400">No loads this week yet. <Link to="/weeks" className="font-semibold text-blue-700 hover:underline">Add one</Link></td></tr>}
+                </tbody>
+              </table>
+            </section>
+          </div>
+        )}
+      </div>
     </div>
-    {settlementId!=null&&<SettlementModal settlementId={settlementId} drivers={entities.drivers} onClose={()=>setSettlementId(null)} onSaved={()=>setRefresh(n=>n+1)}/>}
-    {loadId!=null&&<LoadModal loadId={loadId} entities={entities} onClose={()=>setLoadId(null)} onSaved={()=>setRefresh(n=>n+1)}/>}
-  </div>
+  )
 }
-function Empty({text}:{text:string}){return <div className="kd-empty"><FileCheck2 size={22}/><span>{text}</span></div>}
-function PanelTitle({title,note,tools}:{title:string;note?:string;tools?:React.ReactNode}){return <header className="kd-panel-title"><div><h2>{title}</h2>{note&&<p>{note}</p>}</div>{tools&&<div className="kd-tools">{tools}</div>}</header>}
-function Metric({label,value,note,onClick,primary,negative}:{label:string;value:string;note:string;onClick:()=>void;primary?:boolean;negative?:boolean}){return <button className={`kd-metric ${primary?'primary':''}`} onClick={onClick}><span>{label}<ArrowRight size={13}/></span><strong className={negative?'negative':''}>{value}</strong><small>{note}</small></button>}
-function Action({icon,label,count,note,onClick}:{icon:React.ReactNode;label:string;count:number;note:string;onClick:()=>void}){return <button className="kd-action" onClick={onClick}><span className={`kd-action-icon ${count?'attention':''}`}>{count?icon:<CheckCircle2 size={16}/>}</span><span><strong>{label}</strong><small>{note}</small></span><b>{count}</b><ChevronRight size={13}/></button>}
-function PeriodChart({rows,expenses,range}:{rows:ReportRow[];expenses:ExpenseRow[];range:Range}){
-  const start=Date.parse(range.from+'T00:00:00Z'),end=Date.parse(range.to+'T00:00:00Z'),days=Math.round((end-start)/86400000)+1,n=Math.min(10,days),span=days/n
-  const buckets=Array.from({length:n},(_,i)=>{const from=start+Math.floor(i*span)*86400000,to=i===n-1?end+86400000:start+Math.floor((i+1)*span)*86400000;const matches=(d:string)=>{const t=Date.parse(d.slice(0,10)+'T00:00:00Z');return t>=from&&t<to};const rs=rows.filter(r=>matches(range.basis==='delivery'?r.actual_delivery_date||'':r.pickup_date||r.load_date));return {date:new Date(from).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}),revenue:round(rs.reduce((s,r)=>s+revenueOf(r),0)),cost:round(rs.reduce((s,r)=>s+costOf(r),0)+expenses.filter(e=>matches(e.expense_date)).reduce((s,e)=>s+Number(e.amount),0))}})
-  const max=Math.max(1,...buckets.flatMap(b=>[Math.abs(b.revenue),Math.abs(b.cost)]))
-  const signed=buckets.some(b=>b.revenue<0||b.cost<0)
-  const barStyle=(v:number)=>signed?{height:`${Math.abs(v)/max*50}%`,position:'absolute' as const,bottom:v>=0?'50%':`${50-Math.abs(v)/max*50}%`}:{height:`${Math.abs(v)/max*100}%`}
-  if(!rows.length&&!expenses.length)return <Empty text="No completed revenue or expenses for this period."/>
-  return <div className="kd-bars" role="img" aria-label={buckets.map(b=>`${b.date}: revenue ${dollars(b.revenue)}, costs ${dollars(b.cost)}`).join('; ')}>{buckets.map((b,i)=><div className="kd-bar-group" key={i} tabIndex={0} aria-label={`${b.date}: revenue ${dollars(b.revenue)}, costs ${dollars(b.cost)}`}><div className="kd-bar-tooltip">{b.date}<br/>Revenue {dollars(b.revenue)}<br/>Costs {dollars(b.cost)}</div><div className={`kd-bar-pair ${signed?'signed':''}`}><i style={barStyle(b.revenue)}/><i className="cost" style={barStyle(b.cost)}/></div><small>{b.date}</small>{(b.revenue<0||b.cost<0)&&<span className="kd-negative-marker" title="Negative amount; see details">−</span>}</div>)}</div>
+
+function deltaText(pct: number | null) {
+  if (pct == null) return 'no last week to compare'
+  return `${pct >= 0 ? '+' : ''}${pct}% vs last week`
+}
+
+function Stat({ label, value, sub, tone = 'slate' }: { label: string; value: string; sub?: string; tone?: 'slate' | 'blue' | 'emerald' | 'red' }) {
+  const tones = { slate: 'text-slate-950', blue: 'text-blue-700', emerald: 'text-emerald-700', red: 'text-red-600' }
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">{label}</div>
+      <div className={`mt-0.5 text-xl font-bold tabular-nums ${tones[tone]}`}>{value}</div>
+      {sub && <div className="mt-0.5 truncate text-[0.6875rem] text-slate-500">{sub}</div>}
+    </div>
+  )
+}
+
+function Attention({ to, label, count, amount, note }: { to: string; label: string; count: number; amount?: string; note?: string }) {
+  const alert = count > 0
+  return (
+    <Link to={to} className={`group flex items-center gap-3 rounded-lg border bg-white px-3.5 py-3 shadow-sm transition hover:border-blue-200 hover:shadow-md ${alert ? 'border-amber-200' : 'border-slate-200'}`}>
+      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-sm font-bold ring-1 ${alert ? 'bg-amber-50 text-amber-700 ring-amber-100' : 'bg-emerald-50 text-emerald-700 ring-emerald-100'}`}>{count}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">{label}</span>
+        <span className="block text-xs font-semibold text-slate-900">{alert && amount ? amount : 'All clear'}</span>
+        {note && <span className="block truncate text-[0.6875rem] text-slate-500">{note}</span>}
+      </span>
+      <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-blue-600" />
+    </Link>
+  )
+}
+
+function Row({ label, value, detail, tone, to }: { label: string; value: string; detail?: string; tone?: 'red' | 'amber'; to: string }) {
+  return (
+    <Link to={to} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-blue-50/40">
+      <span className="min-w-0"><span className="block font-semibold text-slate-800">{label}</span>{detail && <span className="block truncate text-[0.6875rem] text-slate-500">{detail}</span>}</span>
+      <span className={`shrink-0 font-bold tabular-nums ${tone === 'red' ? 'text-red-600' : tone === 'amber' ? 'text-amber-700' : 'text-slate-700'}`}>{value}</span>
+    </Link>
+  )
+}
+
+function Trend({ data }: { data: DashboardData['trend'] }) {
+  const max = Math.max(1, ...data.map(x => Math.max(x.gross, Math.abs(x.net))))
+  const W = 640, H = 200, padL = 48, padR = 8, padT = 12, padB = 26
+  const innerW = W - padL - padR, innerH = H - padT - padB
+  const gw = innerW / data.length, bw = Math.max(6, Math.min(22, gw / 2 - 4))
+  const zero = padT + innerH * (data.some(x => x.net < 0) ? 0.75 : 1)
+  const scale = (zero - padT) / max
+  const y = (v: number) => zero - v * scale
+  const ticks = [0, 0.5, 1].map(f => f * max)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full px-2 pt-2" role="img" aria-label={data.map(x => `${x.label}: gross ${formatCurrency(x.gross)}, net ${formatCurrency(x.net)}`).join('; ')}>
+      {ticks.map(t => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke="#e2e8f0" /><text x={padL - 6} y={y(t) + 3.5} textAnchor="end" fontSize={10} fill="#94a3b8">{t >= 1000 ? `$${Math.round(t / 1000)}k` : `$${Math.round(t)}`}</text></g>)}
+      {data.map((x, i) => {
+        const x0 = padL + i * gw + (gw - (bw * 2 + 3)) / 2
+        return (
+          <g key={x.period_start}>
+            <title>{`${x.label}\nGross ${formatCurrency(x.gross)}\nNet ${formatCurrency(x.net)}`}</title>
+            <rect x={x0} y={Math.min(y(x.gross), zero)} width={bw} height={Math.abs(y(x.gross) - zero)} fill={REVENUE} rx={2} />
+            <rect x={x0 + bw + 3} y={Math.min(y(x.net), zero)} width={bw} height={Math.abs(y(x.net) - zero)} fill={x.net < 0 ? '#dc2626' : NET} rx={2} />
+            <text x={padL + i * gw + gw / 2} y={H - 8} textAnchor="middle" fontSize={10} fill="#64748b">{x.label.split('-')[0]}</text>
+          </g>
+        )
+      })}
+      <line x1={padL} x2={W - padR} y1={zero} y2={zero} stroke="#cbd5e1" />
+    </svg>
+  )
 }

@@ -1,7 +1,7 @@
 """
 Expenses endpoint - full CRUD + categories for P&L report
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import Optional, List
@@ -80,6 +80,19 @@ def list_expenses(
         "page_size": page_size,
         "total_pages": max(1, (total + page_size - 1) // page_size),
     }
+
+
+@router.post("/import")
+@router.post("/import/comdata")
+async def import_expense_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Upload a Comdata, Pilot fuel, or toll export; the format is detected from the header row
+    and each row becomes an expense on the matching truck."""
+    from app.services.expense_imports import import_expenses
+    raw = await file.read()
+    try:
+        return import_expenses(db, file.filename or "export.csv", raw)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @router.get("/summary")

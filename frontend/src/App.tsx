@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
+import RegisterPage from '@/pages/RegisterPage'
 import LoadsPage from '@/pages/LoadsPage'
 import DriversPage from '@/pages/DriversPage'
 import PayrollPage from '@/pages/PayrollPage'
@@ -17,6 +18,12 @@ import AdvancedPaymentsPage from '@/pages/AdvancedPaymentsPage'
 import PaymentsPage from '@/pages/PaymentsPage'
 import DashboardPage from '@/pages/DashboardPage'
 import DispatchBoardPage from '@/pages/DispatchBoardPage'
+import WeekBoardPage from '@/pages/WeekBoardPage'
+import StatementPage from '@/pages/StatementPage'
+import DispatchersPage from '@/pages/DispatchersPage'
+import BillsPage from '@/pages/BillsPage'
+import SettingsPage from '@/pages/SettingsPage'
+import MaintenancePage from '@/pages/MaintenancePage'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { isAuthenticated, loading } = useAuth()
@@ -30,9 +37,16 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/" element={<RequireAuth><AppLayout /></RequireAuth>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="weeks" element={<WeekBoardPage />} />
+        <Route path="weeks/:start/trucks/:truckId" element={<StatementPage />} />
+        <Route path="dispatchers" element={<DispatchersPage />} />
+        <Route path="bills" element={<BillsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="maintenance" element={<MaintenancePage />} />
         <Route path="loads" element={<LoadsPage />} />
         <Route path="drivers" element={<DriversPage />} />
         <Route path="payroll" element={<PayrollPage />} />

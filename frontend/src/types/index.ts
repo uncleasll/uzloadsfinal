@@ -300,6 +300,7 @@ export interface LoadFilters {
 }
 
 export interface LoadCreatePayload {
+  statement_week?: string
   status: LoadStatus
   billing_status: BillingStatus
   load_date: string

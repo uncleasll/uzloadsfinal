@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
 import karvanLogo from '@/assets/karvan-logo.png'
@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(email, password)
-      navigate('/loads', { replace: true })
+      navigate('/dashboard', { replace: true })
     } catch (err: unknown) {
       toast.error((err as Error).message || 'Invalid credentials')
     } finally { setLoading(false) }
@@ -71,6 +71,7 @@ export default function LoginPage() {
               {loading ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Signing in...</> : 'Sign In'}
             </button>
           </form>
+          <p className="mt-4 text-center text-xs text-slate-500">New company? <Link to="/register" className="font-semibold text-blue-700 hover:underline">Create an account</Link></p>
 
           <div className="mt-6 pt-5 border-t border-gray-100">
             <p className="text-xs text-gray-400 text-center mb-2">Quick login (demo)</p>

@@ -8,6 +8,7 @@ import traceback
 from app.core.config import settings
 from app.db.session import engine
 from app.models import models
+import app.core.tenant  # noqa: F401  registers the company scoping hooks
 from app.api.v1 import api_router
 
 models.Base.metadata.create_all(bind=engine)
@@ -26,6 +27,24 @@ from app.crud.payroll import PayrollError
 @app.exception_handler(PayrollError)
 async def handle_payroll_error(request: Request, exc: PayrollError):
     return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.middleware("http")
+async def tenant_context(request: Request, call_next):
+    """Read the bearer token and scope every database query in this request to the user's company."""
+    from app.core.tenant import set_company_id, reset_company_id
+    from app.services.auth_service import decode_token
+    company_id = None
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        payload = decode_token(auth[7:].strip())
+        if payload:
+            company_id = payload.get("company_id")
+    token = set_company_id(company_id)
+    try:
+        return await call_next(request)
+    finally:
+        reset_company_id(token)
 
 
 @app.middleware("http")

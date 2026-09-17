@@ -16,6 +16,16 @@ def enum_column(enum_cls, enum_name: str):
     )
 
 
+class Company(Base):
+    """A tenant: one trucking company using the product."""
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(200), nullable=False)
+    week_start_day = Column(Integer, default=5, nullable=False)   # 0=Mon … 5=Sat
+    created_at = Column(DateTime, server_default=func.now())
+
+
 class LoadStatus(str, enum.Enum):
     NEW = "New"
     CANCELED = "Canceled"
@@ -59,6 +69,7 @@ class Driver(Base):
     __tablename__ = "drivers"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
     phone = Column(String(50))
     email = Column(String(200))
@@ -68,15 +79,22 @@ class Driver(Base):
     pay_rate_loaded = Column(Float, default=0.65)
     pay_rate_empty = Column(Float, default=0.30)
     created_at = Column(DateTime, server_default=func.now())
+    # Weekly statement pay rule (Excel: 30% of gross, $0.55 per total mile, or none)
+    pay_type = Column(String(20), default="percent")   # percent | per_mile | none
+    pay_pct = Column(Float, default=30.0)
+    per_mile_rate = Column(Float, default=0.55)
 
     loads = relationship("Load", back_populates="driver")
+    weekly_deductions = relationship("DriverDeduction", back_populates="driver", cascade="all, delete-orphan")
 
 
 class Truck(Base):
     __tablename__ = "trucks"
+    __table_args__ = (UniqueConstraint("company_id", "unit_number", name="uq_truck_unit_per_company"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    unit_number = Column(String(50), nullable=False, unique=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    unit_number = Column(String(50), nullable=False)
     make = Column(String(100))
     model = Column(String(100))
     year = Column(Integer)
@@ -92,17 +110,23 @@ class Truck(Base):
     notes = Column(Text)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
+    # Weekly statement rules (Excel: fee % of gross, fixed deduction template)
+    fee_pct = Column(Float, default=0.0)
+    carry_negative = Column(Boolean, default=True)
 
     loads = relationship("Load", back_populates="truck")
     driver = relationship("Driver", foreign_keys=[driver_id])
     documents = relationship("TruckDocument", back_populates="truck", cascade="all, delete-orphan")
+    deductions = relationship("TruckDeduction", back_populates="truck", cascade="all, delete-orphan", order_by="TruckDeduction.sort_order")
 
 
 class Trailer(Base):
     __tablename__ = "trailers"
+    __table_args__ = (UniqueConstraint("company_id", "unit_number", name="uq_trailer_unit_per_company"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    unit_number = Column(String(50), nullable=False, unique=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    unit_number = Column(String(50), nullable=False)
     trailer_type = Column(String(100))
     make = Column(String(100))
     model = Column(String(100))
@@ -180,6 +204,7 @@ class Broker(Base):
     __tablename__ = "brokers"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
     mc_number = Column(String(50))
     dot_number = Column(String(50))
@@ -216,20 +241,26 @@ class Dispatcher(Base):
     __tablename__ = "dispatchers"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
     email = Column(String(200))
     phone = Column(String(50))
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
+    # Weekly commission (Excel "Office" sheet): percent of the week's gross, or a flat amount
+    commission_type = Column(String(10), default="pct")   # pct | flat
+    commission_value = Column(Float, default=0.0)
 
     loads = relationship("Load", back_populates="dispatcher")
 
 
 class Load(Base):
     __tablename__ = "loads"
+    __table_args__ = (UniqueConstraint("company_id", "load_number", name="uq_load_number_per_company"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    load_number = Column(Integer, nullable=False, unique=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    load_number = Column(Integer, nullable=False)
     status = Column(enum_column(LoadStatus, "loadstatus"), default=LoadStatus.NEW, nullable=False)
     billing_status = Column(enum_column(BillingStatus, "billingstatus"), default=BillingStatus.PENDING, nullable=False)
     load_date = Column(Date, nullable=False)
@@ -242,6 +273,8 @@ class Load(Base):
     notes = Column(Text)
     is_active = Column(Boolean, default=True)
     direct_billing = Column(Boolean, default=False)
+    # Saturday of the weekly statement this load is filed in; empty means "the week of the pickup date"
+    statement_week = Column(Date, nullable=True, index=True)
 
     driver_id = Column(Integer, ForeignKey("drivers.id"))
     truck_id = Column(Integer, ForeignKey("trucks.id"))
@@ -510,6 +543,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
     email = Column(String(200), nullable=False, unique=True)
     hashed_password = Column(String(500), nullable=False)
@@ -655,6 +689,7 @@ class Expense(Base):
     __tablename__ = "expenses"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     expense_date = Column(Date, nullable=False)
     category = Column(String(100), nullable=False)
     amount = Column(Float, nullable=False)
@@ -803,3 +838,194 @@ class LoadAdditionalPayee(Base):
     amount = Column(Float, nullable=False)
     date = Column(Date, nullable=False)
     load = relationship('Load', back_populates='additional_payees')
+
+
+# ── Weekly truck statements (Excel STATEMENTS workbook model) ─────────────────
+
+class TruckDeduction(Base):
+    """Fixed weekly deduction on a truck: cargo ins, ELD, safety, trailer, truck payment..."""
+    __tablename__ = "truck_deductions"
+
+    id = Column(Integer, primary_key=True)
+    truck_id = Column(Integer, ForeignKey("trucks.id"), nullable=False)
+    label = Column(String(120), nullable=False)
+    amount = Column(Float, nullable=False, default=0.0)
+    effective_from = Column(Date, nullable=True)
+    effective_to = Column(Date, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    sort_order = Column(Integer, default=0)
+
+    truck = relationship("Truck", back_populates="deductions")
+
+
+class DriverDeduction(Base):
+    """Fixed weekly deduction taken from the driver's payout (e.g. occupational health)."""
+    __tablename__ = "driver_deductions"
+
+    id = Column(Integer, primary_key=True)
+    driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=False)
+    label = Column(String(120), nullable=False)
+    amount = Column(Float, nullable=False, default=0.0)
+    effective_from = Column(Date, nullable=True)
+    effective_to = Column(Date, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    driver = relationship("Driver", back_populates="weekly_deductions")
+
+
+class StatementStatus(str, enum.Enum):
+    DRAFT = "draft"
+    READY = "ready"
+    PAID = "paid"
+
+
+class TruckStatement(Base):
+    """One truck, one Saturday–Friday week. Generated; only manual lines and odometer are typed."""
+    __tablename__ = "truck_statements"
+    __table_args__ = (UniqueConstraint("truck_id", "period_start", name="uq_truck_statement_week"),)
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    truck_id = Column(Integer, ForeignKey("trucks.id"), nullable=False)
+    driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=True)
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+    status = Column(String(10), default=StatementStatus.DRAFT.value, nullable=False)
+    fee_pct = Column(Float, default=0.0)
+    odometer_start = Column(Integer, nullable=True)
+    odometer_end = Column(Integer, nullable=True)
+    carry_enabled = Column(Boolean, default=True, nullable=False)
+    # Calculated results (stored so the board is one query)
+    gross = Column(Float, default=0.0)
+    fee = Column(Float, default=0.0)
+    deductions = Column(Float, default=0.0)
+    driver_pay = Column(Float, default=0.0)
+    driver_deductions = Column(Float, default=0.0)
+    driver_payout = Column(Float, default=0.0)
+    carry_in = Column(Float, default=0.0)
+    net = Column(Float, default=0.0)
+    ach_reference = Column(String(100), nullable=True)
+    paid_at = Column(DateTime, nullable=True)
+    notes = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    truck = relationship("Truck")
+    driver = relationship("Driver")
+    lines = relationship("StatementLine", back_populates="statement", cascade="all, delete-orphan", order_by="StatementLine.sort_order")
+
+
+class StatementLine(Base):
+    """Every row of the Excel block, with its source. Positive amount = deduction from gross."""
+    __tablename__ = "statement_lines"
+
+    id = Column(Integer, primary_key=True)
+    statement_id = Column(Integer, ForeignKey("truck_statements.id"), nullable=False)
+    kind = Column(String(20), nullable=False)   # load | fee | template | fuel | expense | driver_pay | driver_deduction | carry_in | manual
+    label = Column(String(200), nullable=False)
+    amount = Column(Float, nullable=False, default=0.0)
+    load_id = Column(Integer, ForeignKey("loads.id"), nullable=True)
+    expense_id = Column(Integer, ForeignKey("expenses.id"), nullable=True)
+    sort_order = Column(Integer, default=0)
+
+    statement = relationship("TruckStatement", back_populates="lines")
+    load = relationship("Load")
+
+
+class DispatcherPayout(Base):
+    """A dispatcher's commission for one week, recorded when paid."""
+    __tablename__ = "dispatcher_payouts"
+    __table_args__ = (UniqueConstraint("dispatcher_id", "period_start", name="uq_dispatcher_week"),)
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    dispatcher_id = Column(Integer, ForeignKey("dispatchers.id"), nullable=False)
+    period_start = Column(Date, nullable=False)
+    gross = Column(Float, default=0.0)
+    amount = Column(Float, default=0.0)
+    paid_at = Column(DateTime, nullable=True)
+    notes = Column(Text)
+
+
+class RecurringBill(Base):
+    """Monthly fixed bill (Excel "Dues" sheets): truck lease, office rent, Samsara, DAT..."""
+    __tablename__ = "recurring_bills"
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    label = Column(String(200), nullable=False)
+    vendor = Column(String(200))
+    amount = Column(Float, nullable=False, default=0.0)
+    due_day = Column(Integer, nullable=False, default=1)   # 1..31
+    account = Column(String(100))                          # which bank account pays it
+    truck_id = Column(Integer, ForeignKey("trucks.id"), nullable=True)
+    notes = Column(Text)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    truck = relationship("Truck")
+    payments = relationship("BillPayment", back_populates="bill", cascade="all, delete-orphan")
+
+
+class BillPayment(Base):
+    __tablename__ = "bill_payments"
+    __table_args__ = (UniqueConstraint("bill_id", "month", name="uq_bill_month"),)
+
+    id = Column(Integer, primary_key=True)
+    bill_id = Column(Integer, ForeignKey("recurring_bills.id"), nullable=False)
+    month = Column(String(7), nullable=False)   # YYYY-MM
+    amount = Column(Float, nullable=False)
+    paid_at = Column(DateTime, server_default=func.now())
+    notes = Column(Text)
+
+    bill = relationship("RecurringBill", back_populates="payments")
+
+
+# ── Maintenance (Fleet Command Center model) ──────────────────────────────────
+
+class OdometerReading(Base):
+    __tablename__ = "truck_odometer_readings"
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    truck_id = Column(Integer, ForeignKey("trucks.id"), nullable=False, index=True)
+    date = Column(Date, nullable=False)
+    reading = Column(Integer, nullable=False)
+    source = Column(String(50))       # statement | samsara | manual | import
+    created_at = Column(DateTime, server_default=func.now())
+
+    truck = relationship("Truck")
+
+
+class ServiceInterval(Base):
+    """Per company: how often each service is due, in miles and days, and when to warn."""
+    __tablename__ = "service_intervals"
+    __table_args__ = (UniqueConstraint("company_id", "service_type", name="uq_service_interval"),)
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    service_type = Column(String(50), nullable=False)
+    miles = Column(Integer, default=0)          # 0 = not mileage based
+    days = Column(Integer, default=0)           # 0 = not date based
+    alert_miles = Column(Integer, default=0)
+    alert_days = Column(Integer, default=0)
+    sort_order = Column(Integer, default=0)
+
+
+class TruckService(Base):
+    """A service actually done: oil change on 8/10 at 412,500 mi for $425."""
+    __tablename__ = "truck_services"
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    truck_id = Column(Integer, ForeignKey("trucks.id"), nullable=False, index=True)
+    service_type = Column(String(50), nullable=False)
+    date = Column(Date, nullable=False)
+    odometer = Column(Integer, nullable=True)
+    cost = Column(Float, default=0.0)
+    vendor = Column(String(200))
+    notes = Column(Text)
+    expense_id = Column(Integer, ForeignKey("expenses.id"), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    truck = relationship("Truck")

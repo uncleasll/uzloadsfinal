@@ -13,8 +13,11 @@ import shutil
 
 
 def get_next_load_number(db: Session) -> int:
-    max_load = db.query(func.max(Load.load_number)).scalar()
-    return (max_load or 1000) + 1
+    from app.core.tenant import get_company_id
+    q = db.query(func.max(Load.load_number))
+    if get_company_id() is not None:
+        q = q.filter(Load.company_id == get_company_id())
+    return (q.scalar() or 1000) + 1
 
 
 def get_loads(

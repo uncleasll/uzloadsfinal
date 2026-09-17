@@ -12,36 +12,23 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
-  { label: 'Dispatch board', to: '/dispatch', icon: <DispatchIcon /> },
+  { label: 'Weekly board', to: '/weeks', icon: <WeekIcon /> },
   { label: 'Loads', to: '/loads', icon: <LoadsIcon /> },
+  { label: 'Expenses', to: '/accounting/expenses', icon: <AccountingIcon /> },
+  { label: 'Dispatchers', to: '/dispatchers', icon: <PartnersIcon /> },
+  { label: 'Monthly bills', to: '/bills', icon: <PaymentsIcon /> },
+  { label: 'Maintenance', to: '/maintenance', icon: <EquipIcon /> },
   { label: 'Drivers', to: '/drivers', icon: <DriversIcon /> },
-  { label: 'Partners', icon: <PartnersIcon />, children: [{ label: 'Brokers', to: '/brokers' }, { label: 'Vendors', to: '/vendors' }] },
   { label: 'Equipment', icon: <EquipIcon />, children: [{ label: 'Trucks', to: '/trucks' }, { label: 'Trailers', to: '/trailers' }] },
-  { label: 'Fuel', icon: <FuelIcon />, children: [{ label: 'Fuel Cards', to: '/fuel/cards' }, { label: 'Transactions', to: '/fuel/transactions' }] },
-  { label: 'Driver Payroll', to: '/payroll', icon: <PayrollIcon /> },
-  { label: 'Payments', icon: <PaymentsIcon />, children: [{ label: 'Advanced Payments', to: '/payments/advanced' }, { label: 'Settlement Payments', to: '/payments' }] },
-  { label: 'Accounting', icon: <AccountingIcon />, children: [
-      { label: 'Overview', to: '/accounting' }, { label: 'Invoices', to: '/accounting/invoices' },
-      { label: 'Expenses', to: '/accounting/expenses' }, { label: 'Payments', to: '/accounting/payments' },
-    ] },
-  { label: 'Reports', icon: <ReportsIcon />, children: [
-    { label: 'Emails', to: '/reports/emails' },
-    { label: 'Total Revenue', to: '/reports/total-revenue' },
-    { label: 'Rate per Mile', to: '/reports/rate-per-mile' },
-    { label: 'Revenue by Dispatcher', to: '/reports/revenue-by-dispatcher' },
-    { label: 'Payment Summary', to: '/reports/payment-summary' },
-    { label: 'Expenses', to: '/reports/expenses' },
-    { label: 'Gross Profit', to: '/reports/gross-profit' },
-    { label: 'Gross Profit per Load', to: '/reports/gross-profit-per-load' },
-    { label: 'Profit & Loss', to: '/reports/profit-loss' },
-  ]},
+  { label: 'Brokers', to: '/brokers', icon: <PartnersIcon /> },
+  { label: 'Settings', to: '/settings', icon: <SettingsIcon /> },
   { label: 'More', icon: <MoreIcon />, children: [
-    { label: 'Tolls', to: '/tolls' },
-    { label: 'Safety', to: '/safety' },
-    { label: 'IFTA', to: '/ifta' },
-    { label: 'Users', to: '/users' },
-    { label: 'Data Library', to: '/data-library' },
-    { label: 'Docs Exchange', to: '/docs' },
+    { label: 'Dispatch board', to: '/dispatch' },
+    { label: 'Driver Payroll (legacy)', to: '/payroll' },
+    { label: 'Advanced Payments', to: '/payments/advanced' },
+    { label: 'Settlement Payments', to: '/payments' },
+    { label: 'Vendors', to: '/vendors' },
+    { label: 'Reports', to: '/reports/total-revenue' },
   ] },
 ]
 
@@ -154,7 +141,7 @@ export default function AppLayout() {
         </div>
         <div className={`ml-2 min-w-0 ${labelCls} ${expanded ? '' : 'pointer-events-none'}`}>
           <div className="text-[0.8125rem] font-bold leading-tight tracking-tight text-white">Karvan</div>
-          <div className="text-[0.59375rem] font-medium leading-tight text-slate-400">Fleet operations</div>
+          <div className="truncate text-[0.59375rem] font-medium leading-tight text-slate-400">{user?.company_name || 'Fleet operations'}</div>
         </div>
         {isMobile && (
           <button
@@ -340,7 +327,7 @@ export default function AppLayout() {
               >
                 <div className="border-b border-slate-100 px-4 py-2.5">
                   <div className="text-xs font-bold text-slate-900">{displayName}</div>
-                  <div className="truncate text-[0.6875rem] text-slate-500">{user?.email || 'Karvan · Fleet operations'}</div>
+                  <div className="truncate text-[0.6875rem] text-slate-500">{user?.company_name ? `${user.company_name} · ${user?.email || ''}` : user?.email || ''}</div>
                 </div>
                 <button
                   role="menuitem"
@@ -376,6 +363,8 @@ export default function AppLayout() {
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function DashboardIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> }
+function WeekIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4M8 15h3M13 15h3"/></svg> }
+function SettingsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg> }
 function DispatchIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></svg> }
 function LoadsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><path d="M14 18V6a2 2 0 00-2-2H4a2 2 0 00-2 2v11a1 1 0 001 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 001-1v-3.65a1 1 0 00-.22-.62l-3.48-4.35A1 1 0 0017.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg> }
 function DriversIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}><path d="M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> }

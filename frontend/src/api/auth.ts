@@ -7,6 +7,8 @@ export interface AuthUser {
   role: string
   is_active: boolean
   dispatcher_id?: number
+  company_id?: number | null
+  company_name?: string | null
 }
 
 export const authApi = {
@@ -17,6 +19,10 @@ export const authApi = {
     const { data } = await client.post('/api/v1/auth/login', form, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
+    return data
+  },
+  register: async (p: { company_name: string; name: string; email: string; password: string }): Promise<{ access_token: string; user: AuthUser }> => {
+    const { data } = await client.post('/api/v1/auth/register', p)
     return data
   },
   me: async (): Promise<AuthUser> => {

@@ -325,6 +325,7 @@ class LoadCreate(BaseModel):
     po_number: Optional[str] = None
     notes: Optional[str] = None
     direct_billing: Optional[bool] = False
+    statement_week: Optional[date] = None
     driver_id: Optional[int] = None
     truck_id: Optional[int] = None
     trailer_id: Optional[int] = None
@@ -335,6 +336,7 @@ class LoadCreate(BaseModel):
 
 class LoadUpdate(BaseModel):
     status: Optional[LoadStatus] = None
+    statement_week: Optional[date] = None
     billing_status: Optional[BillingStatus] = None
     load_date: Optional[date] = None
     actual_delivery_date: Optional[date] = None

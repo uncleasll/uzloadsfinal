@@ -7,6 +7,7 @@ import {
   PERIOD_OPTIONS, periodToDates,
 } from '@/utils'
 import LoadModal from '@/components/loads/LoadModal'
+import { documentKind } from '@/components/loads/documents'
 import LoadImportModal from '@/components/loads/LoadImportModal'
 import NewLoadModal from '@/components/loads/NewLoadModal'
 import AutoCreateLoadModal from '@/components/loads/AutoCreateLoadModal'
@@ -31,6 +32,8 @@ const STATUS_STYLE: Record<string, string> = {
 }
 
 export default function LoadsPage() {
+  const [initialLoadTab,setInitialLoadTab] = useState<'overview'|'documents'>('overview')
+  const openLoad = (load:LoadListItem, tab:'overview'|'documents'='overview') => {setInitialLoadTab(tab);setSelectedLoad(load)}
   const [showColumnFilters, setShowColumnFilters] = useState(false)
   const [compact, setCompact] = useState(() => localStorage.getItem('karvan.loads.compact') === 'true')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -208,13 +211,14 @@ export default function LoadsPage() {
   }
 
   const displayLoads = attachmentType
-    ? loads.filter(l => l.documents.some(d => (d.document_type || '').toLowerCase() === attachmentType.toLowerCase()))
+    ? loads.filter(l => l.documents.some(d => documentKind(d).toLowerCase() === attachmentType.toLowerCase()))
     : loads
 
   const exportLoads = () => {
     if (!displayLoads.length) { toast.error('Nothing to export'); return }
     const esc = (v: unknown) => {
-      const s = String(v ?? '')
+      let s = String(v ?? '')
+      if (typeof v === 'string' && /^[=+@\-]/.test(s)) s = "'" + s
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
     }
     const header = ['Load #', 'Date', 'Driver', 'Broker', 'PO #', 'Pickup', 'Delivery', 'Rate', 'Completed', 'Status', 'Billing', 'Attachments']
@@ -350,27 +354,16 @@ export default function LoadsPage() {
           <div className="flex flex-wrap items-center justify-end gap-2">
             <div className="relative order-1 min-w-[15rem] flex-1 sm:flex-none">
               <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
-              <input ref={searchRef} type="search" placeholder="Search load, broker or PO..." onChange={handleSearch}
+              <input ref={searchRef} type="search" aria-label="Search loads" placeholder="Search load, broker or PO…" onChange={handleSearch}
                 className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-10 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-72" />
-              <button
-                onClick={() => setShowFilterPanel(v => !v)}
-                title="Advanced filters"
-                aria-expanded={showFilterPanel}
-                className={`absolute right-1.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md transition-colors ${showFilterPanel || filterChips.length > 0 ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-slate-200/70 hover:text-slate-600'}`}
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M7 12h10M10 18h4"/></svg>
-                {filterChips.length > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[0.5rem] font-bold text-white">{filterChips.length}</span>
-                )}
-              </button>
             </div>
-            <div ref={newMenuRef} className="relative order-3">
-              <button onClick={() => setShowNewMenu(v => !v)} aria-haspopup="menu" aria-expanded={showNewMenu}
+            <div ref={newMenuRef} className="relative order-3 flex items-center">
+              <button onClick={() => {setShowNewForm(true);setShowNewMenu(false)}}
                 className="btn-primary h-9 rounded-lg px-4 text-xs">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5"/></svg>
                 New load
-                <svg className={`h-3 w-3 transition-transform ${showNewMenu ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
               </button>
+              <button className="loads-tool border border-slate-200 ml-1" aria-label="Import and creation options" aria-haspopup="menu" aria-expanded={showNewMenu} onClick={()=>setShowNewMenu(v=>!v)}>Import ▾</button>
               {showNewMenu && (
                 <div role="menu" className="absolute right-0 top-full z-30 mt-1.5 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl shadow-slate-950/10">
                   <button role="menuitem" onClick={() => { setShowNewMenu(false); setShowAutoCreate(true) }}
@@ -413,7 +406,7 @@ export default function LoadsPage() {
           {/* Period */}
           <div className="relative flex flex-shrink-0 items-center">
             <select
-              value={period}
+              aria-label="Load period" value={period}
               onChange={e => { setPeriod(e.target.value); setFilters(p => ({ ...p, page: 1 })) }}
               className="h-9 appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-8 text-[0.6875rem] font-semibold text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
@@ -447,8 +440,9 @@ export default function LoadsPage() {
 
       <div className="loads-toolbar">
         <div className="loads-toolbar-group">
-          <button className={`loads-tool ${showOnlyActive ? 'is-active' : ''}`} aria-pressed={!showOnlyActive} onClick={() => {setShowOnlyActive(false); setFilters(p => ({...p, page: 1}))}}>All loads <span>{!showOnlyActive ? total : ''}</span></button>
-          <button className={`loads-tool ${showOnlyActive ? 'is-active' : ''}`} aria-pressed={showOnlyActive} onClick={() => {setShowOnlyActive(true); setFilters(p => ({...p, page: 1}))}}>Active only</button>
+          <button className={`loads-tool ${!showOnlyActive ? 'is-active' : ''}`} aria-pressed={!showOnlyActive} onClick={() => {setShowOnlyActive(false); setFilters(p => ({...p, page: 1}))}}>All loads <span>{!showOnlyActive ? total : ''}</span></button>
+          <button className={`loads-tool ${showOnlyActive ? 'is-active' : ''}`} aria-pressed={showOnlyActive} onClick={() => {setShowOnlyActive(true); setFilters(p => ({...p, page: 1}))}}>Open & unpaid</button>
+          <select aria-label="Load status" className="loads-status-select" value={activeFilters.status||''} onChange={e=>{setActiveFilters(p=>({...p,status:e.target.value||undefined}));setFilters(p=>({...p,page:1}))}}><option value="">Every status</option><option value="New">New</option><option value="Dispatched,En Route,Picked-up">In progress</option><option value="Delivered">Delivered</option><option value="Closed">Closed</option><option value="Canceled">Canceled</option><option value="TONU">TONU</option>{activeFilters.status&&!['New','Dispatched,En Route,Picked-up','Delivered','Closed','Canceled','TONU'].includes(activeFilters.status)&&<option value={activeFilters.status}>{activeFilters.status}</option>}</select>
           {selectedIds.size > 0 && <span className="loads-selection">{selectedIds.size} selected <button onClick={() => setSelectedIds(new Set())}>Clear</button></span>}
         </div>
         <div className="loads-toolbar-group">
@@ -457,18 +451,20 @@ export default function LoadsPage() {
 
                   <button
                     onClick={() => { setShowActionsMenu(v => !v); setShowCustomize(true) }}
-                    title="Customize columns" aria-label="Customize columns"
+                    title="Table view options" aria-label="Table view options"
                     aria-expanded={showActionsMenu}
                     aria-haspopup="menu"
                     className="loads-tool"
-                  >Columns
+                  >View
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
                   </button>
                   {showActionsMenu && (
                     <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white text-left font-medium normal-case tracking-normal shadow-xl shadow-slate-950/10">
                       {showCustomize ? (
                         <div>
-                          <div className="border-b border-slate-100 px-3 py-2 text-[0.625rem] font-bold uppercase tracking-wide text-slate-400">Customize loadlist</div>
+                          <div className="flex flex-col items-start border-b border-slate-100 p-2">          <button className="loads-tool" aria-pressed={showColumnFilters} onClick={() => setShowColumnFilters(v => !v)}><Columns3 size={15}/> Column filters</button>
+          <button className="loads-tool" aria-pressed={compact} title="Toggle compact rows" onClick={() => {setCompact(v => !v); localStorage.setItem('karvan.loads.compact', String(!compact))}}><Rows3 size={15}/><span className="loads-tool-label">{compact ? 'Compact' : 'Comfortable'}</span></button>
+</div><div className="border-b border-slate-100 px-3 py-2 text-[0.625rem] font-bold uppercase tracking-wide text-slate-400">Customize loadlist</div>
                           <div className="max-h-56 overflow-auto py-1">
                             {COLUMN_DEFS.map(c => (
                               <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[0.6875rem] font-medium text-slate-700 hover:bg-slate-50">
@@ -477,7 +473,7 @@ export default function LoadsPage() {
                               </label>
                             ))}
                           </div>
-                          <button onClick={() => setShowCustomize(false)} className="block w-full border-t border-slate-100 px-3 py-2 text-left text-[0.6875rem] font-bold text-blue-600 hover:bg-blue-50">Done</button>
+                          <button onClick={() => setShowActionsMenu(false)} className="block w-full border-t border-slate-100 px-3 py-2 text-left text-[0.6875rem] font-bold text-blue-600 hover:bg-blue-50">Close</button>
                         </div>
                       ) : (
                         <div className="py-1">
@@ -490,8 +486,6 @@ export default function LoadsPage() {
                     </div>
                   )}
                 </div>
-          <button className="loads-tool" aria-pressed={showColumnFilters} onClick={() => setShowColumnFilters(v => !v)}><Columns3 size={15}/> Column filters</button>
-          <button className="loads-tool" aria-pressed={compact} title="Toggle compact rows" onClick={() => {setCompact(v => !v); localStorage.setItem('karvan.loads.compact', String(!compact))}}><Rows3 size={15}/><span className="loads-tool-label">{compact ? 'Compact' : 'Comfortable'}</span></button>
           <button className="loads-tool" disabled={loading || !displayLoads.length} onClick={exportLoads}><Download size={15}/>{selectedIds.size ? 'Export selected' : 'Export page'}</button>
           <button className="loads-tool" title="Refresh loads" aria-label="Refresh loads" disabled={loading} onClick={() => fetchLoads({...activeFilters, ...filters})}><RefreshCw size={15} className={loading ? 'animate-spin' : ''}/></button>
         </div>
@@ -532,12 +526,12 @@ export default function LoadsPage() {
 
       {/* ── Table ── */}
       <div className="loads-table-scroll min-h-0 flex-1 bg-white" role="region" aria-label="Loads table" tabIndex={0}>
-        <table className="loads-table w-full border-collapse" style={{ tableLayout: 'fixed', minWidth: `${(116 + visibleDefs.reduce((sum, c) => sum + Number(c.width), 0)) / 16}rem` }}>
+        <table className="loads-table w-full border-collapse" style={{ tableLayout: 'fixed', minWidth: `${(88 + visibleDefs.reduce((sum, c) => sum + Number(c.width), 0)) / 16}rem` }}>
           <colgroup>
             <col style={{ width: '2rem' }} />
             <col style={{ width: '0.5rem' }} />
             {visibleDefs.map(c => <col key={c.key} style={{ width: `${Number(c.width) / 16}rem` }} />)}
-            <col style={{ width: '4.75rem' }} />
+            <col style={{ width: '3rem' }} />
           </colgroup>
 
           <thead className="sticky top-0 z-10">
@@ -681,7 +675,7 @@ export default function LoadsPage() {
               const svcAmt = load.services.reduce((s, v) => s + v.invoice_amount, 0)
 
               return (
-                <tr key={load.id} onClick={() => setSelectedLoad(load)}
+                <tr key={load.id} onClick={() => openLoad(load)}
                   className="group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 hover:border-l-blue-500 hover:bg-blue-50/70">
                   <td className="px-1 py-1 text-center" onClick={e => e.stopPropagation()}>
                     <input type="checkbox" aria-label={`Select load ${load.load_number}`} checked={selectedIds.has(load.id)} onChange={e => setSelectedIds(prev => {const next = new Set(prev); if (e.target.checked) next.add(load.id); else next.delete(load.id); return next})} className="w-3 h-3 rounded" />
@@ -691,16 +685,17 @@ export default function LoadsPage() {
                   </td>
                   {visible('load') && (
                     <td className="px-1.5 py-1">
-                      <button onClick={e => { e.stopPropagation(); setSelectedLoad(load) }}
+                      <button onClick={e => { e.stopPropagation(); openLoad(load) }}
                         className="loads-number text-blue-600 hover:underline font-semibold">
-                        {load.load_number}
+                        #{load.load_number}
                       </button>
+                      {!visible('broker')&&<small className="loads-cell-sub" title={load.broker?.name}>{load.broker?.name||'No customer'}</small>}
                     </td>
                   )}
                   {visible('date') && <td className="px-1.5 py-1 text-gray-500 truncate">{formatDate(load.load_date)}</td>}
                   {visible('driver') && (
                     <td title={load.driver?.name} className="px-1.5 py-1 text-gray-800 truncate">
-                      {load.driver?.name || <span className="text-gray-300">—</span>}
+                      {load.driver?.name || <span className="text-amber-600">Unassigned</span>}<small className="loads-cell-sub">Truck {load.truck?.unit_number||'—'}</small>
                     </td>
                   )}
                   {visible('broker') && (
@@ -715,8 +710,8 @@ export default function LoadsPage() {
                       {load.po_number || <span className="text-gray-300">—</span>}
                     </td>
                   )}
-                  {visible('pickup') && <td className="px-1.5 py-1 text-gray-700 truncate">{stopLabel(pickup)}</td>}
-                  {visible('delivery') && <td className="px-1.5 py-1 text-gray-700 truncate">{stopLabel(delivery)}</td>}
+                  {visible('pickup') && <td className="px-1.5 py-1 text-gray-700 truncate">{stopLabel(pickup)}<small className="loads-cell-sub">{formatDate(pickup?.stop_date)||'Date not set'}</small></td>}
+                  {visible('delivery') && <td className="px-1.5 py-1 text-gray-700 truncate">{stopLabel(delivery)}<small className="loads-cell-sub">{formatDate(delivery?.stop_date)||'Date not set'}</small></td>}
                   {visible('rate') && <td className="px-1.5 py-1 font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(load.rate)}</td>}
                   {visible('completed') && <td className="px-1.5 py-1 text-gray-500 truncate">{formatDate(load.actual_delivery_date) || '—'}</td>}
                   {visible('status') && (
@@ -724,6 +719,7 @@ export default function LoadsPage() {
                       <span className={`inline-block px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold whitespace-nowrap ${STATUS_STYLE[load.status] || 'bg-gray-100 text-gray-500'}`}>
                         {load.status}
                       </span>
+                      {!visible('billing')&&<small className="loads-cell-sub">Billing: {load.billing_status}</small>}
                     </td>
                   )}
                   {visible('billing') && <td className="px-1.5 py-1 text-gray-500 truncate">{load.billing_status}</td>}
@@ -732,19 +728,7 @@ export default function LoadsPage() {
                       {svcAmt > 0 && svcLabel ? `${svcLabel}: ${formatCurrency(svcAmt)}` : <span className="text-gray-200">—</span>}
                     </td>
                   )}
-                  {visible('attachments') && (
-                    <td className="px-1 py-1 text-center" onClick={e => e.stopPropagation()}>
-                      {load.documents.length > 0 ? (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-[0.625rem] font-semibold text-blue-700"
-                          title={load.documents.map(d => d.document_type).join(', ')}
-                        >
-                          <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-                          {load.documents.length}
-                        </span>
-                      ) : <span className="text-gray-200">—</span>}
-                    </td>
-                  )}
+                  {visible('attachments') && <td onClick={e=>e.stopPropagation()}><button className="loads-doc-status" aria-label={`Documents for load ${load.load_number}`} onClick={()=>openLoad(load,'documents')}><span>{['Confirmation','BOL','POD'].map(kind=><i key={kind} className={load.documents.some(d=>documentKind(d)===kind)?'attached':''} title={`${kind}: ${load.documents.some(d=>documentKind(d)===kind)?'attached':'not attached'}`}>{kind==='Confirmation'?'RC':kind} {load.documents.some(d=>documentKind(d)===kind)?'✓':'–'}</i>)}</span><small>{load.documents.length} file{load.documents.length===1?'':'s'} · Open</small></button></td>}
                   <td className="relative px-0.5 py-1" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-0.5" data-row-menu>
                       {svcLabel && <span className="text-gray-400 truncate text-[0.625rem]">{svcLabel}</span>}
@@ -759,7 +743,7 @@ export default function LoadsPage() {
                       </button>
                       {rowMenuId === load.id && createPortal(
                         <div data-row-menu role="menu" style={{position: 'fixed', ...rowMenuPosition}} className="z-[100] w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-xl shadow-slate-950/10">
-                          <MenuItem onClick={() => { setRowMenuId(null); setSelectedLoad(load) }}>Edit Load</MenuItem>
+                          <MenuItem onClick={() => { setRowMenuId(null); openLoad(load) }}>Edit Load</MenuItem>
                           <MenuItem onClick={() => { setRowMenuId(null); handleCopyLoad(load) }}>Copy Load</MenuItem>
                           <MenuItem onClick={() => { setRowMenuId(null); showOnMap(load) }}>Show on Map</MenuItem>
                           <button role="menuitem" onClick={() => { setRowMenuId(null); handleDeleteLoad(load) }}
@@ -827,7 +811,7 @@ export default function LoadsPage() {
 
       {/* Modals */}
       {selectedLoad && (
-        <LoadModal loadId={selectedLoad.id} onClose={() => setSelectedLoad(null)}
+        <LoadModal initialTab={initialLoadTab} loadId={selectedLoad.id} onClose={() => setSelectedLoad(null)}
           onSaved={() => fetchLoads({ ...activeFilters, ...filters })} entities={entities} />
       )}
       {showImport && (
@@ -849,27 +833,27 @@ function PagBtn({ onClick, disabled, children }: { onClick: () => void; disabled
   )
 }
 
-const HIDDEN_COLS_KEY = 'karvan.loads.hiddenCols'
-const DEFAULT_HIDDEN_COLS = ['date', 'po', 'completed', 'notes', 'attachments']
+const HIDDEN_COLS_KEY = 'karvan.loads.hiddenCols.v2'
+const DEFAULT_HIDDEN_COLS = ['date', 'po', 'completed', 'notes', 'broker', 'billing']
 
 const ATTACHMENT_TYPES = [
-  'Confirmation', 'BOL', 'Invoice', 'Merged documents', 'Lumper', 'Receipt', 'Document',
+  'Confirmation', 'BOL', 'POD', 'Invoice', 'Lumper', 'Receipt', 'Other',
 ]
 
 const COLUMN_DEFS: { key: string; label: string; sort?: string; align?: 'center'; width: number | string }[] = [
-  { key: 'load', label: 'LOAD', sort: 'load_number', width: 90 },
+  { key: 'load', label: 'LOAD / CUSTOMER', sort: 'load_number', width: 150 },
   { key: 'date', label: 'DATE', sort: 'date', width: 110 },
-  { key: 'driver', label: 'DRIVER', width: 160 },
+  { key: 'driver', label: 'DRIVER / TRUCK', width: 140 },
   { key: 'broker', label: 'BROKER', width: 170 },
   { key: 'po', label: 'PO #', sort: 'po_number', width: 120 },
-  { key: 'pickup', label: 'PICKUP', width: 150 },
-  { key: 'delivery', label: 'DELIVERY', width: 150 },
-  { key: 'rate', label: 'RATE', sort: 'rate', width: 115 },
+  { key: 'pickup', label: 'PICKUP', width: 125 },
+  { key: 'delivery', label: 'DELIVERY', width: 125 },
+  { key: 'rate', label: 'RATE', sort: 'rate', width: 90 },
   { key: 'completed', label: 'COMPLETED', sort: 'completed', width: 120 },
-  { key: 'status', label: 'STATUS', sort: 'status', width: 125 },
+  { key: 'status', label: 'STATUS / BILLING', sort: 'status', width: 115 },
   { key: 'billing', label: 'BILLING', sort: 'billing', width: 130 },
   { key: 'notes', label: 'NOTES', width: 150 },
-  { key: 'attachments', label: 'ATTACHMENTS', align: 'center', width: 110 },
+  { key: 'attachments', label: 'DOCUMENTS', align: 'center', width: 140 },
 ]
 
 function MenuItem({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {

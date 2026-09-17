@@ -86,6 +86,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true)
   const [editId, setEditId] = useState<number|null>(null)
   const [showNew, setShowNew] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [totalAmount, setTotalAmount] = useState(0)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -164,6 +165,7 @@ export default function ExpensesPage() {
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
                 className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64" />
             </div>
+            <button onClick={() => setShowImport(true)} className="btn-secondary h-9 rounded-lg px-3 text-xs">Import fuel / tolls</button>
             <button onClick={() => setShowNew(true)} className="btn-primary h-9 rounded-lg px-4 text-xs">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5"/></svg>
               New expense
@@ -283,6 +285,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
+      {showImport && <ImportComdataModal onClose={() => setShowImport(false)} onDone={() => { setShowImport(false); load() }} />}
       {(showNew || editId!==null) && (
         <ExpenseModal
           expenseId={editId}
@@ -433,6 +436,47 @@ function ExpenseModal({ expenseId, categories, vendors, drivers, trucks, onClose
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+
+function ImportComdataModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [file, setFile] = useState<File | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<{ format?: string; created: number; skipped_duplicates: number; unmatched_units: string[]; errors: string[]; rows: number } | null>(null)
+  const upload = async () => {
+    if (!file) return
+    setBusy(true)
+    const form = new FormData(); form.append('file', file)
+    try {
+      const { data } = await client.post('/api/v1/expenses/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setResult(data)
+    } catch (e) { toast.error((e as Error).message) }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="modal-container max-w-lg">
+        <header className="border-b border-slate-200 px-5 py-3">
+          <h2 className="text-base font-bold text-slate-950">Import a card or toll export</h2>
+          <p className="text-[0.6875rem] text-slate-400">Comdata, Pilot fuel, or EZPass / Bestpass toll export, CSV or Excel. The format is recognized from the header row. Each row becomes an expense on the truck in the Unit column and shows up on that week's statement. Rows already imported are skipped.</p>
+        </header>
+        <div className="space-y-3 p-5 text-xs">
+          <input type="file" accept=".csv,.xlsx" onChange={e => { setFile(e.target.files?.[0] || null); setResult(null) }} className="block w-full text-xs text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-700" />
+          {result && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="font-semibold text-slate-900">{result.format ? result.format[0].toUpperCase() + result.format.slice(1) + ': ' : ''}{result.created} expenses added · {result.skipped_duplicates} already imported · {result.rows} rows read</div>
+              {result.unmatched_units.length > 0 && <div className="mt-1 text-amber-700">No truck found for units: {result.unmatched_units.join(', ')}. Add those trucks and import again.</div>}
+              {result.errors.length > 0 && <ul className="mt-1 list-inside list-disc text-red-600">{result.errors.map(e => <li key={e}>{e}</li>)}</ul>}
+            </div>
+          )}
+        </div>
+        <footer className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-3">
+          <button onClick={result ? onDone : onClose} className="btn-secondary h-9 rounded-lg px-3 text-xs">{result ? 'Done' : 'Cancel'}</button>
+          {!result && <button onClick={upload} disabled={!file || busy} className="btn-primary h-9 rounded-lg px-4 text-xs">{busy ? 'Importing…' : 'Import'}</button>}
+        </footer>
       </div>
     </div>
   )

@@ -24,3 +24,9 @@ dist/
 Thumbs.db
 
 .backups/
+
+# Local frontend development API routing
+frontend/.env.development.local
+
+# Local dev database
+backend/local_dev.db

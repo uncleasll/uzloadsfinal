@@ -1,10 +1,11 @@
+from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Optional
 from pydantic import BaseModel
 from app.db.session import get_db
-from app.models.models import User
+from app.models.models import User, Company
 from app.services.auth_service import authenticate_user, create_access_token, decode_token, create_user, hash_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -42,10 +43,44 @@ def require_user(current_user=Depends(get_current_user)):
     return current_user
 
 
-def _u(u: User) -> dict:
+def _u(u: User, db: Session | None = None) -> dict:
+    company = db.get(Company, u.company_id) if db and u.company_id else None
     return {"id": u.id, "name": u.name, "email": u.email,
             "role": u.role.value if hasattr(u.role, "value") else u.role,
-            "is_active": u.is_active, "dispatcher_id": u.dispatcher_id}
+            "is_active": u.is_active, "dispatcher_id": u.dispatcher_id,
+            "company_id": u.company_id, "company_name": company.name if company else None}
+
+
+def _token(user: User) -> str:
+    return create_access_token({"sub": str(user.id), "role": user.role.value if hasattr(user.role, "value") else user.role,
+                                "company_id": user.company_id})
+
+
+class RegisterIn(BaseModel):
+    company_name: str
+    name: str
+    email: str
+    password: str
+
+
+@router.post("/register", status_code=201)
+def register(data: RegisterIn, db: Session = Depends(get_db)):
+    """A new trucking company signs up: creates the company and its first admin user."""
+    if not data.company_name.strip() or not data.name.strip():
+        raise HTTPException(400, "Company name and your name are required")
+    if len(data.password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters")
+    if db.query(User).filter(User.email == data.email.strip().lower()).first():
+        raise HTTPException(400, "Email already exists")
+    company = Company(name=data.company_name.strip())
+    db.add(company)
+    db.flush()
+    user = User(name=data.name.strip(), email=data.email.strip().lower(), hashed_password=hash_password(data.password),
+                role="admin", is_active=True, company_id=company.id)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"access_token": _token(user), "token_type": "bearer", "user": _u(user, db)}
 
 
 @router.post("/login")
@@ -53,8 +88,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     user = authenticate_user(db, form.username, form.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = create_access_token({"sub": str(user.id), "role": user.role.value if hasattr(user.role, "value") else user.role})
-    return {"access_token": token, "token_type": "bearer", "user": _u(user)}
+    return {"access_token": _token(user), "token_type": "bearer", "user": _u(user, db)}
 
 
 @router.get("/me")

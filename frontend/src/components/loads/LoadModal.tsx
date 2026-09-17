@@ -4,13 +4,16 @@ import type { Load, LoadNote, LoadService } from '@/types'
 import { formatCurrency, formatDate, formatDateTime, STATUS_COLORS, BILLING_COLORS } from '@/utils'
 import toast from 'react-hot-toast'
 import client from '@/api/client'
+import DocumentCenter from './DocumentCenter'
+import { documentUploadFields } from './documents'
 import type { useEntities } from '@/hooks/useEntities'
 
 type Entities = ReturnType<typeof useEntities>
-type Tab = 'services' | 'documents' | 'billing' | 'history'
+type Tab = 'overview' | 'documents' | 'money' | 'history'
 
 interface Props {
   loadId: number
+  initialTab?: Tab
   onClose: () => void
   onSaved: () => void
   entities: Entities
@@ -251,10 +254,10 @@ function SvcRow({ svc, onDelete }: { svc: LoadService; onDelete: () => void }) {
 }
 
 // ─── Main modal ────────────────────────────────────────────────────────────────
-export default function LoadModal({ loadId, onClose, onSaved, entities }: Props) {
+export default function LoadModal({ loadId, onClose, onSaved, entities, initialTab = 'overview' }: Props) {
   const [load, setLoad] = useState<Load | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<Tab>('services')
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [invoiceLoading, setInvoiceLoading] = useState(false)
   const [invoiceSaving, setInvoiceSaving] = useState(false)
@@ -372,8 +375,9 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
   const handleUpload = async (docType: string, file: File) => {
     setUploading(true)
     try {
-      await loadsApi.uploadDocument(loadId, file, docType)
-      await refetch()
+      const fields = documentUploadFields(docType)
+      await loadsApi.uploadDocument(loadId, file, fields.type, fields.notes)
+      await refetch(); onSaved()
       toast.success(`${docType} uploaded`)
     } catch (e: any) { toast.error(e.message) } finally { setUploading(false) }
   }
@@ -382,7 +386,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
     if (!confirm('Delete this document?')) return
     try {
       await loadsApi.deleteDocument(loadId, docId)
-      await refetch()
+      await refetch(); onSaved()
       toast.success('Document deleted')
     } catch (e: any) { toast.error(e.message) }
   }
@@ -490,9 +494,11 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
           </div>
         </div>
 
+          <nav className="load-detail-tabs" aria-label="Load sections">{(['overview','documents','money','history'] as Tab[]).map(tab=><button key={tab} aria-pressed={activeTab===tab} onClick={()=>setActiveTab(tab)}>{({overview:'Overview',documents:'Documents',money:'Money',history:'Activity'})[tab]}{tab==='documents'&&<span>{load.documents.length}</span>}</button>)}</nav>
         {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 min-h-0">
 
+          {activeTab === 'overview' && <>
           {/* ── Route ── */}
           <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -691,25 +697,12 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                 ))}
           </div>
 
-          {/* ── Tabs ── */}
-          <div className="border border-gray-200 rounded">
-            <div className="flex border-b border-gray-200 bg-gray-50/50">
-              {(['services', 'documents', 'billing', 'history'] as Tab[]).map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-2.5 text-xs font-medium border-b-2 transition-colors flex-1 text-center capitalize ${
-                    activeTab === tab
-                      ? 'border-blue-600 text-blue-700 bg-white'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}>
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-4">
+          </>}
+          <div>
+            <div className="load-detail-section">
 
               {/* ════ Services Tab ════ */}
-              {activeTab === 'services' && (
+              {activeTab === 'money' && (
                 <div>
                   <div className="flex justify-end gap-2 mb-3 flex-wrap">
                     <button onClick={() => { setShowSvcForm('lumper'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
@@ -797,59 +790,10 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                 </div>
               )}
 
-              {/* ════ Documents Tab ════ */}
-              {activeTab === 'documents' && (
-                <div>
-                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                    <a href={loadsApi.getMergedDocumentsUrl(loadId)} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 border border-gray-300 text-gray-600 text-xs rounded font-medium hover:bg-gray-50">
-                      Merge documents
-                    </a>
-                    <div className="flex gap-2 flex-wrap">
-                      <UploadBtn label="Upload confirmation" docType="Confirmation" onUpload={handleUpload} uploading={uploading} />
-                      <UploadBtn label="Upload BOL" docType="BOL" onUpload={handleUpload} uploading={uploading} />
-                      <UploadBtn label="Other Document" docType="Other" onUpload={handleUpload} uploading={uploading} dropdown />
-                    </div>
-                  </div>
-
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase">Type</th>
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
-                        <th className="px-3 py-1.5" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {load.documents.length === 0
-                        ? <tr><td colSpan={4} className="py-8 text-center text-xs text-gray-400">No records</td></tr>
-                        : load.documents.map(doc => (
-                          <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50 group">
-                            <td className="px-3 py-2 text-xs text-gray-500">{formatDateTime(doc.uploaded_at)}</td>
-                            <td className="px-3 py-2">
-                              <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-800">
-                                {doc.document_type}
-                                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-xs text-gray-500">{doc.original_filename || doc.filename}</td>
-                            <td className="px-3 py-2 text-right">
-                              <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <a href={loadsApi.getDocumentDownloadUrl(loadId, doc.id)} target="_blank" rel="noreferrer"
-                                  className="text-blue-600 hover:text-blue-700"><Download /></a>
-                                <button onClick={() => handleDeleteDoc(doc.id)} className="text-red-400 hover:text-red-600"><Trash /></button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {activeTab === 'documents' && <DocumentCenter loadId={loadId} documents={load.documents} uploading={uploading} onUpload={handleUpload} onDelete={handleDeleteDoc}/>}
 
               {/* ════ Billing Tab ════ */}
-              {activeTab === 'billing' && (
+              {activeTab === 'money' && (
                 <div className="space-y-5">
 
                   {/* Invoice section */}
@@ -964,7 +908,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-semibold text-gray-900 text-sm">Drivers Payable</h4>
                       <button
-                        onClick={() => { setActiveTab('services'); setShowSvcForm('other'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
+                        onClick={() => { setActiveTab('money'); setShowSvcForm('other'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
                         <Plus /> Additions/Deductions
                       </button>
@@ -1073,51 +1017,6 @@ export default function LoadModal({ loadId, onClose, onSaved, entities }: Props)
 }
 
 // ─── Upload button helper ──────────────────────────────────────────────────────
-function UploadBtn({
-  label, docType, onUpload, uploading, dropdown = false,
-}: { label: string; docType: string; onUpload: (t: string, f: File) => void; uploading: boolean; dropdown?: boolean }) {
-  const [open, setOpen] = useState(false)
-  const OTHER_TYPES = ['POD', 'Invoice attachment', 'Other']
-
-  if (dropdown) {
-    return (
-      <div className="relative">
-        <button onClick={() => setOpen(v => !v)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium disabled:opacity-50"
-          disabled={uploading}>
-          <Upload /> {label} <ChevronDown />
-        </button>
-        {open && (
-          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 py-1 w-44">
-            {OTHER_TYPES.map(t => (
-              <label key={t} className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 cursor-pointer">
-                {t}
-                <input type="file" className="hidden" onChange={e => {
-                  const f = e.target.files?.[0]
-                  if (f) { onUpload(t, f); e.target.value = ''; setOpen(false) }
-                }} />
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium cursor-pointer disabled:opacity-50">
-      <Upload /> {label}
-      <input type="file" className="hidden" disabled={uploading} onChange={e => {
-        const f = e.target.files?.[0]
-        if (f) { onUpload(docType, f); e.target.value = '' }
-      }} />
-    </label>
-  )
-}
-
-
-
-
 function DriverPayOverrideEditor({load, onSaved}: {load: Load; onSaved: () => void}) {
   const current = load.driver_pay_override
   const [type, setType] = useState(current?.type || 'fixed')
