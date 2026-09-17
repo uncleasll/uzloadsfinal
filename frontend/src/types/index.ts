@@ -201,6 +201,7 @@ export interface Load {
   status: LoadStatus
   billing_status: BillingStatus
   load_date: string
+  statement_week?: string | null
   actual_delivery_date?: string
   rate: number
   total_miles: number
@@ -248,6 +249,7 @@ export interface LoadListItem {
   status: LoadStatus
   billing_status: BillingStatus
   load_date: string
+  statement_week?: string | null
   actual_delivery_date?: string
   rate: number
   total_miles: number

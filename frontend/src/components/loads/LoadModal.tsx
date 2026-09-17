@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { loadsApi, loadsApiExtended, type Invoice } from '@/api/loads'
-import type { Load, LoadNote, LoadService } from '@/types'
-import { formatCurrency, formatDate, formatDateTime, STATUS_COLORS, BILLING_COLORS } from '@/utils'
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, FileText, Plus, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import client from '@/api/client'
-import DocumentCenter from './DocumentCenter'
-import { documentUploadFields } from './documents'
+import { loadsApi, loadsApiExtended, type Invoice } from '@/api/loads'
+import type { Load } from '@/types'
+import { formatCurrency, formatDate, formatDateTime, STATUS_COLORS, BILLING_COLORS } from '@/utils'
 import type { useEntities } from '@/hooks/useEntities'
+import DocumentCenter from './DocumentCenter'
+import LoadForm from './LoadForm'
+import { documentUploadFields } from './documents'
 
-type Entities = ReturnType<typeof useEntities>
 type Tab = 'overview' | 'documents' | 'money' | 'history'
+type Entities = ReturnType<typeof useEntities>
 
 interface Props {
   loadId: number
@@ -19,1057 +21,243 @@ interface Props {
   entities: Entities
 }
 
-// ─── Icon components ───────────────────────────────────────────────────────────
-const X = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-const ArrowRight = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-const MapPin = ({ color }: { color: string }) => <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill={color}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>
-const Clock = () => <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2"/></svg>
-const MapIcon = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-const Plus = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-const Send = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-const FileText = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-const Download = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-const Upload = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-const Trash = () => <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
-const ChevronDown = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+const TABS: Array<[Tab, string]> = [['overview', 'Details'], ['documents', 'Documents'], ['history', 'Activity']]
+const field = 'h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100'
 
-// ─── Shared inline-edit primitives ─────────────────────────────────────────────
-// Click the value → it becomes an input. Enter or clicking away saves; Esc cancels.
-// No pencil/check/cross clutter — the value itself is the control.
-
-const editableCls = 'group inline-flex max-w-full cursor-text items-center gap-1.5 rounded-md border border-dashed border-transparent px-1.5 py-0.5 -mx-1.5 text-left transition-colors hover:border-slate-300 hover:bg-slate-50'
-const editInputCls = 'rounded-md border border-blue-400 bg-white px-1.5 py-0.5 text-xs shadow-sm outline-none ring-2 ring-blue-100'
-
-function EditHint() {
-  return (
-    <svg className="h-3 w-3 flex-shrink-0 text-slate-300 transition-colors group-hover:text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-    </svg>
-  )
-}
-
-function Spinner() {
-  return <span className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 align-middle" />
-}
-
-function InlineText({
-  value, onSave, placeholder = '—',
-}: { value: string; onSave: (v: string) => Promise<void>; placeholder?: string; width?: string }) {
-  const [editing, setEditing] = useState(false)
-  const [val, setVal] = useState(value)
-  const [saving, setSaving] = useState(false)
-  const cancelled = useRef(false)
-  const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (editing) { cancelled.current = false; ref.current?.focus(); ref.current?.select() } }, [editing])
-  const save = async () => {
-    if (cancelled.current) return
-    if (val === value) { setEditing(false); return }
-    setSaving(true)
-    try { await onSave(val); setEditing(false) } catch { setVal(value); setEditing(false) } finally { setSaving(false) }
-  }
-  if (editing || saving) return (
-    <span className="inline-flex items-center">
-      <input ref={ref} className={editInputCls} style={{ width: 110 }} disabled={saving}
-        value={val} onChange={e => setVal(e.target.value)} onBlur={save}
-        onKeyDown={e => {
-          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-          if (e.key === 'Escape') { cancelled.current = true; setVal(value); setEditing(false) }
-        }} />
-      {saving && <Spinner />}
-    </span>
-  )
-  return (
-    <button type="button" className={editableCls} onClick={() => setEditing(true)} title="Click to edit">
-      <span className={value ? 'text-gray-800' : 'text-gray-400'}>{value || placeholder}</span>
-      <EditHint />
-    </button>
-  )
-}
-
-function InlineNumber({
-  value, prefix = '', onSave,
-}: { value: number; prefix?: string; onSave: (v: number) => Promise<void> }) {
-  const [editing, setEditing] = useState(false)
-  const [val, setVal] = useState(String(value))
-  const [saving, setSaving] = useState(false)
-  const cancelled = useRef(false)
-  const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (editing) { cancelled.current = false; ref.current?.focus(); ref.current?.select() } }, [editing])
-  const save = async () => {
-    if (cancelled.current) return
-    const parsed = parseFloat(val) || 0
-    if (parsed === value) { setEditing(false); return }
-    setSaving(true)
-    try { await onSave(parsed); setEditing(false) } catch { setVal(String(value)); setEditing(false) } finally { setSaving(false) }
-  }
-  if (editing || saving) return (
-    <span className="inline-flex items-center">
-      <input ref={ref} type="number" step="0.01" className={`${editInputCls} w-24`} disabled={saving}
-        value={val} onChange={e => setVal(e.target.value)} onBlur={save}
-        onKeyDown={e => {
-          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-          if (e.key === 'Escape') { cancelled.current = true; setVal(String(value)); setEditing(false) }
-        }} />
-      {saving && <Spinner />}
-    </span>
-  )
-  return (
-    <button type="button" className={editableCls} onClick={() => setEditing(true)} title="Click to edit">
-      <span className="text-gray-800">{prefix}{value.toFixed(2)}</span>
-      <EditHint />
-    </button>
-  )
-}
-
-function InlineSelect({
-  value, options, onSave, colors,
-}: { value: string; options: string[]; onSave: (v: string) => Promise<void>; colors?: Record<string, string> }) {
-  const [editing, setEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const save = async (v: string) => {
-    if (v === value) { setEditing(false); return }
-    setSaving(true)
-    try { await onSave(v) } catch {} finally { setSaving(false); setEditing(false) }
-  }
-  if (editing || saving) return (
-    <span className="inline-flex items-center">
-      <select autoFocus className={editInputCls} disabled={saving}
-        defaultValue={value} onChange={e => save(e.target.value)} onBlur={() => { if (!saving) setEditing(false) }}
-        onKeyDown={e => { if (e.key === 'Escape') setEditing(false) }}>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-      {saving && <Spinner />}
-    </span>
-  )
-  const cls = colors?.[value] || ''
-  return (
-    <button type="button" className={`${editableCls} cursor-pointer`} onClick={() => setEditing(true)} title="Click to change">
-      {cls ? <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{value}</span>
-           : <span className="text-gray-800">{value}</span>}
-      <EditHint />
-    </button>
-  )
-}
-
-function InlineDate({ value, onSave }: { value: string; onSave: (v: string) => Promise<void> }) {
-  const [editing, setEditing] = useState(false)
-  const [val, setVal] = useState(value)
-  const [saving, setSaving] = useState(false)
-  const cancelled = useRef(false)
-  const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (editing) { cancelled.current = false; ref.current?.focus() } }, [editing])
-  const save = async () => {
-    if (cancelled.current) return
-    if (val === value) { setEditing(false); return }
-    setSaving(true)
-    try { await onSave(val); setEditing(false) } catch { setVal(value); setEditing(false) } finally { setSaving(false) }
-  }
-  if (editing || saving) return (
-    <span className="inline-flex items-center">
-      <input ref={ref} type="date" className={editInputCls} disabled={saving}
-        value={val} onChange={e => setVal(e.target.value)} onBlur={save}
-        onKeyDown={e => {
-          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-          if (e.key === 'Escape') { cancelled.current = true; setVal(value); setEditing(false) }
-        }} />
-      {saving && <Spinner />}
-    </span>
-  )
-  const display = value ? new Date(value + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '—'
-  return (
-    <button type="button" className={editableCls} onClick={() => setEditing(true)} title="Click to edit">
-      <span className={value ? 'text-gray-800' : 'text-gray-400'}>{display}</span>
-      <EditHint />
-    </button>
-  )
-}
-
-function InlineEntitySelect({
-  value, label, options, onSave,
-}: { value: number | null; label: string; options: { id: number; label: string }[]; onSave: (id: number | null) => Promise<void> }) {
-  const [editing, setEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const save = async (v: string) => {
-    const parsed = v ? parseInt(v) : null
-    if (parsed === value) { setEditing(false); return }
-    setSaving(true)
-    try { await onSave(parsed) } catch {} finally { setSaving(false); setEditing(false) }
-  }
-  if (editing || saving) return (
-    <span className="inline-flex items-center">
-      <select autoFocus className={`${editInputCls} max-w-[10.625rem]`} disabled={saving}
-        defaultValue={value ?? ''} onChange={e => save(e.target.value)} onBlur={() => { if (!saving) setEditing(false) }}
-        onKeyDown={e => { if (e.key === 'Escape') setEditing(false) }}>
-        <option value="">— none —</option>
-        {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-      </select>
-      {saving && <Spinner />}
-    </span>
-  )
-  return (
-    <button type="button" className={`${editableCls} cursor-pointer`} onClick={() => setEditing(true)} title="Click to change">
-      <span className={`${label ? 'font-medium text-blue-600' : 'whitespace-nowrap text-gray-400'}`}>{label || 'Not set'}</span>
-      <EditHint />
-    </button>
-  )
-}
-
-// ─── Row helper ────────────────────────────────────────────────────────────────
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-1.5 text-sm leading-5">
-      <span className="font-semibold text-gray-700 flex-shrink-0" style={{ minWidth: 130 }}>{label}</span>
-      <span className="text-gray-800 min-w-0">{children}</span>
-    </div>
-  )
-}
-
-// ─── Note row ──────────────────────────────────────────────────────────────────
-function NoteRow({ note, onDelete }: { note: LoadNote; onDelete: () => void }) {
-  return (
-    <div className="flex gap-3 px-3 py-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 group text-xs">
-      <span className="text-gray-400 whitespace-nowrap w-32 flex-shrink-0">{formatDateTime(note.created_at)}</span>
-      <span className="text-gray-600 w-24 flex-shrink-0">{note.author || '—'}</span>
-      <span className="text-gray-800 flex-1 leading-relaxed">{note.content}</span>
-      <span className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={onDelete} className="text-red-400 hover:text-red-600"><Trash /></button>
-      </span>
-    </div>
-  )
-}
-
-// ─── Service row ───────────────────────────────────────────────────────────────
-function SvcRow({ svc, onDelete }: { svc: LoadService; onDelete: () => void }) {
-  return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50 group text-xs">
-      <td className="px-3 py-2 font-medium text-gray-800">{svc.service_type} <span className="text-gray-400">({svc.add_deduct})</span></td>
-      <td className="px-3 py-2 text-gray-700">{formatCurrency(svc.invoice_amount)}</td>
-      <td className="px-3 py-2 text-gray-700">{formatCurrency(svc.drivers_payable)}</td>
-      <td className="px-3 py-2 text-gray-500 max-w-[7.5rem] truncate">{svc.notes || '—'}</td>
-      <td className="px-3 py-2 text-right">
-        <button onClick={onDelete} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"><Trash /></button>
-      </td>
-    </tr>
-  )
-}
-
-// ─── Main modal ────────────────────────────────────────────────────────────────
+/**
+ * Read-only view of one load. Everything is edited in one place: the Edit button opens LoadForm.
+ * Documents, accessorials, notes and the invoice are actions, not fields, so they live here.
+ */
 export default function LoadModal({ loadId, onClose, onSaved, entities, initialTab = 'overview' }: Props) {
   const [load, setLoad] = useState<Load | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
   const [invoice, setInvoice] = useState<Invoice | null>(null)
-  const [invoiceLoading, setInvoiceLoading] = useState(false)
-  const [invoiceSaving, setInvoiceSaving] = useState(false)
-
-  // New note
-  const [addingNote, setAddingNote] = useState(false)
-  const [noteText, setNoteText] = useState('')
-  const [noteSaving, setNoteSaving] = useState(false)
-
-  // Service forms
-  const [showSvcForm, setShowSvcForm] = useState<'lumper' | 'detention' | 'other' | null>(null)
-  const [svcForm, setSvcForm] = useState({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' })
-  const [svcSaving, setSvcSaving] = useState(false)
-
-  // Recalculate dropdown
-  const [showRecalcMenu, setShowRecalcMenu] = useState(false)
-  const recalcRef = useRef<HTMLDivElement>(null)
-
-  // Upload tracking
-  const [uploading, setUploading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<Tab>(initialTab === 'money' ? 'overview' : initialTab)
+  const [editing, setEditing] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   const refetch = useCallback(async () => {
-    try { const l = await loadsApi.get(loadId); setLoad(l) } catch (e: any) { toast.error(e.message) }
-  }, [loadId])
-
-  useEffect(() => {
-    setLoading(true)
-    loadsApi.get(loadId).then(setLoad).catch(e => toast.error(e.message)).finally(() => setLoading(false))
-  }, [loadId])
-
-  const refetchInvoice = useCallback(async () => {
-    setInvoiceLoading(true)
     try {
-      setInvoice(await loadsApi.getInvoiceByLoad(loadId))
-    } catch (e: any) {
-      toast.error(e.message)
-    } finally {
-      setInvoiceLoading(false)
-    }
+      const [l, inv] = await Promise.all([loadsApi.get(loadId), loadsApi.getInvoiceByLoad(loadId).catch(() => null)])
+      setLoad(l); setInvoice(inv)
+    } catch (e) { toast.error((e as Error).message) }
   }, [loadId])
 
-  useEffect(() => { refetchInvoice() }, [refetchInvoice])
-
-  // Close recalc menu on outside click
+  useEffect(() => { setLoading(true); refetch().finally(() => setLoading(false)) }, [refetch])
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (recalcRef.current && !recalcRef.current.contains(e.target as Node)) setShowRecalcMenu(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  // Close on Escape
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !editing) onClose() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, editing])
 
-  const quickUpdate = async (field: string, value: unknown) => {
-    await loadsApi.update(loadId, { [field]: value } as any)
-    await refetch()
-    onSaved()
+  const run = async (fn: () => Promise<unknown>, done?: string) => {
+    setBusy(true)
+    try { await fn(); await refetch(); onSaved(); if (done) toast.success(done) }
+    catch (e) { toast.error((e as Error).message) }
+    finally { setBusy(false) }
   }
 
-  const handleAddNote = async () => {
-    if (!noteText.trim()) return
-    setNoteSaving(true)
-    try {
-      await loadsApi.addNote(loadId, noteText.trim(), 'Dispatcher')
-      setNoteText(''); setAddingNote(false)
-      await refetch()
-      toast.success('Note added')
-    } catch (e: any) { toast.error(e.message) } finally { setNoteSaving(false) }
-  }
-
-  const handleDeleteNote = async (noteId: number) => {
-    if (!confirm('Delete this note?')) return
-    try {
-      await loadsApiExtended.deleteNote(loadId, noteId)
-      await refetch()
-      toast.success('Note deleted')
-    } catch (e: any) { toast.error(e.message) }
-  }
-
-  const handleAddService = async () => {
-    if (!showSvcForm) return
-    setSvcSaving(true)
-    const typeMap = { lumper: 'Lumper', detention: 'Detention', other: 'Other' } as const
-    try {
-      await loadsApi.addService(loadId, {
-        service_type: typeMap[showSvcForm],
-        add_deduct: svcForm.add_deduct,
-        invoice_amount: parseFloat(svcForm.invoice_amount) || 0,
-        drivers_payable: parseFloat(svcForm.drivers_payable) || 0,
-        notes: svcForm.notes || undefined,
-        paid_by: svcForm.paid_by || undefined,
-      })
-      setShowSvcForm(null)
-      setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' })
-      await refetch(); onSaved()
-      toast.success(`${typeMap[showSvcForm]} added`)
-    } catch (e: any) { toast.error(e.message) } finally { setSvcSaving(false) }
-  }
-
-  const handleDeleteService = async (svcId: number) => {
-    if (!confirm('Delete this service charge?')) return
-    try {
-      await loadsApi.deleteService(loadId, svcId)
-      await refetch(); onSaved()
-      toast.success('Charge deleted')
-    } catch (e: any) { toast.error(e.message) }
-  }
-
-  const handleUpload = async (docType: string, file: File) => {
-    setUploading(true)
-    try {
-      const fields = documentUploadFields(docType)
-      await loadsApi.uploadDocument(loadId, file, fields.type, fields.notes)
-      await refetch(); onSaved()
-      toast.success(`${docType} uploaded`)
-    } catch (e: any) { toast.error(e.message) } finally { setUploading(false) }
-  }
-
-  const handleDeleteDoc = async (docId: number) => {
-    if (!confirm('Delete this document?')) return
-    try {
-      await loadsApi.deleteDocument(loadId, docId)
-      await refetch(); onSaved()
-      toast.success('Document deleted')
-    } catch (e: any) { toast.error(e.message) }
-  }
-
-  const handleRecalcDriverPay = async () => {
-    setShowRecalcMenu(false)
-    try {
-      const data = await loadsApiExtended.recalculateDriverPay(loadId)
-      await refetch(); onSaved()
-      toast.success(`Driver pay recalculated: ${formatCurrency(data.drivers_payable)}`)
-    } catch (e: any) { toast.error(e.message) }
-  }
-
-  const handleCreateInvoice = async () => {
-    setInvoiceSaving(true)
-    try {
-      const created = await loadsApi.createInvoiceFromLoad(loadId)
-      setInvoice(created)
-      await refetch()
-      onSaved()
-      toast.success(`Invoice #${created.invoice_number} created`)
-    } catch (e: any) { toast.error(e.message) } finally { setInvoiceSaving(false) }
-  }
-
-  const handleUpdateInvoice = async (payload: Partial<Invoice>) => {
-    if (!invoice) return
-    setInvoiceSaving(true)
-    try {
-      const updated = await loadsApi.updateInvoice(invoice.id, payload)
-      setInvoice(updated)
-      await refetch()
-      onSaved()
-      toast.success('Invoice updated')
-    } catch (e: any) { toast.error(e.message) } finally { setInvoiceSaving(false) }
-  }
-
-  const handleMarkInvoicePaid = async () => {
-    if (!invoice) return
-    setInvoiceSaving(true)
-    try {
-      const updated = await loadsApi.markInvoicePaid(invoice.id)
-      setInvoice(updated)
-      await refetch()
-      onSaved()
-      toast.success(`Invoice #${updated.invoice_number} marked paid`)
-    } catch (e: any) { toast.error(e.message) } finally { setInvoiceSaving(false) }
-  }
-
-  if (loading) return (
-    <>
-      <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer-panel" style={{ maxWidth: 1150 }}>
-        <div className="flex h-full items-center justify-center text-sm text-gray-400">
-          <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
-          Loading load #{loadId}…
-        </div>
-      </div>
-    </>
-  )
-  if (!load) return null
-
-  const stops = [...load.stops].sort((a, b) => a.stop_order - b.stop_order)
-  const pickup = stops.find(s => s.stop_type === 'pickup')
-  const delivery = stops.find(s => s.stop_type === 'delivery')
-  const pickupLabel = pickup ? `${pickup.city}, ${pickup.state}` : 'N/A'
-  const deliveryLabel = delivery ? `${delivery.city}, ${delivery.state}` : 'N/A'
-  const ratePerMile = (load.total_miles || load.loaded_miles) > 0
-    ? load.rate / (load.total_miles || load.loaded_miles) : 0
-
-  // ✅ CORRECT: always use the historical snapshot — never live driver profile fields
-  const driversPayable = load.drivers_payable_snapshot ?? 0
-
-  const payDesc = load.driver_pay_override ? `Override: ${load.driver_pay_override.type}` : load.pay_type_snapshot === 'percentage'
-    ? `freight percentage: ${formatCurrency(load.rate)} ${load.freight_percentage_snapshot ?? 0}%`
-    : load.pay_type_snapshot === 'flatpay' || load.pay_type_snapshot === 'hourly'
-    ? `period pay recorded separately in payroll`
-    : `rate: $${(load.pay_rate_loaded_snapshot ?? 0.65).toFixed(2)}/$${(load.pay_rate_empty_snapshot ?? 0.30).toFixed(2)} per mile`
-
-  const totalInvoice = load.invoice_total ?? load.rate
-  const quickpayAmount = load.quickpay_amount ?? 0
-  const otherPayable = (load.additional_payees || []).reduce((sum, entry) => sum + entry.amount, 0)
-  const margin = totalInvoice - driversPayable - otherPayable - quickpayAmount
-
-  const STATUS_OPTIONS = ['New', 'Canceled', 'TONU', 'Dispatched', 'En Route', 'Picked-up', 'Delivered', 'Closed']
-  const BILLING_OPTIONS = ['Pending', 'Canceled', 'BOL received', 'Invoiced', 'Sent to factoring', 'Funded', 'Paid']
+  const pickup = load?.stops.find(s => s.stop_type === 'pickup')
+  const delivery = load?.stops.find(s => s.stop_type === 'delivery')
+  const place = (s?: typeof pickup) => (s ? [s.city, s.state].filter(Boolean).join(', ') || '—' : '—')
+  const accessorials = (load?.services || []).reduce((sum, s) => sum + (s.add_deduct === 'Add' ? 1 : -1) * (s.invoice_amount || 0), 0)
+  const invoiceTotal = (load?.rate || 0) + accessorials
 
   return (
     <>
-      <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer-panel" style={{ maxWidth: 1150 }}>
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-5 py-3 flex-shrink-0">
-          <div className="flex min-w-0 items-center gap-3">
-            <h2 className="whitespace-nowrap text-sm font-bold text-slate-900">Load #{load.load_number}</h2>
-            <span className={`rounded-full px-2 py-0.5 text-[0.625rem] font-bold ${STATUS_COLORS[load.status] || 'bg-slate-100 text-slate-500'}`}>{load.status}</span>
-            <span className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-slate-500 sm:flex">
-              <span className="truncate font-medium">{pickupLabel}</span>
-              <ArrowRight />
-              <span className="truncate font-medium">{deliveryLabel}</span>
-            </span>
+      <div className="drawer-overlay" onClick={() => !editing && onClose()} />
+      <div className="drawer-panel" style={{ maxWidth: 880 }}>
+        <header className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <h2 className="whitespace-nowrap text-sm font-bold text-slate-900">Load #{load?.po_number || load?.load_number || ''}</h2>
+            {load && <span className={`rounded-full px-2 py-0.5 text-[0.625rem] font-bold ${STATUS_COLORS[load.status] || 'bg-slate-100 text-slate-500'}`}>{load.status}</span>}
+            {load && <span className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-slate-500 sm:flex">
+              <span className="truncate">{place(pickup)}</span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" /><span className="truncate">{place(delivery)}</span>
+            </span>}
           </div>
-          <div className="flex flex-shrink-0 items-center gap-3">
-            <span className="hidden text-xs text-slate-400 md:block">Rate <span className="font-bold text-slate-800">{formatCurrency(load.rate)}</span></span>
-            <button onClick={onClose} aria-label="Close" className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-600"><X /></button>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {load && <button onClick={() => setEditing(true)} className="btn-primary h-8 rounded-lg px-3 text-xs">Edit load</button>}
+            <button onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X className="h-4 w-4" /></button>
           </div>
-        </div>
+        </header>
 
-          <nav className="load-detail-tabs" aria-label="Load sections">{(['overview','documents','money','history'] as Tab[]).map(tab=><button key={tab} aria-pressed={activeTab===tab} onClick={()=>setActiveTab(tab)}>{({overview:'Overview',documents:'Documents',money:'Money',history:'Activity'})[tab]}{tab==='documents'&&<span>{load.documents.length}</span>}</button>)}</nav>
-        {/* ── Scrollable body ── */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 min-h-0">
+        <nav className="flex flex-shrink-0 gap-1 border-b border-slate-200 px-4" aria-label="Load sections">
+          {TABS.map(([key, name]) => (
+            <button key={key} onClick={() => setTab(key)} aria-pressed={tab === key}
+              className={`-mb-px border-b-2 px-3 py-2 text-xs font-semibold transition ${tab === key ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+              {name}{key === 'documents' && load ? ` ${load.documents.length}` : ''}
+            </button>
+          ))}
+        </nav>
 
-          {activeTab === 'overview' && <>
-          {/* ── Route ── */}
-          <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {stops.map((stop, idx) => (
-                <div key={stop.id} className="flex items-center gap-2">
-                  {idx > 0 && (
-                    <div className="flex flex-col items-center px-1 text-slate-400">
-                      <ArrowRight />
-                      <span className="text-[0.625rem] font-medium">{load.loaded_miles} mi</span>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60 p-4">
+          {loading || !load ? <div className="py-16 text-center text-xs text-slate-400">Loading…</div> : tab === 'documents' ? (
+            <DocumentCenter loadId={loadId} documents={load.documents} uploading={busy}
+              onUpload={async (kind, file) => { const f = documentUploadFields(kind); await run(() => loadsApi.uploadDocument(loadId, file, f.type, f.notes), `${kind} uploaded`) }}
+              onDelete={id => { if (confirm('Delete this document?')) run(() => loadsApi.deleteDocument(loadId, id), 'Document deleted') }} />
+          ) : tab === 'history' ? (
+            <Card title="Activity">
+              {load.history.length === 0 ? <Empty text="Nothing has happened to this load yet." /> : (
+                <ul className="divide-y divide-slate-100">
+                  {load.history.map(h => (
+                    <li key={h.id} className="flex items-start justify-between gap-3 px-4 py-2.5 text-xs">
+                      <span className="text-slate-700">{h.description}</span>
+                      <span className="shrink-0 text-[0.6875rem] text-slate-400">{formatDateTime(h.created_at)}{h.author ? ` · ${h.author}` : ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {/* Route */}
+              <Card title="Route">
+                <div className="grid gap-3 p-4 sm:grid-cols-2">
+                  {([['Pickup', pickup], ['Delivery', delivery]] as const).map(([name, s]) => (
+                    <div key={name} className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+                      <div className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">{name}</div>
+                      <div className="mt-1 text-sm font-bold text-slate-900">{place(s)}</div>
+                      {s?.title && <div className="text-xs text-slate-600">{s.title}</div>}
+                      {s?.address && <div className="text-[0.6875rem] text-slate-500">{s.address}{s.zip_code ? `, ${s.zip_code}` : ''}</div>}
+                      <div className="mt-1 text-xs font-semibold text-slate-700">{formatDate(s?.stop_date)}</div>
                     </div>
-                  )}
-                  <div className={`rounded-lg border bg-white px-3.5 py-2 text-center shadow-sm ${stop.stop_type === 'pickup' ? 'border-blue-200' : 'border-emerald-200'}`} style={{ minWidth: 140 }}>
-                    <div className={`mb-0.5 text-[0.625rem] font-bold uppercase tracking-wide ${stop.stop_type === 'pickup' ? 'text-blue-500' : 'text-emerald-600'}`}>
-                      #{stop.stop_order} {stop.stop_type}
+                  ))}
+                </div>
+              </Card>
+
+              {/* Facts */}
+              <Card title="Load">
+                <dl className="grid gap-x-6 gap-y-2.5 p-4 sm:grid-cols-2">
+                  <Fact label="Broker" value={load.broker?.name} />
+                  <Fact label="Broker load / PO #" value={load.po_number} />
+                  <Fact label="Driver" value={load.driver?.name} />
+                  <Fact label="Truck / trailer" value={[load.truck?.unit_number, load.trailer?.unit_number].filter(Boolean).join(' / ')} />
+                  <Fact label="Dispatcher" value={load.dispatcher?.name} />
+                  <Fact label="Billing" value={<span className={`rounded-full px-2 py-0.5 text-[0.625rem] font-bold ${BILLING_COLORS[load.billing_status] || 'bg-slate-100 text-slate-500'}`}>{load.billing_status}</span>} />
+                  <Fact label="Rate" value={<span className="font-bold text-slate-900">{formatCurrency(load.rate)}</span>} />
+                  <Fact label="Miles" value={load.total_miles ? `${load.total_miles.toLocaleString()} total · ${load.loaded_miles || 0} loaded · ${load.empty_miles || 0} deadhead` : undefined} />
+                  <Fact label="Rate per mile" value={load.total_miles ? formatCurrency(load.rate / load.total_miles) : undefined} />
+                </dl>
+                {load.notes && <div className="border-t border-slate-100 px-4 py-2.5 text-xs text-slate-600"><span className="font-semibold text-slate-500">Notes: </span>{load.notes}</div>}
+              </Card>
+
+              {/* Money */}
+              <Card title="Invoice" actions={
+                invoice
+                  ? <div className="flex items-center gap-2">
+                      <a href={loadsApi.getInvoiceRecordPdfUrl(invoice.id)} target="_blank" rel="noreferrer" className="btn-secondary h-8 rounded-lg px-3 text-[0.6875rem]"><FileText className="h-3.5 w-3.5" />PDF</a>
+                      {invoice.status.toLowerCase() !== 'paid' && <button disabled={busy} onClick={() => run(() => loadsApi.markInvoicePaid(invoice.id), 'Invoice marked paid')} className="btn-primary h-8 rounded-lg px-3 text-[0.6875rem]">Mark paid</button>}
                     </div>
-                    <div className="flex items-center justify-center gap-1">
-                      <MapPin color={stop.stop_type === 'pickup' ? '#2563eb' : '#059669'} />
-                      <span className="max-w-[8.125rem] truncate text-sm font-bold uppercase text-slate-900">
-                        {stop.city}, {stop.state}
+                  : <button disabled={busy} onClick={() => run(() => loadsApi.createInvoiceFromLoad(loadId), 'Invoice created')} className="btn-primary h-8 rounded-lg px-3 text-[0.6875rem]">Create invoice</button>
+              }>
+                <div className="space-y-1.5 px-4 py-3 text-xs">
+                  <Line label="Rate" value={formatCurrency(load.rate)} />
+                  {load.services.map(s => (
+                    <div key={s.id} className="flex items-center justify-between gap-2 text-slate-700">
+                      <span className="min-w-0 truncate">{s.service_type}{s.notes ? ` · ${s.notes}` : ''}{s.drivers_payable ? ` · driver ${formatCurrency(s.drivers_payable)}` : ''}</span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="tabular-nums">{s.add_deduct === 'Add' ? '' : '−'}{formatCurrency(s.invoice_amount || 0)}</span>
+                        <button onClick={() => confirm('Remove this accessorial?') && run(() => loadsApi.deleteService(loadId, s.id), 'Removed')} className="text-slate-300 hover:text-red-600" aria-label="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
                       </span>
                     </div>
-                    {(stop.stop_time || stop.stop_date) && (
-                      <div className="mt-0.5 flex items-center justify-center gap-1">
-                        <Clock />
-                        <span className="text-[0.6875rem] text-slate-500">
-                          {stop.stop_time && `${stop.stop_time} `}{formatDate(stop.stop_date)}
+                  ))}
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-sm font-bold text-slate-900">
+                    <span>Invoice total</span><span className="tabular-nums">{formatCurrency(invoiceTotal)}</span>
+                  </div>
+                  {invoice && <div className="text-[0.6875rem] text-slate-500">Invoice #{invoice.invoice_number} · {invoice.status}{invoice.due_date ? ` · due ${formatDate(invoice.due_date)}` : ''}</div>}
+                  <AddAccessorial busy={busy} onAdd={(payload) => run(() => loadsApi.addService(loadId, payload), 'Accessorial added')} />
+                </div>
+              </Card>
+
+              {/* Notes */}
+              <Card title="Notes">
+                {load.notes_list.length > 0 && (
+                  <ul className="divide-y divide-slate-100">
+                    {load.notes_list.map(n => (
+                      <li key={n.id} className="flex items-start justify-between gap-3 px-4 py-2.5 text-xs">
+                        <span className="text-slate-700">{n.content}</span>
+                        <span className="flex shrink-0 items-center gap-2 text-[0.6875rem] text-slate-400">
+                          {formatDateTime(n.created_at)}
+                          <button onClick={() => confirm('Delete this note?') && run(() => loadsApiExtended.deleteNote(loadId, n.id), 'Note deleted')} className="text-slate-300 hover:text-red-600" aria-label="Delete note"><Trash2 className="h-3.5 w-3.5" /></button>
                         </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              <StopsEditor load={load} onSaved={() => {refetch(); onSaved()}} />
-
-              <div className="ml-auto flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => {
-                    if (!pickup || !delivery) { toast.error('Route is incomplete'); return }
-                    window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickupLabel)}&destination=${encodeURIComponent(deliveryLabel)}`, '_blank', 'noopener')
-                  }}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                >
-                  <MapIcon /> View on map
-                </button>
-                <button
-                  onClick={() => {
-                    const lines = [
-                      `Load #${load.load_number}`,
-                      `Pickup: ${pickupLabel}${pickup?.stop_date ? ` — ${formatDate(pickup.stop_date)}` : ''}${pickup?.stop_time ? ` ${pickup.stop_time}` : ''}`,
-                      `Delivery: ${deliveryLabel}${delivery?.stop_date ? ` — ${formatDate(delivery.stop_date)}` : ''}${delivery?.stop_time ? ` ${delivery.stop_time}` : ''}`,
-                      `Miles: ${load.total_miles || load.loaded_miles} total`,
-                      load.po_number ? `PO #: ${load.po_number}` : '',
-                      load.broker?.name ? `Broker: ${load.broker.name}` : '',
-                    ].filter(Boolean).join('\n')
-                    navigator.clipboard.writeText(lines)
-                      .then(() => toast.success('Dispatch info copied — paste it to the driver'))
-                      .catch(() => toast.error('Could not copy to clipboard'))
-                  }}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                >
-                  <Send /> Copy dispatch info
-                </button>
-              </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <AddNote busy={busy} onAdd={text => run(() => loadsApi.addNote(loadId, text, 'Office'), 'Note added')} />
+              </Card>
             </div>
-          </div>
-
-          {/* ── 4-col info grid ── */}
-          <div className="mb-4 grid grid-cols-2 gap-5 xl:grid-cols-4">
-
-            {/* Load info */}
-            <div>
-              <h3 className="font-bold text-gray-900 text-sm mb-2.5">Load #{load.load_number}</h3>
-              <div className="space-y-1.5">
-                <Field label="Status:">
-                  <InlineSelect value={load.status} options={STATUS_OPTIONS}
-                    colors={Object.fromEntries(Object.entries(STATUS_COLORS).map(([k, v]) => [k, v]))}
-                    onSave={v => quickUpdate('status', v)} />
-                </Field>
-                <Field label="Billing status:">
-                  <InlineSelect value={load.billing_status} options={BILLING_OPTIONS}
-                    onSave={v => quickUpdate('billing_status', v)} />
-                </Field>
-                <Field label="Actual Delivery Date:">
-                  <InlineDate value={load.actual_delivery_date || ''}
-                    onSave={v => quickUpdate('actual_delivery_date', v || null)} />
-                </Field>
-                <Field label="Dispatcher:">
-                  <InlineEntitySelect
-                    value={load.dispatcher?.id ?? null}
-                    label={load.dispatcher?.name || ''}
-                    options={entities.dispatchers.map(d => ({ id: d.id, label: d.name }))}
-                    onSave={id => quickUpdate('dispatcher_id', id)} />
-                </Field>
-              </div>
-            </div>
-
-            {/* Trip info */}
-            <div>
-              <h3 className="font-bold text-gray-900 text-sm mb-2.5">Trip info</h3>
-              <div className="space-y-1.5">
-                <Field label="Total trip:">
-                  <InlineNumber value={load.total_miles || 0} onSave={v => quickUpdate('total_miles', Math.round(v))} />
-                  <span className="text-gray-500 ml-0.5">mi</span>
-                </Field>
-                <Field label="Loaded:">
-                  <span className="text-gray-700">{load.loaded_miles} mi</span>
-                </Field>
-                <Field label="Empty:">
-                  <span className="text-gray-700">{load.empty_miles} mi</span>
-                </Field>
-                <Field label="Rate per mile:">
-                  <span className="text-gray-700">${ratePerMile.toFixed(2)}</span>
-                </Field>
-              </div>
-            </div>
-
-            {/* Broker */}
-            <div>
-              <h3 className="font-bold text-gray-900 text-sm mb-2.5">Broker</h3>
-              <div className="space-y-1.5">
-                <Field label="Name:">
-                  <InlineEntitySelect
-                    value={load.broker?.id ?? null}
-                    label={load.broker?.name || ''}
-                    options={entities.brokers.map(b => ({ id: b.id, label: b.name }))}
-                    onSave={id => quickUpdate('broker_id', id)} />
-                </Field>
-                <Field label="PO:">
-                  <InlineText value={load.po_number || ''} onSave={v => quickUpdate('po_number', v)} />
-                </Field>
-                <Field label="Rate:">
-                  <InlineNumber value={load.rate} prefix="$" onSave={v => quickUpdate('rate', v)} />
-                </Field>
-              </div>
-            </div>
-
-            {/* Driver */}
-            <div>
-              <h3 className="font-bold text-gray-900 text-sm mb-2.5">Driver</h3>
-              <div className="space-y-1.5">
-                <Field label="Driver:">
-                  <InlineEntitySelect
-                    value={load.driver?.id ?? null}
-                    label={load.driver ? `${load.driver.name} [${load.driver.driver_type}]` : ''}
-                    options={entities.drivers.map(d => ({ id: d.id, label: `${d.name} [${d.driver_type}]` }))}
-                    onSave={id => quickUpdate('driver_id', id)} />
-                </Field>
-                <Field label="Truck/Trailer:">
-                  <span className="text-gray-700">
-                    {load.truck?.unit_number || '—'} / {load.trailer?.unit_number || '—'}
-                  </span>
-                </Field>
-                <Field label="Drivers Payable:">
-                  <span className="font-semibold text-gray-900">{formatCurrency(driversPayable)}</span>
-                </Field>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Notes section ── */}
-          <div className="border border-gray-200 rounded mb-4">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
-              <div className="grid text-xs font-semibold text-gray-400 uppercase tracking-wide" style={{ gridTemplateColumns: '8.125rem 6.25rem 1fr' }}>
-                <span>Created On</span>
-                <span>Created By</span>
-                <span>Notes</span>
-              </div>
-              <button onClick={() => setAddingNote(true)}
-                className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors flex-shrink-0">
-                <FileText /> New note
-              </button>
-            </div>
-
-            {addingNote && (
-              <div className="px-3 py-2.5 border-b border-gray-100 bg-blue-50/40">
-                <textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:border-blue-500"
-                  rows={3} placeholder="Enter note…"
-                  onKeyDown={e => { if (e.key === 'Escape') { setAddingNote(false); setNoteText('') } }} />
-                <div className="flex gap-2 mt-1.5">
-                  <button onClick={handleAddNote} disabled={noteSaving}
-                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium disabled:opacity-50">
-                    {noteSaving ? 'Saving…' : 'Save'}
-                  </button>
-                  <button onClick={() => { setAddingNote(false); setNoteText('') }}
-                    className="px-2.5 py-1 bg-white text-gray-600 text-xs rounded border border-gray-200 hover:bg-gray-50">Cancel</button>
-                </div>
-              </div>
-            )}
-
-            {load.notes_list.length === 0 && !addingNote
-              ? <div className="py-5 text-center text-xs text-gray-400">No notes</div>
-              : load.notes_list.map(n => (
-                  <NoteRow key={n.id} note={n} onDelete={() => handleDeleteNote(n.id)} />
-                ))}
-          </div>
-
-          </>}
-          <div>
-            <div className="load-detail-section">
-
-              {/* ════ Services Tab ════ */}
-              {activeTab === 'money' && (
-                <div>
-                  <div className="flex justify-end gap-2 mb-3 flex-wrap">
-                    <button onClick={() => { setShowSvcForm('lumper'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
-                      <FileText /> New lumper
-                    </button>
-                    <button onClick={() => { setShowSvcForm('detention'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
-                      <FileText /> New detention
-                    </button>
-                    <button onClick={() => { setShowSvcForm('other'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
-                      <FileText /> Other additions/deductions
-                    </button>
-                  </div>
-
-                  {showSvcForm && (
-                    <div className="mb-4 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                      <h4 className="text-xs font-semibold text-gray-700 mb-3 capitalize">
-                        {showSvcForm === 'other' ? 'New Charge / Addition / Deduction' : `New ${showSvcForm.charAt(0).toUpperCase() + showSvcForm.slice(1)}`}
-                      </h4>
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Add / Deduct</label>
-                          <select value={svcForm.add_deduct} onChange={e => setSvcForm(f => ({ ...f, add_deduct: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-500">
-                            <option>Add</option><option>Deduct</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Paid By</label>
-                          <select value={svcForm.paid_by} onChange={e => setSvcForm(f => ({ ...f, paid_by: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-500">
-                            <option>Company</option><option>Broker</option><option>Driver</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Invoice Amount</label>
-                          <input type="number" step="0.01" min="0" value={svcForm.invoice_amount}
-                            onChange={e => setSvcForm(f => ({ ...f, invoice_amount: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500" placeholder="0.00" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Drivers Payable</label>
-                          <input type="number" step="0.01" min="0" value={svcForm.drivers_payable}
-                            onChange={e => setSvcForm(f => ({ ...f, drivers_payable: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500" placeholder="0.00" />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
-                          <input type="text" value={svcForm.notes}
-                            onChange={e => setSvcForm(f => ({ ...f, notes: e.target.value }))}
-                            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500" />
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={handleAddService} disabled={svcSaving}
-                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium disabled:opacity-50">
-                          {svcSaving ? 'Saving…' : 'Save'}
-                        </button>
-                        <button onClick={() => setShowSvcForm(null)}
-                          className="px-3 py-1.5 bg-white text-gray-600 text-xs rounded border border-gray-200 hover:bg-gray-50">Cancel</button>
-                      </div>
-                    </div>
-                  )}
-
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase">Add/Ded</th>
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase">Invoice Amount</th>
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase">Drivers Payable</th>
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
-                        <th className="px-3 py-1.5" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {load.services.length === 0
-                        ? <tr><td colSpan={5} className="py-8 text-center text-xs text-gray-400">No records</td></tr>
-                        : load.services.map(svc => (
-                            <SvcRow key={svc.id} svc={svc} onDelete={() => handleDeleteService(svc.id)} />
-                          ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {activeTab === 'documents' && <DocumentCenter loadId={loadId} documents={load.documents} uploading={uploading} onUpload={handleUpload} onDelete={handleDeleteDoc}/>}
-
-              {/* ════ Billing Tab ════ */}
-              {activeTab === 'money' && (
-                <div className="space-y-5">
-
-                  {/* Invoice section */}
-                  <div>
-                    <div className="flex items-start justify-between mb-2 flex-wrap gap-2">
-                      <div>
-                        <h4 className="font-semibold text-gray-900 text-sm">
-                          Invoice: {invoice ? `#${invoice.invoice_number}` : load.load_number}
-                        </h4>
-                        <p className="text-xs text-gray-500">
-                          To: {load.broker?.name || '—'}
-                          {load.broker?.factoring && load.broker.factoring_company ? ` / ${load.broker.factoring_company}` : ''}
-                        </p>
-                        {invoiceLoading ? (
-                          <p className="text-xs text-gray-400 mt-1.5">Checking invoice...</p>
-                        ) : invoice ? (
-                          <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs">
-                            <span className="text-gray-500">Date: {formatDate(invoice.invoice_date)}</span>
-                            <label className="inline-flex items-center gap-1 text-gray-500">
-                              Due:
-                              <input
-                                type="date"
-                                value={invoice.due_date || ''}
-                                onChange={e => handleUpdateInvoice({ due_date: e.target.value })}
-                                disabled={invoiceSaving}
-                                className="border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500"
-                              />
-                            </label>
-                            <select
-                              value={invoice.status}
-                              onChange={e => handleUpdateInvoice({ status: e.target.value })}
-                              disabled={invoiceSaving}
-                              className="border border-gray-200 rounded px-1.5 py-0.5 text-xs bg-white focus:outline-none focus:border-blue-500"
-                            >
-                              {['Pending', 'Sent', 'Paid', 'Overdue'].map(s => <option key={s}>{s}</option>)}
-                            </select>
-                            <a href={loadsApi.getInvoiceRecordPdfUrl(invoice.id)} target="_blank" rel="noreferrer"
-                              className="text-blue-600 hover:underline flex items-center gap-1"><Download /> Download PDF</a>
-                            <button onClick={handleMarkInvoicePaid} disabled={invoiceSaving || invoice.status === 'Paid'}
-                              className="text-blue-600 hover:underline disabled:text-gray-300 disabled:no-underline">
-                              Mark paid
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-xs text-amber-700">No invoice created yet</span>
-                            <a href={loadsApi.getInvoicePdfUrl(loadId)} target="_blank" rel="noreferrer"
-                              className="text-xs text-blue-600 hover:underline flex items-center gap-1"><Download /> Preview PDF</a>
-                          </div>
-                        )}
-                        {invoice ? (
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-gray-500">Amount: <strong>{formatCurrency(invoice.amount)}</strong></span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-gray-400">Creates invoice and moves billing status to Invoiced.</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={handleCreateInvoice} disabled={!!invoice || invoiceSaving}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">
-                          <Plus /> {invoiceSaving ? 'Saving...' : invoice ? 'Invoice created' : 'Create invoice'}
-                        </button>
-                        <div className="relative" ref={recalcRef}>
-                          <button onClick={() => setShowRecalcMenu(v => !v)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
-                            Recalculate <ChevronDown />
-                          </button>
-                          {showRecalcMenu && (
-                            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 py-1 w-44">
-                              <button onClick={handleRecalcDriverPay}
-                                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
-                                Driver pay
-                              </button>
-                              <button onClick={() => { setShowRecalcMenu(false); toast('QP / Factoring fee is based on broker/factoring setup.', { icon: 'i' }) }}
-                                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
-                                QP / Factoring fee
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <table className="w-full border border-gray-200 rounded overflow-hidden text-xs">
-                      <thead className="bg-blue-700 text-white">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-semibold w-24">Date</th>
-                          <th className="px-3 py-2 text-left font-semibold">Description</th>
-                          <th className="px-3 py-2 text-right font-semibold w-24">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {load.services.length === 0 && (
-                          <tr><td colSpan={3} className="py-6 text-center text-xs text-gray-400">No records</td></tr>
-                        )}
-                        {load.services.map(svc => (
-                          <tr key={svc.id} className="bg-gray-50">
-                            <td className="px-3 py-2 text-gray-500">{formatDate(load.load_date)}</td>
-                            <td className="px-3 py-2 text-gray-700">{svc.service_type} ({svc.add_deduct})</td>
-                            <td className="px-3 py-2 text-right">{svc.add_deduct === 'Deduct' ? '-' : ''}{formatCurrency(svc.invoice_amount)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Drivers Payable */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-gray-900 text-sm">Drivers Payable</h4>
-                      <button
-                        onClick={() => { setActiveTab('money'); setShowSvcForm('other'); setSvcForm({ add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '', paid_by: 'Company' }) }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-medium">
-                        <Plus /> Additions/Deductions
-                      </button>
-                    </div>
-                    <table className="w-full border border-gray-200 rounded overflow-hidden text-xs">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50">
-                          <th className="px-3 py-1.5 text-left font-semibold text-gray-500 uppercase w-24">Date</th>
-                          <th className="px-3 py-1.5 text-left font-semibold text-gray-500 uppercase">Description</th>
-                          <th className="px-3 py-1.5 text-right font-semibold text-gray-500 uppercase w-24">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {load.driver ? (
-                          <tr className="bg-white">
-                            <td className="px-3 py-2 text-gray-500">{formatDate(load.actual_delivery_date || load.load_date)}</td>
-                            <td className="px-3 py-2 text-gray-700 text-xs leading-relaxed">
-                              {load.driver.name} [{load.driver.driver_type}]{' '}
-                              Miles: {pickupLabel} — {deliveryLabel}{' '}
-                              {payDesc}
-                            </td>
-                            <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(driversPayable)}</td>
-                          </tr>
-                        ) : (
-                          <tr><td colSpan={3} className="py-4 text-center text-xs text-gray-400">No driver assigned</td></tr>
-                        )}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-amber-50 border-t border-gray-200 font-bold">
-                          <td className="px-3 py-2" />
-                          <td className="px-3 py-2 text-right text-xs text-gray-600">TOTAL:</td>
-                          <td className="px-3 py-2 text-right text-gray-900">{formatCurrency(driversPayable)}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                  {load.driver && <DriverPayOverrideEditor key={JSON.stringify(load.driver_pay_override)} load={load} onSaved={() => {refetch(); onSaved()}} />}
-
-                  {/* Other Payable */}
-                  <div>
-                    <h4 className="font-semibold text-gray-900 text-sm mb-2">Other Payable</h4>
-                    <table className="w-full border border-gray-200 rounded overflow-hidden text-xs">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50">
-                          <th className="px-3 py-1.5 text-left font-semibold text-gray-500 uppercase w-24">Date</th>
-                          <th className="px-3 py-1.5 text-left font-semibold text-gray-500 uppercase">Description</th>
-                          <th className="px-3 py-1.5 text-right font-semibold text-gray-500 uppercase w-24">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(load.additional_payees || []).map(entry => <tr key={entry.id} className="border-b"><td className="px-3 py-2">{formatDate(load.load_date)}</td><td>{entry.payable_to} · {entry.rate_pct}% of freight</td><td className="px-3 py-2 text-right">{formatCurrency(entry.amount)}</td></tr>)}
-                        {!!load.quickpay_rate_snapshot && <tr><td className="px-3 py-2">{formatDate(load.load_date)}</td><td>Quick Pay · {load.quickpay_rate_snapshot}% of invoice</td><td className="px-3 py-2 text-right">{formatCurrency(quickpayAmount)}</td></tr>}
-                        {!load.additional_payees?.length && !load.quickpay_rate_snapshot && <tr><td colSpan={3} className="py-6 text-center text-xs text-gray-400">No records</td></tr>}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* ════ History Tab ════ */}
-              {activeTab === 'history' && (
-                <div>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap w-36">Date</th>
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase">Description</th>
-                        <th className="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 uppercase w-28">Author</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {load.history.length === 0
-                        ? <tr><td colSpan={3} className="py-8 text-center text-xs text-gray-400">No history</td></tr>
-                        : load.history.map(h => (
-                          <tr key={h.id} className="border-b border-gray-100 align-top hover:bg-gray-50">
-                            <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">{formatDateTime(h.created_at)}</td>
-                            <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-pre-line leading-relaxed">{h.description}</td>
-                            <td className="px-3 py-2.5 text-xs text-gray-500">{h.author || '—'}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* ── Footer ── */}
-        <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-3 flex-shrink-0">
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-            <span>Total invoice: <span className="font-bold text-slate-800">{formatCurrency(totalInvoice)}</span></span>
-            <span>Driver pay: <span className="font-bold text-slate-800">{formatCurrency(driversPayable)}</span></span>
-            <span className="hidden sm:inline">Margin: <span className={`font-bold ${margin < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{formatCurrency(margin)}</span></span>
-          </div>
-          <button onClick={onClose}
-            className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-900">
-            <X /> Close
-          </button>
-        </div>
+        <footer className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-2.5 text-xs">
+          <span className="text-slate-500">Invoice total <span className="font-bold text-slate-900">{formatCurrency(invoiceTotal)}</span></span>
+          {load?.truck?.id && (load.statement_week || load.load_date) && (
+            <Link to={`/weeks/${load.statement_week || load.load_date}/trucks/${load.truck.id}`} onClick={onClose}
+              className="btn-secondary h-8 rounded-lg px-3 text-[0.6875rem]">Open this week<ArrowRight className="h-3.5 w-3.5" /></Link>
+          )}
+        </footer>
       </div>
+
+      {editing && load && <LoadForm load={load} entities={entities} onClose={() => setEditing(false)} onSaved={async () => { setEditing(false); await refetch(); onSaved() }} />}
     </>
   )
 }
 
-// ─── Upload button helper ──────────────────────────────────────────────────────
-function DriverPayOverrideEditor({load, onSaved}: {load: Load; onSaved: () => void}) {
-  const current = load.driver_pay_override
-  const [type, setType] = useState(current?.type || 'fixed')
-  const [values, setValues] = useState<Record<string, string>>({amount: String(current?.amount ?? ''), base: String(current?.base ?? load.rate), percentage: String(current?.percentage ?? ''), loaded_rate: String(current?.loaded_rate ?? ''), empty_rate: String(current?.empty_rate ?? ''), extra_stop_rate: String(current?.extra_stop_rate ?? load.extra_stop_rate_snapshot ?? 0)})
-  const [busy, setBusy] = useState(false)
-  const fields = type === 'fixed' ? [['amount', 'Base pay']] : type === 'percentage' ? [['base', 'Freight base'], ['percentage', 'Percentage']] : [['loaded_rate', 'Loaded rate / mile'], ['empty_rate', 'Empty rate / mile'], ['extra_stop_rate', 'Per extra stop']]
-  const save = async (reset = false) => {
-    if (!reset && fields.some(([key]) => values[key] === '' || !Number.isFinite(Number(values[key])) || Number(values[key]) < 0)) {toast.error('Enter all override amounts'); return}
-    setBusy(true)
-    try {
-      await client.put(`/api/v1/loads/${load.id}/driver-pay-override`, reset ? {type: null} : {type, ...Object.fromEntries(fields.map(([key]) => [key, Number(values[key])]))})
-      toast.success(reset ? 'Original pay rules restored' : 'Driver pay override saved'); onSaved()
-    } catch (e: any) {toast.error(e.response?.data?.detail || e.message || 'Unable to update driver pay')}
-    finally {setBusy(false)}
-  }
-  return <details className="border rounded p-3 text-xs"><summary className="cursor-pointer font-semibold">Driver pay override{current ? ' (active)' : ''}</summary>
-    <p className="my-2 text-gray-500">Override the base pay for this load. Service additions and deductions are included separately.</p>
-    <div className="flex flex-wrap gap-2 items-end"><label>Method<select className="input-base block" value={type} onChange={e => setType(e.target.value)}><option value="fixed">Fixed</option><option value="percentage">Percentage</option><option value="per_mile">Per mile</option></select></label>
-      {fields.map(([key, label]) => <label key={key}>{label}<input className="input-base block w-32" type="number" min="0" step="0.01" value={values[key]} onChange={e => setValues(v => ({...v, [key]: e.target.value}))} /></label>)}
-      <button disabled={busy} className="btn-primary" onClick={() => save()}>Save override</button>{current && <button disabled={busy} className="text-blue-600 p-2" onClick={() => save(true)}>Restore original</button>}
-    </div></details>
+function Card({ title, actions, children }: { title: string; actions?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <header className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5">
+        <h3 className="text-xs font-bold text-slate-900">{title}</h3>
+        {actions}
+      </header>
+      {children}
+    </section>
+  )
 }
 
+function Fact({ label, value }: { label: string; value?: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-xs">
+      <dt className="shrink-0 text-slate-500">{label}</dt>
+      <dd className="min-w-0 truncate text-right text-slate-800">{value || <span className="text-slate-300">—</span>}</dd>
+    </div>
+  )
+}
 
-function StopsEditor({load, onSaved}: {load: Load; onSaved: () => void}) {
+function Line({ label, value }: { label: string; value: string }) {
+  return <div className="flex items-center justify-between text-slate-700"><span>{label}</span><span className="tabular-nums">{value}</span></div>
+}
+
+function Empty({ text }: { text: string }) {
+  return <div className="px-4 py-8 text-center text-xs text-slate-400">{text}</div>
+}
+
+function AddAccessorial({ busy, onAdd }: { busy: boolean; onAdd: (p: { service_type: 'Lumper' | 'Detention' | 'Other'; add_deduct: string; invoice_amount: number; drivers_payable: number; notes?: string }) => void }) {
   const [open, setOpen] = useState(false)
-  const [rows, setRows] = useState(load.stops.map(s => ({...s})))
-  const [busy, setBusy] = useState(false)
-  const save = async () => {
-    setBusy(true)
-    try {
-      await loadsApi.update(load.id, {stops: rows.map((s, i) => ({...s, stop_order: i + 1, stop_date: s.stop_date || undefined}))} as any)
-      toast.success('Route and extra-stop pay updated'); setOpen(false); onSaved()
-    } catch (e: any) {toast.error(e.message)} finally {setBusy(false)}
-  }
-  return <div>
-    <button className="text-xs text-blue-600" onClick={() => {setRows(load.stops.map(s => ({...s}))); setOpen(true)}}>Edit stops</button>
-    {open && <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center" onClick={() => setOpen(false)}>
-      <div className="bg-white rounded-xl p-5 w-[850px] max-w-[95vw] max-h-[85vh] overflow-auto space-y-3" onClick={e => e.stopPropagation()}>
-        <h3 className="font-bold">Route stops</h3>
-        {rows.map((s, i) => <div key={i} className="flex flex-wrap gap-2 border-b pb-2 items-center">
-          <span className="text-xs">{i+1}</span>
-          <select className="input-base w-28" value={s.stop_type} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, stop_type: e.target.value as any} : r))}><option value="pickup">Pickup</option><option value="delivery">Delivery</option><option value="other">Other</option></select>
-          <input aria-label="Stop city" className="input-base w-32" placeholder="City" value={s.city || ''} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, city: e.target.value} : r))}/>
-          <input aria-label="Stop state" className="input-base w-16" placeholder="State" value={s.state || ''} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, state: e.target.value} : r))}/>
-          <input aria-label="Stop date" type="date" className="input-base" value={s.stop_date || ''} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, stop_date: e.target.value} : r))}/>
-          {s.stop_type === 'other' && <label className="text-xs flex gap-1 items-center"><input type="checkbox" checked={!!s.is_payable} onChange={e => setRows(v => v.map((r, n) => n === i ? {...r, is_payable: e.target.checked} : r))}/>Pay extra stop</label>}
-          <button disabled={i===0} className="text-blue-600" onClick={() => setRows(v => {const a=[...v]; [a[i-1],a[i]]=[a[i],a[i-1]]; return a})}>↑</button>
-          <button className="text-red-600 text-xs" onClick={() => setRows(v => v.filter((_, n) => n !== i))}>Remove</button>
-        </div>)}
-        <button className="text-blue-600 text-sm" onClick={() => setRows(v => [...v, {id: 0, stop_type: 'delivery', stop_order: v.length+1, city:'', state:'', is_payable:false}])}>+ Add stop</button>
-        <div className="flex gap-3 justify-end"><button onClick={() => setOpen(false)}>Cancel</button><button disabled={busy} className="btn-primary" onClick={save}>Save route</button></div>
+  const [f, setF] = useState({ service_type: 'Lumper' as 'Lumper' | 'Detention' | 'Other', add_deduct: 'Add', invoice_amount: '', drivers_payable: '', notes: '' })
+  if (!open) return <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1 pt-1 text-[0.6875rem] font-semibold text-blue-700 hover:underline"><Plus className="h-3 w-3" />Add lumper, detention or other</button>
+  return (
+    <div className="mt-1 grid grid-cols-2 gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2 sm:grid-cols-5">
+      <select value={f.service_type} onChange={e => setF({ ...f, service_type: e.target.value as typeof f.service_type })} className={field}><option>Lumper</option><option>Detention</option><option>Other</option></select>
+      <select value={f.add_deduct} onChange={e => setF({ ...f, add_deduct: e.target.value })} className={field}><option value="Add">Add to invoice</option><option value="Deduct">Deduct</option></select>
+      <input value={f.invoice_amount} onChange={e => setF({ ...f, invoice_amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="Invoice $" inputMode="decimal" className={`${field} text-right`} />
+      <input value={f.drivers_payable} onChange={e => setF({ ...f, drivers_payable: e.target.value.replace(/[^\d.]/g, '') })} placeholder="Driver $" inputMode="decimal" className={`${field} text-right`} />
+      <div className="flex gap-1.5">
+        <button disabled={busy || !f.invoice_amount} onClick={() => { onAdd({ ...f, invoice_amount: Number(f.invoice_amount) || 0, drivers_payable: Number(f.drivers_payable) || 0, notes: f.notes || undefined }); setOpen(false); setF({ ...f, invoice_amount: '', drivers_payable: '', notes: '' }) }} className="btn-primary h-8 flex-1 rounded-md px-2 text-[0.6875rem]">Add</button>
+        <button onClick={() => setOpen(false)} className="btn-secondary h-8 rounded-md px-2 text-[0.6875rem]">Cancel</button>
       </div>
-    </div>}
-  </div>
+    </div>
+  )
+}
+
+function AddNote({ busy, onAdd }: { busy: boolean; onAdd: (text: string) => void }) {
+  const [text, setText] = useState('')
+  return (
+    <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-2.5">
+      <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && text.trim()) { onAdd(text.trim()); setText('') } }}
+        placeholder="Add a note…" className="h-8 flex-1 rounded-md border border-slate-200 px-2.5 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+      <button disabled={busy || !text.trim()} onClick={() => { onAdd(text.trim()); setText('') }} className="btn-secondary h-8 rounded-md px-3 text-[0.6875rem]">Add</button>
+    </div>
+  )
 }

@@ -8,7 +8,8 @@ import {
 } from '@/api/weeks'
 import { formatCurrency } from '@/utils'
 import { Money, StatusPill } from './WeekBoardPage'
-import QuickLoadModal from '@/components/loads/QuickLoadModal'
+import LoadForm from '@/components/loads/LoadForm'
+import { useEntities } from '@/hooks/useEntities'
 import RulesPanel from '@/components/weeks/RulesPanel'
 
 const KIND_LABEL: Record<string, string> = {
@@ -27,6 +28,7 @@ export default function StatementPage() {
   const [busy, setBusy] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [addingLoad, setAddingLoad] = useState(false)
+  const entities = useEntities()
 
   const load = useCallback(async () => {
     setBusy(true)
@@ -185,7 +187,7 @@ export default function StatementPage() {
           </div>
         )}
       </div>
-      {addingLoad && s && <QuickLoadModal truckId={s.truck_id} defaultDate={s.period_start} weekStart={s.period_start} onClose={() => setAddingLoad(false)} onSaved={() => { setAddingLoad(false); load() }} />}
+      {addingLoad && s && <LoadForm entities={entities} presetTruckId={s.truck_id} presetWeekStart={s.period_start} onClose={() => setAddingLoad(false)} onSaved={() => { setAddingLoad(false); load() }} />}
     </div>
   )
 }

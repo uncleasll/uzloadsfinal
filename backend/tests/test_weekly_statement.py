@@ -204,3 +204,36 @@ class WeeklyApi(WeeklyStatementCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class LoadEditingLock(WeeklyStatementCase):
+    """A load stays editable until its week is paid, then it is frozen with the statement."""
+
+    def setUp(self):
+        super().setUp()
+        from app.schemas.schemas import LoadUpdate
+        from app.crud import loads as loads_crud
+        self.LoadUpdate, self.loads_crud = LoadUpdate, loads_crud
+        self.drv = self.driver('D', 'percent', pct=30)
+        self.t = self.truck('780', 3.5, self.COMPANY_TEMPLATE, driver=self.drv)
+        self.l = self.load(self.t, self.drv, 5001, date(2025, 12, 29), 2000)
+
+    def test_delivered_load_in_a_draft_week_can_be_corrected(self):
+        ws.generate(self.db, self.t.id, WEEK)
+        self.loads_crud.update_load(self.db, self.l.id, self.LoadUpdate(rate=2500))
+        self.assertEqual(ws.generate(self.db, self.t.id, WEEK).gross, 2500.0)
+
+    def test_paid_week_freezes_its_loads(self):
+        s = ws.generate(self.db, self.t.id, WEEK)
+        ws.set_status(self.db, s, 'paid')
+        self.db.commit()
+        with self.assertRaises(ValueError):
+            self.loads_crud.update_load(self.db, self.l.id, self.LoadUpdate(rate=9999))
+        self.db.rollback()
+        self.assertEqual(self.db.get(Load, self.l.id).rate, 2000)
+        # Reopening the week unfreezes it again
+        s = ws.get_statement(self.db, self.t.id, WEEK)
+        ws.set_status(self.db, s, 'draft')
+        self.db.commit()
+        self.loads_crud.update_load(self.db, self.l.id, self.LoadUpdate(rate=2600))
+        self.assertEqual(self.db.get(Load, self.l.id).rate, 2600)

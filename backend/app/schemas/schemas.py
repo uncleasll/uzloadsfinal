@@ -372,6 +372,7 @@ class LoadOut(BaseModel):
     status: LoadStatus
     billing_status: BillingStatus
     load_date: date
+    statement_week: Optional[date] = None
     actual_delivery_date: Optional[date] = None
     rate: float
     total_miles: int
@@ -419,6 +420,7 @@ class LoadListOut(BaseModel):
     status: LoadStatus
     billing_status: BillingStatus
     load_date: date
+    statement_week: Optional[date] = None
     actual_delivery_date: Optional[date] = None
     rate: float
     total_miles: int

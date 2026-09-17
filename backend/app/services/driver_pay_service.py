@@ -20,8 +20,6 @@ from app.models.models import Load, Driver, DriverProfile, LoadHistory
 
 # Billing statuses where financial data is considered settled / locked
 LOCKED_BILLING_STATUSES = {"Invoiced", "Sent to factoring", "Funded", "Paid"}
-# Load statuses that additionally lock driver pay
-LOCKED_LOAD_STATUSES = {"Delivered", "Closed"}
 
 
 def money(value) -> float:
@@ -171,11 +169,33 @@ def driver_pay_lines(load: Load) -> list[dict]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def is_locked(load: Load) -> bool:
-    """Return True if this load's financial data must not be mutated."""
-    return (
-        getattr(load.billing_status, "value", load.billing_status) in LOCKED_BILLING_STATUSES
-        or getattr(load.status, "value", load.status) in LOCKED_LOAD_STATUSES
-    )
+    """True once the load has been billed out; its financial inputs must not change after that.
+
+    Delivering a load does NOT lock it: in the weekly flow every load in a statement is delivered,
+    and the office still fixes rates and miles until the week is paid. See is_in_paid_statement.
+    """
+    return getattr(load.billing_status, "value", load.billing_status) in LOCKED_BILLING_STATUSES
+
+
+def is_in_paid_statement(db, load: Load) -> bool:
+    """True when the weekly statement this load belongs to has already been paid out."""
+    from app.models.models import StatementStatus, TruckStatement
+    from app.services.weekly_statement import load_week_date, week_start
+    if not load.truck_id:
+        return False
+    start = load.statement_week or week_start(load_week_date(load), db=db)
+    stmt = (db.query(TruckStatement)
+              .filter(TruckStatement.truck_id == load.truck_id, TruckStatement.period_start == start).first())
+    return bool(stmt and stmt.status == StatementStatus.PAID.value)
+
+
+def is_frozen(db, load: Load) -> bool:
+    """Pay inputs cannot change: billed out, inside an active settlement, or inside a paid week."""
+    return is_locked(load) or is_in_settlement(db, load)[0] or is_in_paid_statement(db, load)
+
+
+FROZEN_MESSAGE = ("This load is locked: its week has been paid, it is in a settlement, or it has been invoiced. "
+                  "Reopen the week, remove it from the settlement, or unlock billing first.")
 
 
 def is_in_settlement(db, load: Load) -> tuple:

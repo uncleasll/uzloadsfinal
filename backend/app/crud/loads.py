@@ -7,7 +7,7 @@ from app.models.models import (
     LoadStatus, BillingStatus, Driver, Broker, Truck, Trailer, Dispatcher
 )
 from app.schemas.schemas import LoadCreate, LoadUpdate, LoadServiceCreate, LoadNoteCreate
-from app.services.driver_pay_service import take_snapshot, compute_driver_pay, is_in_settlement, is_locked
+from app.services.driver_pay_service import take_snapshot, compute_driver_pay, is_in_settlement, is_locked, is_frozen, FROZEN_MESSAGE
 import os
 import shutil
 
@@ -276,7 +276,7 @@ def update_load(db: Session, load_id: int, load_in: LoadUpdate, author: str = "S
     if not db_load:
         return None
 
-    from app.services.driver_pay_service import take_snapshot, is_locked
+    from app.services.driver_pay_service import take_snapshot
     update_data = load_in.model_dump(exclude_unset=True, exclude={"stops"})
     next_broker_id = update_data.get("broker_id", db_load.broker_id)
     next_po_number = update_data.get("po_number", db_load.po_number)
@@ -300,8 +300,8 @@ def update_load(db: Session, load_id: int, load_in: LoadUpdate, author: str = "S
         for key in ("rate", "loaded_miles", "empty_miles", "load_date")
     )
     # Check the ORIGINAL state, before assigning new statuses or compensation inputs.
-    if (pay_changed or broker_changed) and (is_locked(db_load) or is_in_settlement(db, db_load)[0]):
-        raise ValueError("Load pay is locked. Remove it from its settlement and unlock billing before changing pay inputs.")
+    if (pay_changed or broker_changed) and is_frozen(db, db_load):
+        raise ValueError(FROZEN_MESSAGE)
     for key, value in update_data.items():
         setattr(db_load, key, value)
 
@@ -352,7 +352,7 @@ def add_service(db: Session, load_id: int, service_in: LoadServiceCreate) -> Loa
     db_load = db.query(Load).filter(Load.id == load_id, Load.is_active == True).first()
     if not db_load:
         raise ValueError("Load not found")
-    if is_locked(db_load) or is_in_settlement(db, db_load)[0]:
+    if is_frozen(db, db_load):
         raise ValueError("Remove the load from its settlement and unlock billing before editing services.")
     service = LoadService(**service_in.model_dump())
     db_load.services.append(service)
@@ -373,7 +373,7 @@ def delete_service(db: Session, service_id: int, load_id: int = None) -> bool:
     if not svc:
         return False
     load = svc.load
-    if is_locked(load) or is_in_settlement(db, load)[0]:
+    if is_frozen(db, load):
         raise ValueError("Remove the load from its settlement and unlock billing before editing services.")
     load.services.remove(svc)
     load.drivers_payable_snapshot = compute_driver_pay(load)

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, Search } from 'lucide-react'
-import QuickLoadModal from '@/components/loads/QuickLoadModal'
+import LoadForm from '@/components/loads/LoadForm'
+import { useEntities } from '@/hooks/useEntities'
 import toast from 'react-hot-toast'
 import { periodLabel, shiftWeek, toIso, weekStart, weeksApi, type StatementStatus, type WeekBoard } from '@/api/weeks'
 import { formatCurrency } from '@/utils'
@@ -31,6 +32,7 @@ export default function WeekBoardPage() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | StatementStatus | 'negative'>(() => (params.get('filter') as 'negative' | null) || 'all')
   const [addingLoad, setAddingLoad] = useState(false)
+  const entities = useEntities()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -172,7 +174,7 @@ export default function WeekBoardPage() {
           )}
         </table>
       </div>
-      {addingLoad && <QuickLoadModal defaultDate={start} weekStart={start} onClose={() => setAddingLoad(false)} onSaved={() => { setAddingLoad(false); load() }} />}
+      {addingLoad && <LoadForm entities={entities} presetWeekStart={start} onClose={() => setAddingLoad(false)} onSaved={() => { setAddingLoad(false); load() }} />}
     </div>
   )
 }

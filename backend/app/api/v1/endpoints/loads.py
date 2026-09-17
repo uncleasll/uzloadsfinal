@@ -325,11 +325,11 @@ def recalculate_driver_pay_endpoint(
     load_id: int,
     db: Session = Depends(get_db),
 ):
-    from app.services.driver_pay_service import recalculate_driver_pay, is_locked
+    from app.services.driver_pay_service import recalculate_driver_pay, is_frozen
     load = crud.get_load(db, load_id)
     if not load:
         raise HTTPException(404, "Load not found")
-    if is_locked(load):
+    if is_frozen(db, load):
         raise HTTPException(
             400,
             f"Load #{load.load_number} billing status is '{load.billing_status}'. "
@@ -349,11 +349,11 @@ def retake_driver_snapshot(
     db: Session = Depends(get_db),
 ):
     """Re-capture driver pay rules from the current driver profile (open loads only)."""
-    from app.services.driver_pay_service import take_snapshot, is_locked
+    from app.services.driver_pay_service import take_snapshot, is_frozen
     load = crud.get_load(db, load_id)
     if not load:
         raise HTTPException(404, "Load not found")
-    if is_locked(load):
+    if is_frozen(db, load):
         raise HTTPException(
             400,
             f"Load #{load.load_number} is locked (billing: {load.billing_status}). "
@@ -403,13 +403,13 @@ class DriverPayOverrideIn(BaseModel):
 @router.put('/{load_id}/driver-pay-override')
 def set_driver_pay_override(load_id: int, data: DriverPayOverrideIn, db: Session = Depends(get_db)):
     from app.models.models import Load
-    from app.services.driver_pay_service import is_locked, is_in_settlement, compute_driver_pay
+    from app.services.driver_pay_service import is_frozen, compute_driver_pay
     load = db.query(Load).filter(Load.id == load_id, Load.is_active == True).with_for_update().first()
     if not load:
         raise HTTPException(404, 'Load not found')
     if not load.driver_id:
         raise HTTPException(400, 'Assign a driver before overriding pay')
-    if is_locked(load) or is_in_settlement(db, load)[0]:
+    if is_frozen(db, load):
         raise HTTPException(400, 'Remove the load from payroll and unlock billing before overriding pay')
     old = load.drivers_payable_snapshot
     load.driver_pay_override = data.model_dump(exclude_none=True) if data.type else None

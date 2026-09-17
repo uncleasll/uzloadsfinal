@@ -289,12 +289,19 @@ class PayrollScenarios(unittest.TestCase):
             self.assertEqual(self.load().drivers_payable_snapshot, 0)
 
     def test_enum_lock_is_enforced_before_mutation(self):
-        l = self.load(status=LoadStatus.DELIVERED)
+        l = self.load(status=LoadStatus.DELIVERED, billing_status=BillingStatus.INVOICED)
         self.assertTrue(is_locked(l))
         with self.assertRaises(ValueError):
             loads.update_load(self.db, l.id, LoadUpdate(status=LoadStatus.NEW, loaded_miles=1))
         self.assertEqual(l.status, LoadStatus.DELIVERED)
         self.assertEqual(l.loaded_miles, 2000)
+
+    def test_delivering_a_load_does_not_lock_its_pay(self):
+        """The office fixes rates and miles until the week is paid; delivery alone changes nothing."""
+        l = self.load(status=LoadStatus.DELIVERED)
+        self.assertFalse(is_locked(l))
+        loads.update_load(self.db, l.id, LoadUpdate(rate=7000, loaded_miles=2100))
+        self.assertEqual((l.rate, l.loaded_miles), (7000, 2100))
 
     def test_settled_load_cannot_change_pay_or_services(self):
         l = self.load(); s = self.settlement(); payroll.add_load_item(self.db,s.id,l.id)
@@ -521,8 +528,9 @@ class PayrollScenarios(unittest.TestCase):
         self.assertIn('/api/v1/drivers/{driver_id}/additional-payees',routes)
         # Check the actual UI request strings against the public API mount.
         root=Path(__file__).resolve().parents[2]/'frontend/src'
+        # The per-load driver-pay override UI was dropped with the weekly redesign: pay comes from the
+        # driver's rule and corrections are manual lines on the statement. The route stays for the API.
         for file,path in [('components/payroll/SettlementModal.tsx','/api/v1/payroll/${settlementId}/time-reports'),
-                          ('components/loads/LoadModal.tsx','/api/v1/loads/${load.id}/driver-pay-override'),
                           ('pages/DriversPage.tsx','/api/v1/scheduled-transactions/preview')]:
             self.assertIn(path,(root/file).read_text())
 
