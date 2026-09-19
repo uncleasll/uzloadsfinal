@@ -1,7 +1,7 @@
 import os
 os.environ['DATABASE_URL'] = 'sqlite://'
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -37,13 +37,26 @@ class Dashboard(unittest.TestCase):
         r = self.client.get('/api/v1/dashboard')
         self.assertEqual(r.status_code, 200, r.text)
         b = r.json()
-        self.assertEqual(b['this_week']['gross'], 2000.0)
-        self.assertEqual(b['this_week']['net'], 2000 - 70 - 600 - 50)   # idle truck still pays its ELD
-        self.assertEqual(b['this_week']['rpm'], 2.5)
+        self.assertEqual(b['period']['gross'], 2000.0)
+        self.assertEqual(b['period']['net'], 2000 - 70 - 600 - 50)   # idle truck still pays its ELD
+        self.assertEqual(b['period']['rpm'], 2.5)
+        self.assertEqual(b['period']['weeks'], 1)
         self.assertEqual(b['attention']['idle_trucks'], {'count': 1, 'units': ['322']})
         self.assertEqual(b['attention']['negative_weeks']['units'], ['322'])
-        self.assertEqual(len(b['trend']), 8); self.assertEqual(b['trend'][-1]['gross'], 2000.0)
+        self.assertEqual(len(b['trend']), 8); self.assertEqual(b['trend'][-1]['gross'], 2000.0); self.assertTrue(b['trend'][-1]['in_range'])
         self.assertEqual(b['top_trucks'][0]['unit_number'], '780')
+        self.assertEqual(b['breakdown'], {'fee': 70.0, 'fixed': 50.0, 'fuel': 0.0, 'expenses': 0.0, 'other': 0.0, 'driver_pay': 600.0, 'net': 1280.0})
+        self.assertEqual(b['brokers'], [{'name': 'No broker', 'gross': 2000.0, 'loads': 1}])
+
+        # A four-week range ending this week: same totals (older weeks are empty), trend still 8 wide
+        r = self.client.get('/api/v1/dashboard', params={'from': (week - timedelta(days=21)).isoformat(), 'to': week.isoformat()})
+        self.assertEqual(r.status_code, 200, r.text)
+        b = r.json()
+        self.assertEqual(b['period']['weeks'], 4); self.assertEqual(b['period']['gross'], 2000.0)
+        self.assertEqual(len(b['trend']), 8); self.assertEqual(sum(1 for t in b['trend'] if t['in_range']), 4)
+        # A range entirely in the past has nothing
+        r = self.client.get('/api/v1/dashboard', params={'from': (week - timedelta(days=70)).isoformat(), 'to': (week - timedelta(days=63)).isoformat()})
+        self.assertEqual(r.json()['period']['gross'], 0.0); self.assertEqual(r.json()['period']['weeks'], 2)
 
 
 if __name__ == '__main__':
