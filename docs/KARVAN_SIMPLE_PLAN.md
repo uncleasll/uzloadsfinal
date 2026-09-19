@@ -105,3 +105,10 @@ python scripts/import_statements_excel.py "/path/STATEMENTS 2025.xlsx" --apply  
 - Texnik xizmat (migratsiya 023): odometer jurnali, servislar, intervallar, muddat holati. Statementdagi odometer end jurnalga o'zi yoziladi. Ekran: Maintenance.
 - Tekshiruv: 68 backend test, frontend build, brauzer. Eastern Green scratch import: 551 yuk, 10 truck, 84 fuel, 209 toll, haftalik gross Excel bilan mos.
 - Dashboard (`/dashboard`, `GET /api/v1/dashboard`): shu hafta gross / chegirmalar / haydovchi to'lovlari / net / yuklar / RPM, o'tgan hafta bilan foiz farqi; to'lash kerak bo'lganlar (ready statementlar, dispatcherlar, oylik to'lovlar, servis); 8 haftalik gross va net grafigi; shu haftadagi trucklar. Bosh sahifa endi shu. Eski dashboard o'chirildi.
+
+## 8. UI tozalash (2026-09-19)
+
+- Sidebar oq, guruhlangan (Pay / Fleet / System), 12px yozuv, lucide ikonkalar, foydalanuvchi menyusi va "Collapse" pastda. Desktopda yuqori bar yo'q.
+- Umumiy qismlar `frontend/src/components/ui/`: `PageShell` (sahifa ramkasi), `Drawer` + `DrawerTabs` (o'ng panel), `Field` / `Section` / `Grid` (formalar), `UnitDocuments` (truck va trailer hujjatlari).
+- Drivers, Trucks, Trailers, Brokers, My company shu qolipda qayta yozildi: bitta jadval, qatorga bosilsa o'ng panel, panelda Details / (Pay yoki Statement rules) / Documents. Truck-haydovchi biriktirish faqat Trucks sahifasida; Drivers sahifasi uni trucklardan o'qiydi.
+- Loads sahifasi: bitta `LoadForm` yaratish va tahrirlash uchun, panel faqat ko'rish. Yuk to'langan hafta, settlement yoki invoice orqali qulflanadi, "Delivered" holati qulflamaydi.

@@ -1,235 +1,107 @@
-import { useState, useEffect, useRef } from 'react'
-import client from '@/api/client'
+import { useEffect, useRef, useState } from 'react'
+import { ImageIcon, Save, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY']
+import client from '@/api/client'
+import PageShell from '@/components/ui/PageShell'
+import { Field, Grid, Section, US_STATES, control } from '@/components/ui/Field'
 
 interface Company {
   id?: number
-  name: string
-  legal_name: string
-  mc_number: string
-  dot_number: string
-  address: string
-  city: string
-  state: string
-  zip_code: string
-  phone: string
-  email: string
-  website: string
-  logo_path: string
+  name: string; legal_name: string; mc_number: string; dot_number: string
+  address: string; city: string; state: string; zip_code: string
+  phone: string; email: string; website: string; logo_path: string
 }
 
-const empty: Company = {
-  name:'', legal_name:'', mc_number:'', dot_number:'',
-  address:'', city:'', state:'', zip_code:'',
-  phone:'', email:'', website:'', logo_path:''
-}
+const empty: Company = { name: '', legal_name: '', mc_number: '', dot_number: '', address: '', city: '', state: '', zip_code: '', phone: '', email: '', website: '', logo_path: '' }
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
+const assetUrl = (p: string) => (!p ? '' : /^https?:\/\//i.test(p) || p.startsWith('blob:') ? p : `${API_BASE}${p.startsWith('/') ? p : `/${p}`}`)
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
-
-function assetUrl(path: string) {
-  if (!path) return ''
-  if (/^https?:\/\//i.test(path) || path.startsWith('blob:')) return path
-  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
-}
-
+/** Company identity for PDFs: name, numbers, contact and logo. Week rules live in Settings. */
 export default function MyCompanyPage() {
-  const [form, setForm]     = useState<Company>(empty)
+  const [form, setForm] = useState<Company>(empty)
+  const [saved, setSaved] = useState<Company>(empty)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState(false)
-  const [logoPreview, setLogoPreview] = useState<string>('')
+  const [saving, setSaving] = useState(false)
+  const [logo, setLogo] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     client.get('/api/v1/company')
-      .then(r => { setForm(r.data); setLogoPreview(assetUrl(r.data.logo_path || '')) })
+      .then(r => { setForm(r.data); setSaved(r.data); setLogo(assetUrl(r.data.logo_path || '')) })
       .catch(e => toast.error(e.message))
       .finally(() => setLoading(false))
   }, [])
 
-  const sf = (k: keyof Company, v: string) => setForm(p => ({...p, [k]: v}))
+  const set = (k: keyof Company) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const dirty = JSON.stringify(form) !== JSON.stringify(saved)
 
-  const handleSave = () => {
+  const save = async () => {
+    if (!form.name.trim()) return toast.error('Company name is required')
     setSaving(true)
-    client.put('/api/v1/company', form)
-      .then(() => toast.success('Company settings saved'))
-      .catch(e => toast.error(e.message))
-      .finally(() => setSaving(false))
+    try { await client.put('/api/v1/company', form); setSaved(form); toast.success('Company saved') }
+    catch (e) { toast.error((e as Error).message) }
+    finally { setSaving(false) }
   }
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const preview = URL.createObjectURL(file)
-    setLogoPreview(preview)
-
-    const fd = new FormData()
-    fd.append('file', file)
-    client.post('/api/v1/company/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      .then(r => {
-        setForm(p => ({...p, logo_path: r.data.logo_path}))
-        setLogoPreview(assetUrl(r.data.logo_path))
-        toast.success('Logo uploaded')
-      })
-      .catch(e => toast.error(e.message))
+    setLogo(URL.createObjectURL(file))
+    const fd = new FormData(); fd.append('file', file)
+    try {
+      const r = await client.post('/api/v1/company/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setForm(p => ({ ...p, logo_path: r.data.logo_path })); setSaved(p => ({ ...p, logo_path: r.data.logo_path })); setLogo(assetUrl(r.data.logo_path))
+      toast.success('Logo uploaded')
+    } catch (err) { toast.error((err as Error).message) }
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-full text-gray-400">Loading...</div>
-  )
-
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0">
-        <h1 className="text-xl font-bold text-gray-900">Karvan</h1>
-        <button onClick={handleSave} disabled={saving}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded disabled:opacity-50">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="max-w-3xl space-y-6">
-
-          {/* Logo section */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">Company Logo</h2>
-            <div className="flex items-center gap-5">
-              <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-white">
-                {logoPreview ? (
-                  <img src={logoPreview} alt="Logo" className="w-full h-full object-contain"/>
-                ) : (
-                  <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                )}
+    <PageShell
+      title="My company" subtitle="Shown on every invoice, statement and report PDF"
+      actions={<button onClick={save} disabled={saving || !dirty} className="btn-primary h-9 rounded-lg px-3.5 text-xs"><Save className="h-3.5 w-3.5" />{saving ? 'Saving…' : 'Save changes'}</button>}
+    >
+      {loading ? <div className="py-16 text-center text-slate-400">Loading…</div> : (
+        <div className="mx-auto max-w-3xl space-y-3 p-4">
+          <Section title="Logo" description="PNG, JPG or SVG. About 300 × 100 works best.">
+            <div className="flex items-center gap-4">
+              <div className="grid h-20 w-36 place-items-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50">
+                {logo ? <img src={logo} alt="Company logo" className="h-full w-full object-contain p-1" /> : <ImageIcon className="h-6 w-6 text-slate-300" />}
               </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Upload your company logo. It will appear on all generated PDFs.</p>
-                <button onClick={() => fileRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-sm text-gray-700 rounded hover:bg-gray-50">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                  Upload Logo
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload}/>
-                {logoPreview && (
-                  <button onClick={() => { setLogoPreview(''); sf('logo_path','') }} className="ml-2 text-xs text-red-500 hover:text-red-700">Remove</button>
-                )}
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG, SVG — recommended 300×100px</p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => fileRef.current?.click()} className="btn-secondary h-9 rounded-lg px-3 text-xs"><Upload className="h-3.5 w-3.5" />Upload logo</button>
+                {logo && <button onClick={() => { setLogo(''); setForm(p => ({ ...p, logo_path: '' })) }} className="btn-ghost h-9 rounded-lg px-3 text-xs text-red-600 hover:bg-red-50 hover:text-red-700">Remove</button>}
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={uploadLogo} />
               </div>
             </div>
-          </div>
+          </Section>
 
-          {/* Company Info */}
-          <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">Company Information</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Company Name <span className="text-red-500">*</span></label>
-                <input value={form.name} onChange={e=>sf('name',e.target.value)}
-                  placeholder="e.g. Karvan"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Legal Name</label>
-                <input value={form.legal_name} onChange={e=>sf('legal_name',e.target.value)}
-                  placeholder="e.g. Karvan LLC"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">MC Number</label>
-                <input value={form.mc_number} onChange={e=>sf('mc_number',e.target.value)}
-                  placeholder="e.g. MC-123456"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">DOT Number</label>
-                <input value={form.dot_number} onChange={e=>sf('dot_number',e.target.value)}
-                  placeholder="e.g. 1234567"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-              </div>
-            </div>
-          </div>
+          <Section title="Company">
+            <Grid>
+              <Field label="Company name" required><input value={form.name} onChange={set('name')} className={control} placeholder="Karvan" /></Field>
+              <Field label="Legal name"><input value={form.legal_name} onChange={set('legal_name')} className={control} placeholder="Karvan LLC" /></Field>
+              <Field label="MC number"><input value={form.mc_number} onChange={set('mc_number')} className={control} placeholder="MC-123456" /></Field>
+              <Field label="DOT number"><input value={form.dot_number} onChange={set('dot_number')} className={control} placeholder="1234567" /></Field>
+            </Grid>
+          </Section>
 
-          {/* Contact Info */}
-          <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">Contact Information</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
-                <input value={form.phone} onChange={e=>sf('phone',e.target.value)}
-                  placeholder="e.g. (970) 610-8065"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Email</label>
-                <input type="email" value={form.email} onChange={e=>sf('email',e.target.value)}
-                  placeholder="e.g. info@company.com"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Website</label>
-                <input value={form.website} onChange={e=>sf('website',e.target.value)}
-                  placeholder="e.g. https://www.company.com"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-              </div>
-            </div>
-          </div>
+          <Section title="Contact">
+            <Grid>
+              <Field label="Phone"><input value={form.phone} onChange={set('phone')} className={control} placeholder="(555) 555-5555" /></Field>
+              <Field label="Email"><input type="email" value={form.email} onChange={set('email')} className={control} placeholder="office@company.com" /></Field>
+              <Field label="Website" span={2}><input value={form.website} onChange={set('website')} className={control} placeholder="https://www.company.com" /></Field>
+            </Grid>
+          </Section>
 
-          {/* Address */}
-          <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">Address</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Street Address</label>
-                <input value={form.address} onChange={e=>sf('address',e.target.value)}
-                  placeholder="e.g. 123 Main St"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">City</label>
-                <input value={form.city} onChange={e=>sf('city',e.target.value)}
-                  placeholder="e.g. Dallas"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">State</label>
-                  <div className="relative">
-                    <select value={form.state} onChange={e=>sf('state',e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
-                      <option value=""></option>
-                      {US_STATES.map(s=><option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">ZIP Code</label>
-                  <input value={form.zip_code} onChange={e=>sf('zip_code',e.target.value)}
-                    placeholder="e.g. 75001"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* PDF Preview info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
-            <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <div>
-              <p className="text-sm font-semibold text-blue-800 mb-1">PDF Documents</p>
-              <p className="text-xs text-blue-700">
-                Your company name, logo, and contact info will automatically appear on all generated PDFs —
-                including <strong>invoices</strong>, <strong>driver settlements</strong>, and <strong>reports</strong>.
-              </p>
-            </div>
-          </div>
-
+          <Section title="Address">
+            <Grid cols={3}>
+              <Field label="Street" span={3}><input value={form.address} onChange={set('address')} className={control} /></Field>
+              <Field label="City"><input value={form.city} onChange={set('city')} className={control} /></Field>
+              <Field label="State"><select value={form.state} onChange={set('state')} className={control}><option value="">—</option>{US_STATES.map(s => <option key={s}>{s}</option>)}</select></Field>
+              <Field label="ZIP"><input value={form.zip_code} onChange={set('zip_code')} className={control} /></Field>
+            </Grid>
+          </Section>
         </div>
-      </div>
-    </div>
+      )}
+    </PageShell>
   )
 }

@@ -1,626 +1,186 @@
-import { useState, useEffect, useRef } from 'react'
-import { trailersApi, driversApi } from '@/api/entities'
-import type { Trailer, TrailerDocument } from '@/types'
-import type { Driver } from '@/types'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { trailersApi } from '@/api/entities'
+import { useEntities } from '@/hooks/useEntities'
+import type { Trailer } from '@/types'
+import PageShell, { EmptyRow, Pill, Th } from '@/components/ui/PageShell'
+import Drawer, { DrawerTabs } from '@/components/ui/Drawer'
+import { Field, Grid, Section, US_STATES, control, textarea } from '@/components/ui/Field'
+import UnitDocuments, { DocsSummary } from '@/components/ui/UnitDocuments'
 
-const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY']
-const TRAILER_TYPES = ['','Dry Van','Reefer','Flatbed','Step Deck','Lowboy','Car Carrier','Tanker','Curtain Side','Other']
-const DOC_TYPES = [
-  { key: 'annual_inspection', label: 'Annual Inspection', hasNameNotes: false },
-  { key: 'registration',      label: 'Registration',      hasNameNotes: false },
-  { key: 'repairs',           label: 'Repairs & Maintenance', hasNameNotes: true },
-  { key: 'other',             label: 'Other',             hasNameNotes: true },
-]
-
-const IcoWarn  = () => <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
-const IcoOk    = () => <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-const IcoX     = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-const IcoCheck = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-const IcoDn    = () => <svg className="w-4 h-4 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
-
-const TRAILER_COLUMN_DEFS: { key: string; label: string; sortable?: boolean; width: string }[] = [
-  { key: 'unit',      label: 'UNIT',      sortable: true, width: '9%' },
-  { key: 'type',      label: 'TYPE',      sortable: true, width: '9%' },
-  { key: 'year',      label: 'YEAR',      sortable: true, width: '6%' },
-  { key: 'make',      label: 'MAKE',      sortable: true, width: '9%' },
-  { key: 'model',     label: 'MODEL',     sortable: true, width: '9%' },
-  { key: 'vin',       label: 'VIN',       sortable: true, width: '14%' },
-  { key: 'plate',     label: 'PLATE',     sortable: true, width: '9%' },
-  { key: 'driver',    label: 'DRIVER',    sortable: true, width: '12%' },
-  { key: 'ownership', label: 'OWNERSHIP', sortable: true, width: '8%' },
-  { key: 'status',    label: 'STATUS',    sortable: true, width: '7%' },
-  { key: 'docs',      label: 'DOCUMENTS', width: '9%' },
-]
-
-function trailerSortVal(t: Trailer, key: string): string | number {
-  switch (key) {
-    case 'unit':      return t.unit_number || ''
-    case 'type':      return t.trailer_type || ''
-    case 'year':      return t.year ?? 0
-    case 'make':      return t.make || ''
-    case 'model':     return t.model || ''
-    case 'vin':       return t.vin || ''
-    case 'plate':     return t.plate || ''
-    case 'driver':    return t.driver?.name || ''
-    case 'ownership': return t.ownership || ''
-    case 'status':    return t.is_active ? 'Active' : 'Inactive'
-    default:          return ''
-  }
-}
-
-function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel }: {
-  onEdit: () => void; onDelete: () => void; editLabel: string; deleteLabel: string
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="relative flex items-center justify-center">
-      <button onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        title="Actions"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={'inline-flex h-6 w-6 items-center justify-center rounded transition-colors ' +
-          (open ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-700')}>
-        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
-      </button>
-      {open && (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
-          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">
-            <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-            {editLabel}
-          </button>
-          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-red-600 transition-colors hover:bg-red-50">
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-            {deleteLabel}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function emptyForm(): Partial<Trailer> {
-  return { unit_number:'', trailer_type:'', vin:'', year:undefined, make:'', model:'', ownership:'Owned', is_active:false, driver_id:undefined, plate:'', plate_state:'', purchase_date:'', purchase_price:undefined, notes:'' }
-}
+const TYPES = ['Dry van', 'Reefer', 'Flatbed', 'Step deck', 'Tanker', 'Other']
+const OWNERSHIP = ['Owned', 'Leased', 'Rented', 'Owner-operator']
 
 export default function TrailersPage() {
-  const [trailers, setTrailers] = useState<Trailer[]>([])
-  const [drivers, setDrivers]   = useState<Driver[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [editTrailer, setEditTrailer] = useState<Trailer|null>(null)
-  const [showNew, setShowNew]   = useState(false)
-  const [search, setSearch]     = useState('')
+  const entities = useEntities()
+  const [rows, setRows] = useState<Trailer[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [showInactive, setShowInactive] = useState(false)
-  const [page, setPage]         = useState(1)
-  const [pageSize, setPageSize] = useState(50)
-  const [sortKey, setSortKey]   = useState('unit')
-  const [sortDir, setSortDir]   = useState<'asc'|'desc'>('asc')
+  const [openId, setOpenId] = useState<number | null>(null)
+  const [creating, setCreating] = useState(false)
+  const requestId = useRef(0)
 
-  const load = () => {
+  const load = useCallback(async () => {
+    const id = ++requestId.current
     setLoading(true)
-    trailersApi.list().then(setTrailers).catch(e=>toast.error(e.message)).finally(()=>setLoading(false))
+    try {
+      const list = await trailersApi.list(showInactive ? undefined : true)
+      if (id === requestId.current) setRows(list)
+    } catch (e) { toast.error((e as Error).message) }
+    finally { if (id === requestId.current) setLoading(false) }
+  }, [showInactive])
+  useEffect(() => { load() }, [load])
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(t => [t.unit_number, t.trailer_type, t.make, t.vin, t.plate, t.driver?.name].some(v => v?.toLowerCase().includes(q)))
+  }, [rows, search])
+  const open = useMemo(() => rows.find(r => r.id === openId) || null, [rows, openId])
+
+  const remove = async (t: Trailer) => {
+    if (!confirm(`Delete trailer ${t.unit_number}?`)) return
+    try { await trailersApi.delete(t.id); toast.success('Trailer deleted'); load() } catch (e) { toast.error((e as Error).message) }
   }
-
-  useEffect(()=>{ load() },[])
-  useEffect(()=>{ driversApi.list().then(setDrivers).catch(()=>{}) },[])
-
-  const handleRowClick = (t: Trailer) => {
-    trailersApi.get(t.id).then(full=>{ setEditTrailer(full); setShowNew(false) }).catch(e=>toast.error(e.message))
-  }
-
-  const handleDelete = (t: Trailer) => {
-    if (!confirm(`Delete trailer "${t.unit_number}"?\n\nThe trailer will be deactivated and hidden from the list.`)) return
-    trailersApi.delete(t.id)
-      .then(() => { toast.success('Trailer deleted'); load() })
-      .catch(e => toast.error(e.message))
-  }
-
-  const hasWarning = (t: Trailer) => {
-    const docs = t.documents||[]
-    const ai  = docs.find(d=>d.doc_type==='annual_inspection')
-    const reg = docs.find(d=>d.doc_type==='registration')
-    return !ai?.exp_date || !reg?.exp_date
-  }
-
-  const sortBy = (key: string) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortKey(key); setSortDir('asc') }
-  }
-
-  const q = search.trim().toLowerCase()
-  const filtered = trailers
-    .filter(t => showInactive || t.is_active)
-    .filter(t => !q || [t.unit_number, t.trailer_type, t.vin, t.make, t.model, t.plate, t.driver?.name]
-      .filter(Boolean).some(v => String(v).toLowerCase().includes(q)))
-  const sorted = [...filtered].sort((a, b) => {
-    const va = trailerSortVal(a, sortKey), vb = trailerSortVal(b, sortKey)
-    const cmp = typeof va === 'number' && typeof vb === 'number'
-      ? va - vb
-      : String(va).localeCompare(String(vb), undefined, { sensitivity: 'base', numeric: true })
-    return sortDir === 'asc' ? cmp : -cmp
-  })
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize))
-  const safePage = Math.min(page, totalPages)
-  const paged = sorted.slice((safePage - 1) * pageSize, safePage * pageSize)
-  const startEntry = sorted.length === 0 ? 0 : (safePage - 1) * pageSize + 1
-  const endEntry = Math.min(safePage * pageSize, sorted.length)
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
-      {/* Header */}
-      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
-        <div className="mr-1 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-slate-950">Trailers</h1>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.625rem] font-bold text-slate-500">{filtered.length}</span>
-          </div>
-          <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Trailer units, documents and assignments</p>
+    <PageShell
+      title="Trailers" count={visible.length} subtitle="Units, who pulls them, and when registration and inspection run out"
+      actions={<>
+        <button onClick={load} className="btn-secondary h-9 rounded-lg px-3 text-xs"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />Refresh</button>
+        <button onClick={() => setCreating(true)} className="btn-primary h-9 rounded-lg px-3.5 text-xs"><Plus className="h-4 w-4" />New trailer</button>
+      </>}
+      toolbar={<>
+        <div className="relative w-72 max-w-full">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Unit, VIN, plate or driver…" className={`${control} pl-8`} />
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <div className="relative min-w-[13.75rem] flex-1 sm:flex-none">
-            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
-            <input type="search" placeholder="Search trailers..." value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1) }}
-              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64" />
-          </div>
-          <button onClick={()=>{setShowNew(true);setEditTrailer(null)}} className="btn-primary h-9 rounded-lg px-4 text-xs">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5"/></svg>
-            New trailer
-          </button>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
-        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
-          <colgroup>
-            {TRAILER_COLUMN_DEFS.map(c => <col key={c.key} style={{ width: c.width }} />)}
-            <col style={{ width: 76 }} />
-          </colgroup>
-          <thead className="sticky top-0 z-10">
-            <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
-              {TRAILER_COLUMN_DEFS.map(h => (
-                <th key={h.key} className="px-1.5 py-2 text-left font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
-                  {h.sortable ? (
-                    <button onClick={() => sortBy(h.key)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
-                      {h.label}
-                      <span className={sortKey === h.key ? 'opacity-100 text-blue-600' : 'opacity-30'}>
-                        {sortKey === h.key && sortDir === 'asc' ? '↑' : '↓'}
-                      </span>
-                    </button>
-                  ) : h.label}
-                </th>
-              ))}
-              <th className="px-1.5 py-2 text-center font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>ACTIONS</th>
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-slate-600">
+          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} className="h-3.5 w-3.5 accent-blue-600" />Show inactive
+        </label>
+      </>}
+    >
+      <table className="w-full border-collapse text-xs">
+        <thead className="sticky top-0 z-10 bg-slate-50">
+          <tr className="border-b border-slate-200">
+            <Th>Unit</Th><Th>Type</Th><Th>Trailer</Th><Th>Plate</Th><Th>Driver</Th><Th>Ownership</Th><Th>Documents</Th><Th>Status</Th><Th />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 bg-white">
+          {loading && rows.length === 0 ? <tr><td colSpan={9} className="py-16 text-center text-slate-400">Loading trailers…</td></tr>
+          : visible.length === 0 ? <EmptyRow colSpan={9} title={search ? 'No trailers match' : 'No trailers yet'} hint={search ? 'Try a unit number.' : 'Add a trailer to assign it to a truck or a driver.'} />
+          : visible.map(t => (
+            <tr key={t.id} onClick={() => setOpenId(t.id)} className="cursor-pointer transition-colors hover:bg-blue-50/60">
+              <td className="px-3 py-2.5 text-sm font-bold text-blue-700">{t.unit_number}</td>
+              <td className="px-3 py-2.5 text-slate-700">{t.trailer_type || <span className="text-slate-300">—</span>}</td>
+              <td className="px-3 py-2.5">
+                <div className="text-slate-800">{[t.year, t.make, t.model].filter(Boolean).join(' ') || <span className="text-slate-300">—</span>}</div>
+                {t.vin && <div className="text-[0.6875rem] uppercase tracking-wide text-slate-400">{t.vin}</div>}
+              </td>
+              <td className="px-3 py-2.5 text-slate-700">{t.plate ? `${t.plate}${t.plate_state ? ` · ${t.plate_state}` : ''}` : <span className="text-slate-300">—</span>}</td>
+              <td className="px-3 py-2.5 font-semibold text-slate-800">{t.driver?.name || <span className="font-normal text-slate-300">Unassigned</span>}</td>
+              <td className="px-3 py-2.5 text-slate-700">{t.ownership || '—'}</td>
+              <td className="px-3 py-2.5"><DocsSummary docs={t.documents} /></td>
+              <td className="px-3 py-2.5">{t.is_active ? <Pill tone="green">Active</Pill> : <Pill tone="slate">Inactive</Pill>}</td>
+              <td className="px-3 py-2.5 text-right">
+                <button onClick={e => { e.stopPropagation(); remove(t) }} aria-label={`Delete trailer ${t.unit_number}`} className="text-slate-300 transition hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+              </td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
-            {loading ? (
-              <tr><td colSpan={TRAILER_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading trailers...</div></td></tr>
-            ) : paged.length === 0 ? (
-              <tr><td colSpan={TRAILER_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7h13l5 5v5a2 2 0 01-2 2H5a2 2 0 01-2-2V7zM16 7v5h5M7 19a2 2 0 104 0m4 0a2 2 0 104 0"/></svg></div><div className="text-sm font-semibold text-slate-700">No trailers found</div><p className="mt-1 text-xs text-slate-400">Try adjusting your search.</p></div></td></tr>
-            ) : paged.map(t => {
-              const warn = hasWarning(t)
-              return (
-                <tr key={t.id} onClick={()=>handleRowClick(t)}
-                  className={'group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 ' + (warn ? 'hover:border-l-amber-400 hover:bg-amber-50/70' : 'hover:border-l-blue-500 hover:bg-blue-50/70')}>
-                  <td className="px-1.5 py-1">
-                    <div className="flex items-center gap-1 min-w-0">
-                      {warn ? <span className="flex-shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5"><IcoWarn/></span> : <span className="flex-shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5"><IcoOk/></span>}
-                      <span className="font-semibold text-blue-600 truncate hover:underline text-[0.6875rem]">
-                        {t.unit_number}
-                        {!t.is_active && <span className="ml-1 text-[0.625rem] font-normal text-slate-400">(inactive)</span>}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-1.5 py-1 text-gray-600 truncate">{t.trailer_type || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1 text-gray-600">{t.year || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1 text-gray-600 truncate">{t.make || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1 text-gray-600 truncate">{t.model || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1 font-mono text-gray-600 truncate">{t.vin || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1 font-mono text-gray-600 truncate">{t.plate ? `${t.plate}${t.plate_state ? ` (${t.plate_state})` : ''}` : <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1 text-gray-600 truncate">{t.driver?.name || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1 text-gray-600">{t.ownership || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1">
-                    <span className={'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold ' + (t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')}>
-                      {t.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-1.5 py-1">
-                    {warn
-                      ? <span className="inline-flex items-center gap-1 text-[0.625rem] font-semibold text-amber-600"><span className="h-1.5 w-1.5 rounded-full bg-current" />Docs missing</span>
-                      : <span className="inline-flex items-center gap-1 text-[0.625rem] font-semibold text-emerald-600"><span className="h-1.5 w-1.5 rounded-full bg-current" />Complete</span>}
-                  </td>
-                  <td className="px-1 py-1" onClick={e => e.stopPropagation()}>
-                    <RowActionMenu
-                      onEdit={() => handleRowClick(t)}
-                      onDelete={() => handleDelete(t)}
-                      editLabel="Edit Trailer"
-                      deleteLabel="Delete Trailer"
-                    />
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3 lg:px-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-0.5">
-            <button onClick={() => setPage(1)} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></button>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => { const s = Math.max(1, Math.min(safePage - 2, totalPages - 4)); return s + i }).map(p => (
-              <button key={p} onClick={() => setPage(p)} className={`w-5 h-5 rounded text-[0.6875rem] font-medium transition-colors ${p === safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{p}</button>
-            ))}
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></button>
-            <button onClick={() => setPage(totalPages)} disabled={safePage >= totalPages} className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></button>
-          </div>
-          <span className="text-[0.6875rem] text-gray-500">Showing {startEntry}–{endEntry} of {sorted.length} entries</span>
-          <button onClick={() => { setShowInactive(v => !v); setPage(1) }}
-            className={`rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold transition ${showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700'}`}>
-            {showInactive ? 'Hide inactive trailers' : 'Show inactive trailers'}
-          </button>
-        </div>
-        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-          <span className="px-1.5 text-[0.625rem] font-medium text-slate-400">Rows</span>
-          {[10, 25, 50, 100].map(n => (
-            <button key={n} onClick={() => { setPageSize(n); setPage(1) }}
-              className={`rounded-md px-2 py-1 text-[0.625rem] transition ${pageSize === n ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
-              {n}
-            </button>
           ))}
-        </div>
-      </div>
+        </tbody>
+      </table>
 
-      {(editTrailer || showNew) && (
-        <TrailerPanel
-          trailer={editTrailer}
-          drivers={drivers}
-          onClose={()=>{setEditTrailer(null);setShowNew(false)}}
-          onSaved={()=>{load();setEditTrailer(null);setShowNew(false)}}
-        />
+      {open && <TrailerDrawer trailer={open} drivers={entities.drivers} onClose={() => setOpenId(null)} onSaved={load} />}
+      {creating && (
+        <Drawer title="New trailer" onClose={() => setCreating(false)}>
+          <TrailerFields drivers={entities.drivers} onSaved={() => { setCreating(false); load() }} />
+        </Drawer>
       )}
-    </div>
+    </PageShell>
   )
 }
 
-// ── Trailer Panel ─────────────────────────────────────────────────────────────
-function TrailerPanel({ trailer, drivers, onClose, onSaved }: {
-  trailer: Trailer|null; drivers: Driver[]; onClose:()=>void; onSaved:()=>void
-}) {
-  const isNew = !trailer
-  const [form, setForm]   = useState<Partial<Trailer>>(trailer ? {...trailer} : emptyForm())
+type Tab = 'details' | 'documents'
+
+function TrailerDrawer({ trailer, drivers, onClose, onSaved }: { trailer: Trailer; drivers: { id: number; name: string }[]; onClose: () => void; onSaved: () => void }) {
+  const [tab, setTab] = useState<Tab>('details')
+  const docs = trailer.documents || []
+  return (
+    <Drawer
+      title={`Trailer ${trailer.unit_number}`}
+      subtitle={[trailer.trailer_type, [trailer.year, trailer.make, trailer.model].filter(Boolean).join(' '), trailer.driver?.name].filter(Boolean).join(' · ') || 'Unassigned'}
+      badge={trailer.is_active ? <Pill tone="green">Active</Pill> : <Pill tone="slate">Inactive</Pill>}
+      tabs={<DrawerTabs value={tab} onChange={setTab} items={[{ key: 'details', label: 'Details' }, { key: 'documents', label: 'Documents', count: docs.length }]} />}
+      onClose={onClose}
+    >
+      {tab === 'details' && <TrailerFields trailer={trailer} drivers={drivers} onSaved={onSaved} />}
+      {tab === 'documents' && (
+        <UnitDocuments docs={docs}
+          onAdd={async p => { await trailersApi.addDocument(trailer.id, p); toast.success('Document added'); onSaved() }}
+          onRemove={async d => { if (!confirm(`Remove ${d.doc_type}?`)) return; await trailersApi.deleteDocument(trailer.id, d.id); onSaved() }} />
+      )}
+    </Drawer>
+  )
+}
+
+type Form = { unit_number: string; trailer_type: string; year: string; make: string; model: string; vin: string; plate: string; plate_state: string; ownership: string; driver_id: string; notes: string; is_active: boolean }
+
+const fromTrailer = (t?: Trailer): Form => ({
+  unit_number: t?.unit_number || '', trailer_type: t?.trailer_type || 'Dry van', year: t?.year ? String(t.year) : '', make: t?.make || '', model: t?.model || '', vin: t?.vin || '',
+  plate: t?.plate || '', plate_state: t?.plate_state || '', ownership: t?.ownership || 'Owned', driver_id: t?.driver_id ? String(t.driver_id) : '', notes: t?.notes || '', is_active: t?.is_active ?? true,
+})
+
+function TrailerFields({ trailer, drivers, onSaved }: { trailer?: Trailer; drivers: { id: number; name: string }[]; onSaved: () => void }) {
+  const [f, setF] = useState<Form>(() => fromTrailer(trailer))
   const [saving, setSaving] = useState(false)
-  const [docs, setDocs]   = useState<TrailerDocument[]>(trailer?.documents||[])
-  const [showDocTooltip, setShowDocTooltip] = useState(false)
+  useEffect(() => { setF(fromTrailer(trailer)) }, [trailer])
+  const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value })
+  const dirty = JSON.stringify(f) !== JSON.stringify(fromTrailer(trailer))
 
-  useEffect(()=>{
-    setForm(trailer ? {...trailer} : emptyForm())
-    setDocs(trailer?.documents||[])
-  },[trailer])
-
-  const sf = (k: keyof Trailer, v: any) => setForm(p=>({...p,[k]:v}))
-
-  const handleSave = () => {
-    if (!form.unit_number?.trim()) { toast.error('Unit number is required'); return }
-    if (!form.trailer_type?.trim()) { toast.error('Type is required'); return }
-    if (!form.year) { toast.error('Year is required'); return }
-    if (!form.make?.trim()) { toast.error('Make is required'); return }
-    setSaving(true)
-    const payload = {
-      ...form,
-      year: form.year ? parseInt(String(form.year)) : undefined,
-      purchase_price: form.purchase_price ? parseFloat(String(form.purchase_price)) : undefined,
-      purchase_date: form.purchase_date || undefined,
-      driver_id: form.driver_id || undefined,
+  const save = async () => {
+    if (!f.unit_number.trim()) return toast.error('Unit number is required')
+    const payload: Record<string, unknown> = {
+      unit_number: f.unit_number.trim(), trailer_type: f.trailer_type, year: f.year ? Number(f.year) : null, make: f.make || null, model: f.model || null, vin: f.vin || null,
+      plate: f.plate || null, plate_state: f.plate_state || null, ownership: f.ownership, driver_id: f.driver_id ? Number(f.driver_id) : null, notes: f.notes || null, is_active: f.is_active,
     }
-    const p = isNew ? trailersApi.create(payload) : trailersApi.update(trailer!.id, payload)
-    p.then(saved=>{
-      toast.success(isNew?'Trailer created':'Trailer saved')
-      if (isNew) {
-        // After save, reload with documents enabled
-        trailersApi.get(saved.id).then(full=>{
-          setForm({...full})
-          setDocs(full.documents||[])
-          toast('Documents are now available', {icon:'📄'})
-        })
-      }
-      onSaved()
-    })
-    .catch(e=>toast.error(e.message))
-    .finally(()=>setSaving(false))
-  }
-
-  return (
-    <div className="fixed inset-0 z-40 flex">
-      <div className="flex-1 bg-black/30" onClick={onClose}/>
-      <div className="w-full max-w-[68.75rem] bg-white flex flex-col h-full shadow-2xl overflow-hidden border-l border-gray-200">
-
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0">
-          <h2 className="font-bold text-gray-900">{isNew ? 'New trailer' : 'Edit trailer'}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"><IcoX/></button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-
-          {/* Main form - left + right layout */}
-          <div className="flex gap-6">
-            {/* Left side form */}
-            <div className="flex-1 space-y-4">
-              {/* Row 1: Unit, Type, Vin */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Unit <span className="text-red-500">*</span></label>
-                  <input value={form.unit_number||''} onChange={e=>sf('unit_number',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Type <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <select value={form.trailer_type||''} onChange={e=>sf('trailer_type',e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
-                      {TRAILER_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <IcoDn/>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Vin <span className="text-red-500">*</span></label>
-                  <input value={form.vin||''} onChange={e=>sf('vin',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-              </div>
-
-              {/* Row 2: Year, Make, Model */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Year <span className="text-red-500">*</span></label>
-                  <input type="number" value={form.year||''} onChange={e=>sf('year',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Make <span className="text-red-500">*</span></label>
-                  <input value={form.make||''} onChange={e=>sf('make',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Model</label>
-                  <input value={form.model||''} onChange={e=>sf('model',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-              </div>
-
-              {/* Row 3: Driver, Plate, Plate state */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Driver</label>
-                  <div className="relative">
-                    <select value={form.driver_id||''} onChange={e=>sf('driver_id',e.target.value?parseInt(e.target.value):undefined)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
-                      <option value=""></option>
-                      {drivers.map(d=><option key={d.id} value={d.id}>{d.name} [{d.driver_type}]</option>)}
-                    </select>
-                    <IcoDn/>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Plate</label>
-                  <input value={form.plate||''} onChange={e=>sf('plate',e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Plate state</label>
-                  <div className="relative">
-                    <select value={form.plate_state||''} onChange={e=>sf('plate_state',e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500 appearance-none">
-                      <option value=""></option>
-                      {US_STATES.map(s=><option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <IcoDn/>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right side */}
-            <div className="w-56 space-y-4 flex-shrink-0">
-              {/* Active/Inactive */}
-              <div>
-                <p className="text-base font-bold text-gray-900 mb-1">{form.is_active ? 'Active' : 'Inactive'}</p>
-              </div>
-
-              {/* Ownership */}
-              <div>
-                <p className="text-base font-bold text-gray-900 mb-2">Ownership</p>
-                <div className="flex items-center gap-4">
-                  {['Owned','Leased'].map(o=>(
-                    <label key={o} className="flex items-center gap-1.5 cursor-pointer">
-                      <div onClick={()=>sf('ownership',o)}
-                        className={'w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer '+(form.ownership===o?'border-blue-500':'border-gray-300')}>
-                        {form.ownership===o && <div className="w-2 h-2 rounded-full bg-blue-500"/>}
-                      </div>
-                      <span className="text-sm text-gray-700">{o}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Purchase Date */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Purchase Date</label>
-                <input type="date" value={form.purchase_date||''} onChange={e=>sf('purchase_date',e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="Purchase Date"/>
-              </div>
-
-              {/* Purchase Price */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Purchase Price</label>
-                <div className="flex items-center border border-gray-300 rounded px-2 py-2 focus-within:border-blue-500">
-                  <span className="text-gray-400 text-sm mr-1">$</span>
-                  <input type="number" value={form.purchase_price||''} onChange={e=>sf('purchase_price',e.target.value)}
-                    className="flex-1 text-sm focus:outline-none" placeholder="0"/>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Documents */}
-          <div className="mt-6">
-            <h3 className="text-base font-bold text-gray-900 mb-3">Documents</h3>
-            {isNew ? (
-              <div className="space-y-1">
-                {DOC_TYPES.map(dt=>(
-                  <div key={dt.key} className="flex items-center justify-between px-3 py-2.5 border border-gray-200 rounded">
-                    <div className="flex items-center gap-2">
-                      {dt.key==='annual_inspection'||dt.key==='registration'
-                        ? <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
-                        : <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-                      }
-                      <span className="text-sm text-gray-500">{dt.label}</span>
-                      {(dt.key==='annual_inspection'||dt.key==='registration') && <span className="text-xs text-amber-400 ml-1">- (No documents)</span>}
-                      <span className="text-gray-300 text-sm">-</span>
-                    </div>
-                    <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                  </div>
-                ))}
-                {/* Tooltip */}
-                <div className="relative flex justify-center mt-1">
-                  <div className="bg-white border border-gray-200 shadow rounded px-4 py-2 text-xs text-gray-600 max-w-sm text-center">
-                    Documents will be available for adding and editing after saving a trailer.
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {DOC_TYPES.map(dt=>(
-                  <TrailerDocSection key={dt.key} docType={dt} docs={docs.filter(d=>d.doc_type===dt.key)}
-                    trailerId={trailer!.id}
-                    onSaved={d=>setDocs(prev=>[...prev.filter(x=>x.id!==d.id),d])}
-                    onDeleted={id=>setDocs(prev=>prev.filter(d=>d.id!==id))}/>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Notes */}
-          <div className="mt-5">
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
-            <textarea value={form.notes||''} onChange={e=>sf('notes',e.target.value)} rows={4}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:border-blue-500"/>
-          </div>
-
-          {/* History */}
-          <div className="mt-5">
-            <label className="block text-xs font-semibold text-gray-600 mb-1">History</label>
-            <textarea readOnly rows={4} value=""
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none bg-gray-50 text-gray-400"/>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-          <button onClick={onClose} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold rounded">
-            <IcoX/> Close
-          </button>
-          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded disabled:opacity-50">
-            <IcoCheck/> {saving?'Saving…':'Save'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Trailer Doc Section ───────────────────────────────────────────────────────
-function TrailerDocSection({ docType, docs, trailerId, onSaved, onDeleted }: {
-  docType: { key: string; label: string; hasNameNotes: boolean }
-  docs: TrailerDocument[]; trailerId: number
-  onSaved:(d:TrailerDocument)=>void; onDeleted:(id:number)=>void
-}) {
-  const [expanded, setExpanded] = useState(true)
-  const [rowForm, setRowForm]   = useState({ issue_date:'', exp_date:'', name:'', notes:'' })
-  const [saving, setSaving]     = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  const hasDoc   = docs.length > 0
-  const hasDates = docs.some(d=>d.issue_date||d.exp_date)
-
-  const handleSave = () => {
     setSaving(true)
-    trailersApi.addDocument(trailerId, { doc_type: docType.key, ...rowForm, issue_date: rowForm.issue_date||undefined, exp_date: rowForm.exp_date||undefined })
-      .then(d=>{ onSaved(d); setRowForm({ issue_date:'', exp_date:'', name:'', notes:'' }); toast.success('Document saved') })
-      .catch(e=>toast.error(e.message))
-      .finally(()=>setSaving(false))
+    try {
+      if (trailer) { await trailersApi.update(trailer.id, payload as Partial<Trailer>); toast.success('Trailer updated') }
+      else { await trailersApi.create(payload as Partial<Trailer>); toast.success('Trailer added') }
+      onSaved()
+    } catch (e) { toast.error((e as Error).message) }
+    finally { setSaving(false) }
   }
 
   return (
-    <div className="border border-gray-200 rounded">
-      <div className="flex items-center gap-2 px-3 py-2.5">
-        {hasDoc && hasDates ? <IcoOk/> : <IcoWarn/>}
-        <span className="text-sm font-semibold text-gray-800">{docType.label}</span>
-        <span className="text-gray-400 text-sm">-</span>
-        {!hasDoc && <span className="text-xs text-amber-500">(No documents)</span>}
-        <div className="flex-1"/>
-        <button onClick={()=>setExpanded(v=>!v)} className="text-gray-400 hover:text-gray-600">
-          <svg className={'w-4 h-4 transition-transform '+(expanded?'':'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </button>
+    <div className="space-y-3">
+      <Section title="Unit">
+        <Grid cols={3}>
+          <Field label="Unit number" required><input value={f.unit_number} onChange={set('unit_number')} className={control} placeholder="T-101" autoFocus={!trailer} /></Field>
+          <Field label="Type"><select value={f.trailer_type} onChange={set('trailer_type')} className={control}>{TYPES.map(o => <option key={o}>{o}</option>)}</select></Field>
+          <Field label="Ownership"><select value={f.ownership} onChange={set('ownership')} className={control}>{OWNERSHIP.map(o => <option key={o}>{o}</option>)}</select></Field>
+          <Field label="Year"><input inputMode="numeric" value={f.year} onChange={set('year')} className={control} /></Field>
+          <Field label="Make"><input value={f.make} onChange={set('make')} className={control} placeholder="Great Dane" /></Field>
+          <Field label="Model"><input value={f.model} onChange={set('model')} className={control} /></Field>
+          <Field label="VIN" span={3}><input value={f.vin} onChange={set('vin')} className={`${control} uppercase`} maxLength={17} /></Field>
+          <Field label="Plate" span={2}><input value={f.plate} onChange={set('plate')} className={control} /></Field>
+          <Field label="Plate state"><select value={f.plate_state} onChange={set('plate_state')} className={control}><option value="">—</option>{US_STATES.map(s => <option key={s}>{s}</option>)}</select></Field>
+        </Grid>
+      </Section>
+      <Section title="Assignment and notes">
+        <Grid cols={3}>
+          <Field label="Driver"><select value={f.driver_id} onChange={set('driver_id')} className={control}><option value="">Unassigned</option>{drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>
+          <Field label="Notes" span={2}><textarea value={f.notes} onChange={set('notes')} className={textarea} /></Field>
+        </Grid>
+      </Section>
+      <div className="flex items-center justify-between">
+        <label className="flex items-center gap-1.5 text-xs text-slate-600">
+          <input type="checkbox" checked={f.is_active} onChange={e => setF({ ...f, is_active: e.target.checked })} className="h-3.5 w-3.5 accent-blue-600" />Active trailer
+        </label>
+        <button onClick={save} disabled={saving || (!!trailer && !dirty)} className="btn-primary h-9 rounded-lg px-4 text-xs">{saving ? 'Saving…' : trailer ? 'Save changes' : 'Add trailer'}</button>
       </div>
-      {expanded && (
-        <div className="border-t border-gray-100 px-3 py-3">
-          {docs.map(doc=>(
-            <div key={doc.id} className="flex items-center gap-2 mb-2 text-xs text-gray-600 group">
-              <span>{doc.issue_date||'—'}</span><span>{doc.exp_date||'—'}</span>
-              {docType.hasNameNotes && <><span>{doc.name||'—'}</span><span>{doc.notes||'—'}</span></>}
-              {doc.original_filename && <span className="text-blue-600 hover:underline cursor-pointer">{doc.original_filename}</span>}
-              <button onClick={()=>trailersApi.deleteDocument(trailerId,doc.id).then(()=>onDeleted(doc.id)).catch(e=>toast.error(e.message))}
-                className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 ml-1">✕</button>
-            </div>
-          ))}
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Issue Date</label>
-              <input type="date" value={rowForm.issue_date} onChange={e=>setRowForm(p=>({...p,issue_date:e.target.value}))}
-                className="border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 w-32"/>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Exp Date</label>
-              <input type="date" value={rowForm.exp_date} onChange={e=>setRowForm(p=>({...p,exp_date:e.target.value}))}
-                className="border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 w-32"/>
-            </div>
-            {docType.hasNameNotes && (
-              <>
-                <div className="flex flex-col gap-0.5">
-                  <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Name</label>
-                  <input value={rowForm.name} onChange={e=>setRowForm(p=>({...p,name:e.target.value}))}
-                    className="border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 w-28"/>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Notes</label>
-                  <input value={rowForm.notes} onChange={e=>setRowForm(p=>({...p,notes:e.target.value}))}
-                    className="border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 w-36"/>
-                </div>
-              </>
-            )}
-            <div className="flex flex-col gap-0.5 flex-1">
-              <label className="text-[0.625rem] font-semibold text-gray-400 uppercase tracking-wide">Attachments</label>
-              <input className="border border-gray-200 rounded px-2 py-1.5 text-xs w-full" readOnly/>
-            </div>
-            <input type="file" ref={fileRef} className="hidden"/>
-            <button onClick={()=>fileRef.current?.click()} className="text-xs text-gray-400 hover:text-gray-600 mt-4 whitespace-nowrap">upload</button>
-            <button onClick={handleSave} disabled={saving}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded disabled:opacity-40 mt-4 whitespace-nowrap">
-              <IcoCheck/> Save
-            </button>
-            <button onClick={()=>setRowForm({ issue_date:'', exp_date:'', name:'', notes:'' })}
-              className="text-xs text-gray-500 hover:text-gray-700 mt-4 whitespace-nowrap">Cancel</button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

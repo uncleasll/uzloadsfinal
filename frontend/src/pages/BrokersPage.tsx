@@ -1,913 +1,204 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { brokersApi } from '@/api/entities'
 import type { Broker } from '@/types'
-import toast from 'react-hot-toast'
+import PageShell, { EmptyRow, Pill, Th } from '@/components/ui/PageShell'
+import Drawer from '@/components/ui/Drawer'
+import { Field, Grid, Section, US_STATES, control, textarea } from '@/components/ui/Field'
 
-type TabType = 'brokers' | 'shippers'
-type StatusType = 'Pending' | 'Approved' | 'No buy'
-
-type BrokerFormState = {
-  companyName: string
-  address: string
-  addressLine2: string
-  phone: string
-  email: string
-  city: string
-  state: string
-  zip: string
-  fidEin: string
-  mc: string
-  notes: string
-  isBroker: boolean
-  isShipperReceiver: boolean
-  billingType: 'direct' | 'factoring'
-  factoringCompany: string
-  quickpayFee: string
-  credit: string
-  avgDaysToPay: string
-  status: StatusType
-  payTerms: string
-}
-
-const INITIAL_FORM_STATE: BrokerFormState = {
-  companyName: '',
-  address: '',
-  addressLine2: '',
-  phone: '',
-  email: '',
-  city: '',
-  state: '',
-  zip: '',
-  fidEin: '',
-  mc: '',
-  notes: '',
-  isBroker: true,
-  isShipperReceiver: false,
-  billingType: 'factoring',
-  factoringCompany: '',
-  quickpayFee: '',
-  credit: '',
-  avgDaysToPay: '',
-  status: 'Pending',
-  payTerms: '',
-}
-
-const STATES = [
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
-]
-
-function clsx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ')
-}
-
-// Convert a Broker row from the API into the form shape used by the modal.
-function brokerToForm(b: Broker): BrokerFormState {
-  return {
-    companyName: b.name || '',
-    address: b.address || '',
-    addressLine2: b.address2 || '',
-    phone: b.phone || '',
-    email: b.email || '',
-    city: b.city || '',
-    state: b.state || '',
-    zip: b.zip_code || '',
-    fidEin: b.fid_ein || '',
-    mc: b.mc_number || '',
-    notes: b.notes || '',
-    isBroker: b.is_broker,
-    isShipperReceiver: b.is_shipper_receiver,
-    billingType: b.factoring ? 'factoring' : 'direct',
-    factoringCompany: b.factoring_company || '',
-    quickpayFee: b.quickpay_fee != null ? String(b.quickpay_fee) : '',
-    credit: b.credit || '',
-    avgDaysToPay: b.avg_days_to_pay != null ? String(b.avg_days_to_pay) : '',
-    status: (b.status as StatusType) || 'Pending',
-    payTerms: b.pay_terms || '',
-  }
-}
-
-// Convert form state into an API payload.
-function formToPayload(form: BrokerFormState): Partial<Broker> & { name: string } {
-  const parseNum = (v: string): number | undefined => {
-    const s = v.trim()
-    if (!s) return undefined
-    const n = Number(s)
-    return Number.isFinite(n) ? n : undefined
-  }
-  const parseIntStrict = (v: string): number | undefined => {
-    const n = parseNum(v)
-    return n != null ? Math.trunc(n) : undefined
-  }
-  return {
-    name: form.companyName.trim(),
-    mc_number: form.mc.trim() || undefined,
-    address: form.address.trim() || undefined,
-    address2: form.addressLine2.trim() || undefined,
-    city: form.city.trim() || undefined,
-    state: form.state || undefined,
-    zip_code: form.zip.trim() || undefined,
-    phone: form.phone.trim() || undefined,
-    email: form.email.trim() || undefined,
-    fid_ein: form.fidEin.trim() || undefined,
-    notes: form.notes.trim() || undefined,
-    is_broker: form.isBroker,
-    is_shipper_receiver: form.isShipperReceiver,
-    factoring: form.billingType === 'factoring',
-    factoring_company: form.billingType === 'factoring' && form.factoringCompany.trim()
-      ? form.factoringCompany.trim()
-      : undefined,
-    quickpay_fee: parseNum(form.quickpayFee),
-    credit: form.credit || undefined,
-    avg_days_to_pay: parseIntStrict(form.avgDaysToPay),
-    status: form.status,
-    pay_terms: form.payTerms.trim() || undefined,
-  }
-}
-
-// Icons
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-[0.875rem] w-[0.875rem]">
-      <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  )
-}
-
-function PhoneIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function PlusDocIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M14 3v5h5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M12 11v6M9 14h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function EditIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-[0.875rem] w-[0.875rem]">
-      <path d="M4 20h4l10-10-4-4L4 16v4Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M12 6l4 4" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-[0.875rem] w-[0.875rem]">
-      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function DoubleChevronLeft() { return <span className="text-[0.625rem]">«</span> }
-function ChevronLeft() { return <span className="text-[0.625rem]">‹</span> }
-function ChevronRight() { return <span className="text-[0.625rem]">›</span> }
-function DoubleChevronRight() { return <span className="text-[0.625rem]">»</span> }
-
-// Small badge helpers for the table.
-function StatusBadge({ status }: { status: string }) {
-  const s = status || 'Pending'
-  const styles: Record<string, string> = {
-    Pending:  'bg-amber-100 text-amber-700',
-    Approved: 'bg-emerald-100 text-emerald-700',
-    'No buy': 'bg-red-100 text-red-600',
-  }
-  return (
-    <span className={clsx(
-      'inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold',
-      styles[s] || styles.Pending,
-    )}>
-      {s}
-    </span>
-  )
-}
-
-function CreditBadge({ credit }: { credit?: string }) {
-  if (!credit) return <span className="text-gray-300">—</span>
-  const colors: Record<string, string> = {
-    A: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    B: 'border-amber-200 bg-amber-50 text-amber-700',
-    C: 'border-red-200 bg-red-50 text-red-600',
-  }
-  return (
-    <span className={clsx(
-      'inline-flex h-5 w-5 items-center justify-center rounded-full border text-[0.625rem] font-bold',
-      colors[credit] || 'border-slate-200 bg-slate-50 text-slate-500',
-    )}>
-      {credit}
-    </span>
-  )
-}
-
-const BROKER_COLUMN_DEFS: { key: string; label: string; sortable?: boolean; width: string }[] = [
-  { key: 'name',    label: 'NAME',       sortable: true, width: '20%' },
-  { key: 'address', label: 'ADDRESS',    sortable: true, width: '13%' },
-  { key: 'phone',   label: 'PHONE',      sortable: true, width: '11%' },
-  { key: 'mc',      label: 'MC',         sortable: true, width: '8%' },
-  { key: 'pay',     label: 'PAY METHOD', sortable: true, width: '16%' },
-  { key: 'credit',  label: 'CREDIT',     sortable: true, width: '7%' },
-  { key: 'dtp',     label: 'AVG DTP',    sortable: true, width: '7%' },
-  { key: 'status',  label: 'STATUS',     sortable: true, width: '9%' },
-]
-
-function brokerSortVal(b: Broker, key: string): string | number {
-  switch (key) {
-    case 'name':    return b.name || ''
-    case 'address': return b.city || ''
-    case 'phone':   return b.phone || ''
-    case 'mc':      return b.mc_number || ''
-    case 'pay':     return b.factoring ? 'Factoring' : 'Direct billing'
-    case 'credit':  return b.credit || ''
-    case 'dtp':     return b.avg_days_to_pay ?? -1
-    case 'status':  return b.status || ''
-    default:        return ''
-  }
-}
-
-function RowActionMenu({ onEdit, onDelete, editLabel, deleteLabel }: {
-  onEdit: () => void; onDelete: () => void; editLabel: string; deleteLabel: string
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="relative flex items-center justify-center">
-      <button onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        title="Actions"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={clsx('inline-flex h-6 w-6 items-center justify-center rounded transition-colors',
-          open ? 'bg-blue-100 text-blue-700' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-700')}>
-        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
-      </button>
-      {open && (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-0.5 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-950/10">
-          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onEdit() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-slate-700 transition-colors hover:bg-slate-50">
-            <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-            {editLabel}
-          </button>
-          <button role="menuitem" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onDelete() }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium text-red-600 transition-colors hover:bg-red-50">
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-            {deleteLabel}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
+type Kind = 'all' | 'brokers' | 'shippers'
+const STATUS_TONE: Record<Broker['status'], 'green' | 'amber' | 'red'> = { Approved: 'green', Pending: 'amber', 'No buy': 'red' }
 
 export default function BrokersPage() {
-  const [brokers, setBrokers] = useState<Broker[]>([])
+  const [rows, setRows] = useState<Broker[]>([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabType>('brokers')
   const [search, setSearch] = useState('')
-  const [perPage, setPerPage] = useState(50)
-  const [page, setPage] = useState(1)
+  const [kind, setKind] = useState<Kind>('all')
   const [showInactive, setShowInactive] = useState(false)
-  const [sortKey, setSortKey] = useState('name')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [openId, setOpenId] = useState<number | null>(null)
+  const [creating, setCreating] = useState(false)
+  const requestId = useRef(0)
 
-  const sortBy = (key: string) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortKey(key); setSortDir('asc') }
-  }
-
-  const [form, setForm] = useState<BrokerFormState>(INITIAL_FORM_STATE)
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const isEdit = editingId !== null
-
-  const load = async () => {
+  const load = useCallback(async () => {
+    const id = ++requestId.current
+    setLoading(true)
     try {
-      setLoading(true)
-      const data = await brokersApi.list({ is_active: showInactive ? undefined : true })
-      setBrokers(data)
-    } catch (e: unknown) {
-      toast.error((e as Error).message || 'Failed to load customers')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      const list = await brokersApi.list(showInactive ? {} : { is_active: true })
+      if (id === requestId.current) setRows(list)
+    } catch (e) { toast.error((e as Error).message) }
+    finally { if (id === requestId.current) setLoading(false) }
   }, [showInactive])
+  useEffect(() => { load() }, [load])
 
-  // Filter by active tab + search. We do this client-side so toggling tabs
-  // and typing in the search box feels instant.
-  const filteredBrokers = useMemo(() => {
-    let list = brokers
-    if (activeTab === 'brokers') {
-      list = list.filter((b) => b.is_broker)
-    } else {
-      list = list.filter((b) => b.is_shipper_receiver)
-    }
+  const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (q) {
-      list = list.filter((b) =>
-        [b.name, b.mc_number, b.city, b.state, b.phone, b.email]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(q))
-      )
-    }
-    return list
-  }, [brokers, activeTab, search])
-
-  const sortedBrokers = useMemo(() => {
-    const list = [...filteredBrokers]
-    list.sort((a, b) => {
-      const va = brokerSortVal(a, sortKey)
-      const vb = brokerSortVal(b, sortKey)
-      const cmp = typeof va === 'number' && typeof vb === 'number'
-        ? va - vb
-        : String(va).localeCompare(String(vb), undefined, { sensitivity: 'base' })
-      return sortDir === 'asc' ? cmp : -cmp
+    return rows.filter(b => {
+      if (kind === 'brokers' && !b.is_broker) return false
+      if (kind === 'shippers' && !b.is_shipper_receiver) return false
+      if (!q) return true
+      return [b.name, b.mc_number, b.dot_number, b.city, b.phone, b.email].some(v => v?.toLowerCase().includes(q))
     })
-    return list
-  }, [filteredBrokers, sortKey, sortDir])
+  }, [rows, search, kind])
+  const open = useMemo(() => rows.find(r => r.id === openId) || null, [rows, openId])
 
-  const totalPages = Math.max(1, Math.ceil(sortedBrokers.length / perPage))
-  const safePage = Math.min(page, totalPages)
-
-  const paginatedBrokers = useMemo(() => {
-    const start = (safePage - 1) * perPage
-    return sortedBrokers.slice(start, start + perPage)
-  }, [sortedBrokers, safePage, perPage])
-
-  const startEntry = filteredBrokers.length === 0 ? 0 : (safePage - 1) * perPage + 1
-  const endEntry = Math.min(safePage * perPage, filteredBrokers.length)
-
-  const openCreateModal = () => {
-    // Seed the type flags from the active tab so creating from the Shippers
-    // tab defaults to a shipper/receiver — small, but a real ergonomic win.
-    setEditingId(null)
-    setForm({
-      ...INITIAL_FORM_STATE,
-      isBroker: activeTab === 'brokers',
-      isShipperReceiver: activeTab === 'shippers',
-    })
-    setShowForm(true)
+  const remove = async (b: Broker) => {
+    if (!confirm(`Delete ${b.name}? Its loads stay.`)) return
+    try { await brokersApi.delete(b.id); toast.success('Deleted'); load() } catch (e) { toast.error((e as Error).message) }
   }
 
-  const openEditModal = (broker: Broker) => {
-    setEditingId(broker.id)
-    setForm(brokerToForm(broker))
-    setShowForm(true)
-  }
+  return (
+    <PageShell
+      title="Brokers" count={visible.length} subtitle="Who you haul for, how they pay, and whether they are cleared to book"
+      actions={<>
+        <button onClick={load} className="btn-secondary h-9 rounded-lg px-3 text-xs"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />Refresh</button>
+        <button onClick={() => setCreating(true)} className="btn-primary h-9 rounded-lg px-3.5 text-xs"><Plus className="h-4 w-4" />New broker</button>
+      </>}
+      toolbar={<>
+        <div className="relative w-72 max-w-full">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name, MC, city…" className={`${control} pl-8`} />
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+          {([['all', 'All'], ['brokers', 'Brokers'], ['shippers', 'Shippers / receivers']] as Array<[Kind, string]>).map(([k, l]) => (
+            <button key={k} onClick={() => setKind(k)} aria-pressed={kind === k} className={`rounded-md px-2.5 py-1 text-[0.6875rem] font-semibold transition ${kind === k ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>{l}</button>
+          ))}
+        </div>
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-slate-600">
+          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} className="h-3.5 w-3.5 accent-blue-600" />Show inactive
+        </label>
+      </>}
+    >
+      <table className="w-full border-collapse text-xs">
+        <thead className="sticky top-0 z-10 bg-slate-50">
+          <tr className="border-b border-slate-200">
+            <Th>Name</Th><Th>MC / DOT</Th><Th>Contact</Th><Th>Location</Th><Th>Payment</Th><Th>Status</Th><Th />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 bg-white">
+          {loading && rows.length === 0 ? <tr><td colSpan={7} className="py-16 text-center text-slate-400">Loading…</td></tr>
+          : visible.length === 0 ? <EmptyRow colSpan={7} title={search || kind !== 'all' ? 'Nothing matches' : 'No brokers yet'} hint={search ? 'Try another name or MC number.' : 'Add a broker to book loads against.'} />
+          : visible.map(b => (
+            <tr key={b.id} onClick={() => setOpenId(b.id)} className="cursor-pointer transition-colors hover:bg-blue-50/60">
+              <td className="px-3 py-2.5">
+                <div className="font-semibold text-slate-900">{b.name}</div>
+                <div className="text-[0.6875rem] text-slate-400">{[b.is_broker && 'Broker', b.is_shipper_receiver && 'Shipper / receiver'].filter(Boolean).join(' · ') || '—'}</div>
+              </td>
+              <td className="px-3 py-2.5 tabular-nums text-slate-700">{b.mc_number ? `MC ${b.mc_number}` : ''}{b.mc_number && b.dot_number ? ' · ' : ''}{b.dot_number ? `DOT ${b.dot_number}` : ''}{!b.mc_number && !b.dot_number && <span className="text-slate-300">—</span>}</td>
+              <td className="px-3 py-2.5">
+                <div className="text-slate-800">{b.phone || <span className="text-slate-300">—</span>}</div>
+                {b.email && <div className="text-[0.6875rem] text-slate-500">{b.email}</div>}
+              </td>
+              <td className="px-3 py-2.5 text-slate-700">{[b.city, b.state].filter(Boolean).join(', ') || <span className="text-slate-300">—</span>}</td>
+              <td className="px-3 py-2.5 text-slate-700">
+                {b.factoring ? `Factoring${b.factoring_company ? ` · ${b.factoring_company}` : ''}` : b.pay_terms || 'Direct'}
+                {b.avg_days_to_pay ? <span className="text-slate-400"> · {b.avg_days_to_pay}d avg</span> : null}
+              </td>
+              <td className="px-3 py-2.5"><Pill tone={b.is_active ? STATUS_TONE[b.status] || 'slate' : 'slate'}>{b.is_active ? b.status : 'Inactive'}</Pill></td>
+              <td className="px-3 py-2.5 text-right">
+                <button onClick={e => { e.stopPropagation(); remove(b) }} aria-label={`Delete ${b.name}`} className="text-slate-300 transition hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-  const closeModal = () => {
-    setShowForm(false)
-    setEditingId(null)
-    setForm(INITIAL_FORM_STATE)
-  }
+      {open && (
+        <Drawer title={open.name} subtitle={[open.mc_number && `MC ${open.mc_number}`, [open.city, open.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || undefined}
+          badge={<Pill tone={STATUS_TONE[open.status] || 'slate'}>{open.status}</Pill>} onClose={() => setOpenId(null)}>
+          <BrokerFields broker={open} onSaved={load} />
+        </Drawer>
+      )}
+      {creating && (
+        <Drawer title="New broker" onClose={() => setCreating(false)}>
+          <BrokerFields onSaved={() => { setCreating(false); load() }} />
+        </Drawer>
+      )}
+    </PageShell>
+  )
+}
 
-  const updateForm = <K extends keyof BrokerFormState>(key: K, value: BrokerFormState[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }))
-  }
+type Form = { name: string; is_broker: boolean; is_shipper_receiver: boolean; mc_number: string; dot_number: string; fid_ein: string; phone: string; email: string; address: string; city: string; state: string; zip_code: string; status: Broker['status']; pay_terms: string; factoring: boolean; factoring_company: string; quickpay_fee: string; credit: string; avg_days_to_pay: string; notes: string; is_active: boolean }
 
-  const handleSave = async () => {
-    if (!form.companyName.trim()) {
-      toast.error('Company Name is required')
-      return
-    }
-    if (!form.isBroker && !form.isShipperReceiver) {
-      toast.error('Pick at least one customer type (Broker or Shipper/Receiver)')
-      return
+const fromBroker = (b?: Broker): Form => ({
+  name: b?.name || '', is_broker: b?.is_broker ?? true, is_shipper_receiver: b?.is_shipper_receiver ?? false,
+  mc_number: b?.mc_number || '', dot_number: b?.dot_number || '', fid_ein: b?.fid_ein || '', phone: b?.phone || '', email: b?.email || '',
+  address: b?.address || '', city: b?.city || '', state: b?.state || '', zip_code: b?.zip_code || '',
+  status: b?.status || 'Pending', pay_terms: b?.pay_terms || '', factoring: b?.factoring ?? false, factoring_company: b?.factoring_company || '',
+  quickpay_fee: b?.quickpay_fee != null ? String(b.quickpay_fee) : '', credit: b?.credit || '', avg_days_to_pay: b?.avg_days_to_pay != null ? String(b.avg_days_to_pay) : '',
+  notes: b?.notes || '', is_active: b?.is_active ?? true,
+})
+
+function BrokerFields({ broker, onSaved }: { broker?: Broker; onSaved: () => void }) {
+  const [f, setF] = useState<Form>(() => fromBroker(broker))
+  const [saving, setSaving] = useState(false)
+  useEffect(() => { setF(fromBroker(broker)) }, [broker])
+  const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value })
+  const check = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.checked })
+  const dirty = JSON.stringify(f) !== JSON.stringify(fromBroker(broker))
+
+  const save = async () => {
+    if (!f.name.trim()) return toast.error('Name is required')
+    if (!f.is_broker && !f.is_shipper_receiver) return toast.error('Pick at least one type')
+    const payload: Record<string, unknown> = {
+      name: f.name.trim(), is_broker: f.is_broker, is_shipper_receiver: f.is_shipper_receiver,
+      mc_number: f.mc_number || null, dot_number: f.dot_number || null, fid_ein: f.fid_ein || null, phone: f.phone || null, email: f.email || null,
+      address: f.address || null, city: f.city || null, state: f.state || null, zip_code: f.zip_code || null,
+      status: f.status, pay_terms: f.pay_terms || null, factoring: f.factoring, factoring_company: f.factoring ? f.factoring_company || null : null,
+      quickpay_fee: f.quickpay_fee ? Number(f.quickpay_fee) : null, credit: f.credit || null, avg_days_to_pay: f.avg_days_to_pay ? Number(f.avg_days_to_pay) : null,
+      notes: f.notes || null, is_active: f.is_active,
     }
     setSaving(true)
     try {
-      const payload = formToPayload(form)
-      if (isEdit && editingId != null) {
-        await brokersApi.update(editingId, payload)
-        toast.success('Customer updated')
-      } else {
-        await brokersApi.create(payload)
-        toast.success('Customer created')
-      }
-      closeModal()
-      await load()
-    } catch (e: unknown) {
-      toast.error((e as Error).message || 'Failed to save customer')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleDelete = async (broker: Broker) => {
-    if (!confirm(`Deactivate customer "${broker.name}"?`)) return
-    try {
-      await brokersApi.delete(broker.id)
-      toast.success('Customer deactivated')
-      await load()
-    } catch (e: unknown) {
-      toast.error((e as Error).message || 'Failed to deactivate customer')
-    }
+      if (broker) { await brokersApi.update(broker.id, payload as Partial<Broker>); toast.success('Broker updated') }
+      else { await brokersApi.create(payload as Partial<Broker> & { name: string }); toast.success('Broker added') }
+      onSaved()
+    } catch (e) { toast.error((e as Error).message) }
+    finally { setSaving(false) }
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white text-[0.6875rem] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.04)]">
-
-      {/* Header */}
-      <div className="flex flex-shrink-0 flex-col gap-3 border-b border-slate-200/80 bg-white px-4 py-4 lg:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="mr-1 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-slate-950">Customers</h1>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.625rem] font-bold text-slate-500">{filteredBrokers.length}</span>
-            </div>
-            <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Brokers and shippers you haul for</p>
+    <div className="space-y-3">
+      <Section title="Company">
+        <Grid cols={3}>
+          <Field label="Name" required span={3}><input value={f.name} onChange={set('name')} className={control} autoFocus={!broker} /></Field>
+          <Field label="MC number"><input value={f.mc_number} onChange={set('mc_number')} className={control} /></Field>
+          <Field label="DOT number"><input value={f.dot_number} onChange={set('dot_number')} className={control} /></Field>
+          <Field label="EIN"><input value={f.fid_ein} onChange={set('fid_ein')} className={control} /></Field>
+          <div className="flex items-end gap-4 sm:col-span-3">
+            <label className="flex items-center gap-1.5 text-xs text-slate-700"><input type="checkbox" checked={f.is_broker} onChange={check('is_broker')} className="h-3.5 w-3.5 accent-blue-600" />Broker</label>
+            <label className="flex items-center gap-1.5 text-xs text-slate-700"><input type="checkbox" checked={f.is_shipper_receiver} onChange={check('is_shipper_receiver')} className="h-3.5 w-3.5 accent-blue-600" />Shipper / receiver</label>
           </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="relative min-w-[13.75rem] flex-1 sm:flex-none">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><SearchIcon /></span>
-              <input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-                type="search"
-                placeholder="Search customers..."
-                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64"
-              />
-            </div>
-            <button onClick={openCreateModal} className="btn-primary h-9 rounded-lg px-4 text-xs">
-              <PlusDocIcon />
-              New customer
-            </button>
+        </Grid>
+      </Section>
+      <Section title="Contact">
+        <Grid cols={3}>
+          <Field label="Phone"><input value={f.phone} onChange={set('phone')} className={control} /></Field>
+          <Field label="Email" span={2}><input type="email" value={f.email} onChange={set('email')} className={control} /></Field>
+          <Field label="Street" span={3}><input value={f.address} onChange={set('address')} className={control} /></Field>
+          <Field label="City"><input value={f.city} onChange={set('city')} className={control} /></Field>
+          <Field label="State"><select value={f.state} onChange={set('state')} className={control}><option value="">—</option>{US_STATES.map(s => <option key={s}>{s}</option>)}</select></Field>
+          <Field label="ZIP"><input value={f.zip_code} onChange={set('zip_code')} className={control} /></Field>
+        </Grid>
+      </Section>
+      <Section title="Billing and credit" description="Status decides whether dispatch may book with them.">
+        <Grid cols={3}>
+          <Field label="Status"><select value={f.status} onChange={set('status')} className={control}><option>Pending</option><option>Approved</option><option>No buy</option></select></Field>
+          <Field label="Pay terms"><input value={f.pay_terms} onChange={set('pay_terms')} className={control} placeholder="Net 30" /></Field>
+          <Field label="Avg days to pay"><input inputMode="numeric" value={f.avg_days_to_pay} onChange={set('avg_days_to_pay')} className={control} /></Field>
+          <div className="flex items-center sm:col-span-1">
+            <label className="flex items-center gap-1.5 text-xs text-slate-700"><input type="checkbox" checked={f.factoring} onChange={check('factoring')} className="h-3.5 w-3.5 accent-blue-600" />Paid through factoring</label>
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-1 self-start rounded-lg border border-slate-200 bg-slate-50 p-1">
-          {([['brokers', 'Brokers'], ['shippers', 'Shippers/Receivers']] as Array<[TabType, string]>).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => { setActiveTab(key); setPage(1) }}
-              className={clsx(
-                'rounded-md px-3 py-1.5 text-[0.6875rem] font-semibold transition',
-                activeTab === key
-                  ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          <Field label="Factoring company"><input value={f.factoring_company} onChange={set('factoring_company')} disabled={!f.factoring} className={control} /></Field>
+          <Field label="Quick-pay fee %"><input inputMode="decimal" value={f.quickpay_fee} onChange={set('quickpay_fee')} className={control} /></Field>
+          <Field label="Credit rating"><input value={f.credit} onChange={set('credit')} className={control} placeholder="A, B, C…" /></Field>
+          <Field label="Notes" span={3}><textarea value={f.notes} onChange={set('notes')} className={textarea} /></Field>
+        </Grid>
+      </Section>
+      <div className="flex items-center justify-between">
+        <label className="flex items-center gap-1.5 text-xs text-slate-600"><input type="checkbox" checked={f.is_active} onChange={check('is_active')} className="h-3.5 w-3.5 accent-blue-600" />Active</label>
+        <button onClick={save} disabled={saving || (!!broker && !dirty)} className="btn-primary h-9 rounded-lg px-4 text-xs">{saving ? 'Saving…' : broker ? 'Save changes' : 'Add broker'}</button>
       </div>
-
-      {/* Table */}
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
-        <table className="w-full border-collapse" style={{ tableLayout: 'fixed', fontSize: 11 }}>
-          <colgroup>
-            {BROKER_COLUMN_DEFS.map(c => <col key={c.key} style={{ width: c.width }} />)}
-            <col style={{ width: 76 }} />
-          </colgroup>
-          <thead className="sticky top-0 z-10">
-            <tr className="border-b border-slate-200 bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.12)] backdrop-blur">
-              {BROKER_COLUMN_DEFS.map(h => (
-                <th key={h.key} className="px-1.5 py-2 text-left font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>
-                  {h.sortable ? (
-                    <button onClick={() => sortBy(h.key)} className="inline-flex items-center gap-0.5 hover:text-blue-700">
-                      {h.label}
-                      <span className={sortKey === h.key ? 'opacity-100 text-blue-600' : 'opacity-30'}>
-                        {sortKey === h.key && sortDir === 'asc' ? '↑' : '↓'}
-                      </span>
-                    </button>
-                  ) : h.label}
-                </th>
-              ))}
-              <th className="px-1.5 py-2 text-center font-bold uppercase text-slate-500 whitespace-nowrap" style={{ fontSize: 10 }}>ACTIONS</th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-gray-100 bg-white">
-            {loading ? (
-              <tr><td colSpan={BROKER_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />Loading customers...</div></td></tr>
-            ) : paginatedBrokers.length === 0 ? (
-              <tr><td colSpan={BROKER_COLUMN_DEFS.length + 1} className="py-20 text-center"><div className="mx-auto max-w-xs"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><div className="text-sm font-semibold text-slate-700">{activeTab === 'shippers' ? 'No shippers/receivers found' : 'No customers found'}</div><p className="mt-1 text-xs text-slate-400">Try adjusting your search or filters.</p></div></td></tr>
-            ) : (
-              paginatedBrokers.map((broker) => (
-                <tr
-                  key={broker.id}
-                  className={clsx(
-                    'group cursor-pointer border-l-2 border-l-transparent transition-colors odd:bg-white even:bg-slate-50/30 hover:border-l-blue-500 hover:bg-blue-50/70',
-                    !broker.is_active && 'italic text-slate-400'
-                  )}
-                  onClick={() => openEditModal(broker)}
-                >
-                  <td className="px-1.5 py-1">
-                    <span className="font-semibold text-blue-600 truncate hover:underline text-[0.6875rem] block">
-                      {broker.name}
-                    </span>
-                  </td>
-                  <td className="px-1.5 py-1 text-gray-600 truncate">
-                    {broker.city ? `${broker.city}${broker.state ? `, ${broker.state}` : ''}` : <span className="text-gray-300">—</span>}
-                  </td>
-                  <td className="px-1.5 py-1 text-gray-600 truncate">{broker.phone || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1 text-gray-600 truncate">{broker.mc_number || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-1.5 py-1 text-gray-600 truncate">
-                    {broker.factoring
-                      ? `Factoring${broker.factoring_company ? ` · ${broker.factoring_company}` : ''}`
-                      : 'Direct billing'}
-                  </td>
-                  <td className="px-1.5 py-1">
-                    <CreditBadge credit={broker.credit} />
-                  </td>
-                  <td className="px-1.5 py-1 text-gray-600">
-                    {broker.avg_days_to_pay != null ? broker.avg_days_to_pay : <span className="text-gray-300">—</span>}
-                  </td>
-                  <td className="px-1.5 py-1">
-                    <StatusBadge status={broker.status} />
-                  </td>
-                  <td className="px-1 py-1" onClick={(e) => e.stopPropagation()}>
-                    <RowActionMenu
-                      onEdit={() => openEditModal(broker)}
-                      onDelete={() => handleDelete(broker)}
-                      editLabel="Edit Customer"
-                      deleteLabel="Delete Customer"
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3 lg:px-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-0.5">
-            <button onClick={() => setPage(1)} disabled={safePage <= 1}
-              className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30">
-              <DoubleChevronLeft />
-            </button>
-            <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1}
-              className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30">
-              <ChevronLeft />
-            </button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const s = Math.max(1, Math.min(safePage - 2, totalPages - 4))
-              return s + i
-            }).map(p => (
-              <button key={p} onClick={() => setPage(p)}
-                className={clsx('w-5 h-5 rounded text-[0.6875rem] font-medium transition-colors',
-                  p === safePage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100')}>
-                {p}
-              </button>
-            ))}
-            <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages}
-              className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30">
-              <ChevronRight />
-            </button>
-            <button onClick={() => setPage(totalPages)} disabled={safePage >= totalPages}
-              className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30">
-              <DoubleChevronRight />
-            </button>
-          </div>
-
-          <span className="text-[0.6875rem] text-gray-500">
-            Showing {startEntry}–{endEntry} of {filteredBrokers.length} entries
-          </span>
-
-          <button
-            onClick={() => { setShowInactive((v) => !v); setPage(1) }}
-            className={clsx('rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold transition',
-              showInactive ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700')}
-          >
-            {showInactive ? 'Hide inactive customers' : 'Show inactive customers'}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-          <span className="px-1.5 text-[0.625rem] font-medium text-slate-400">Rows</span>
-          {[10, 25, 50, 100].map((size) => (
-            <button
-              key={size}
-              onClick={() => { setPerPage(size); setPage(1) }}
-              className={clsx('rounded-md px-2 py-1 text-[0.625rem] transition',
-                perPage === size ? 'bg-blue-600 font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700')}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {showForm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-sm">
-          <div className="flex max-h-[95vh] w-full max-w-[68.75rem] flex-col overflow-hidden rounded bg-white shadow-2xl">
-
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-200 bg-[#f8f9fb] px-6 py-3">
-              <h2 className="text-[1rem] font-bold text-gray-800">{isEdit ? 'Edit Customer' : 'New Customer'}</h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-700">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="flex-1 overflow-auto px-8 py-6">
-              <div className="flex flex-col gap-10 md:flex-row">
-
-                {/* LEFT COLUMN - General Info */}
-                <div className="flex flex-1 flex-col gap-4">
-                  <div>
-                    <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">
-                      Company Name <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        value={form.companyName}
-                        onChange={(e) => updateForm('companyName', e.target.value)}
-                        placeholder="Search by name or MC number"
-                        className="h-[2.25rem] w-full rounded border border-gray-200 bg-[#fcfcfd] px-3 text-sm outline-none placeholder:text-gray-400 focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
-                      />
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                        <SearchIcon />
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Address</label>
-                    <input
-                      value={form.address}
-                      onChange={(e) => updateForm('address', e.target.value)}
-                      className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Address line 2</label>
-                    <input
-                      value={form.addressLine2}
-                      onChange={(e) => updateForm('addressLine2', e.target.value)}
-                      className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Phone</label>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                          <PhoneIcon />
-                        </span>
-                        <input
-                          value={form.phone}
-                          onChange={(e) => updateForm('phone', e.target.value)}
-                          className="h-[2.25rem] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Email</label>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">
-                          @
-                        </span>
-                        <input
-                          value={form.email}
-                          onChange={(e) => updateForm('email', e.target.value)}
-                          className="h-[2.25rem] w-full rounded border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">City</label>
-                      <input
-                        value={form.city}
-                        onChange={(e) => updateForm('city', e.target.value)}
-                        className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">State</label>
-                      <select
-                        value={form.state}
-                        onChange={(e) => updateForm('state', e.target.value)}
-                        className="h-[2.25rem] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] bg-white"
-                      >
-                        <option value=""></option>
-                        {STATES.map((state) => (
-                          <option key={state} value={state}>{state}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Zip</label>
-                      <input
-                        value={form.zip}
-                        onChange={(e) => updateForm('zip', e.target.value)}
-                        className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">FID/EIN</label>
-                      <input
-                        value={form.fidEin}
-                        onChange={(e) => updateForm('fidEin', e.target.value)}
-                        className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">MC</label>
-                      <input
-                        value={form.mc}
-                        onChange={(e) => updateForm('mc', e.target.value)}
-                        className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Notes</label>
-                    <textarea
-                      value={form.notes}
-                      onChange={(e) => updateForm('notes', e.target.value)}
-                      rows={3}
-                      className="w-full rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#2563eb]"
-                    />
-                  </div>
-                </div>
-
-                {/* RIGHT COLUMN - Settings / Billing */}
-                <div className="w-full md:w-[30rem] flex flex-col">
-
-                  {/* Customer Type Section */}
-                  <div className="mb-8">
-                    <h3 className="mb-3 text-[0.9375rem] font-bold text-gray-800">Customer type</h3>
-                    <div className="flex flex-col gap-2.5">
-                      <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                        <div className={clsx("flex h-4 w-4 items-center justify-center rounded", form.isBroker ? "bg-[#2563eb]" : "border border-gray-300")}>
-                           {form.isBroker && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
-                        </div>
-                        <input type="checkbox" className="hidden" checked={form.isBroker} onChange={(e) => updateForm('isBroker', e.target.checked)} />
-                        Broker
-                      </label>
-                      <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                        <div className={clsx("flex h-4 w-4 items-center justify-center rounded", form.isShipperReceiver ? "bg-[#2563eb]" : "border border-gray-300")}>
-                           {form.isShipperReceiver && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
-                        </div>
-                        <input type="checkbox" className="hidden" checked={form.isShipperReceiver} onChange={(e) => updateForm('isShipperReceiver', e.target.checked)} />
-                        Shipper/Receiver
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Billing Section */}
-                  <div>
-                    <h3 className="mb-3 text-[0.9375rem] font-bold text-gray-800">Billing</h3>
-
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      {/* Radio Buttons */}
-                      <div className="flex flex-col gap-3 justify-center">
-                        <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                          <div className={clsx("flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full border", form.billingType === 'direct' ? "border-[#2563eb]" : "border-gray-300")}>
-                            {form.billingType === 'direct' && <div className="h-2.5 w-2.5 rounded-full bg-[#2563eb]"></div>}
-                          </div>
-                          <input type="radio" className="hidden" checked={form.billingType === 'direct'} onChange={() => updateForm('billingType', 'direct')} />
-                          Direct billing
-                        </label>
-
-                        <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-700">
-                          <div className={clsx("flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full border", form.billingType === 'factoring' ? "border-[#2563eb]" : "border-gray-300")}>
-                            {form.billingType === 'factoring' && <div className="h-2.5 w-2.5 rounded-full bg-[#2563eb]"></div>}
-                          </div>
-                          <input type="radio" className="hidden" checked={form.billingType === 'factoring'} onChange={() => updateForm('billingType', 'factoring')} />
-                          Factoring
-                        </label>
-                      </div>
-
-                      {/* Factoring Dropdown */}
-                      <div>
-                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Factoring</label>
-                        <select
-                          value={form.factoringCompany}
-                          onChange={(e) => updateForm('factoringCompany', e.target.value)}
-                          disabled={form.billingType !== 'factoring'}
-                          className="h-[2.25rem] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] disabled:bg-gray-50 bg-white"
-                        >
-                          <option value=""></option>
-                          <option value="RTS">RTS</option>
-                          <option value="OTR Solutions">OTR Solutions</option>
-                          <option value="Triumph">Triumph</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* 3 Column Stats */}
-                    <div className="grid grid-cols-3 gap-4 mb-4">
-                      <div>
-                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Quickpay fee, %</label>
-                        <input
-                          value={form.quickpayFee}
-                          onChange={(e) => updateForm('quickpayFee', e.target.value)}
-                          placeholder="e.g. 2.25"
-                          className="h-[2.25rem] w-full rounded border border-gray-200 bg-[#f1f5f9] px-3 text-sm outline-none text-gray-700 placeholder:text-gray-500 focus:border-[#2563eb]"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Credit</label>
-                        <select
-                          value={form.credit}
-                          onChange={(e) => updateForm('credit', e.target.value)}
-                          className="h-[2.25rem] w-full rounded border border-gray-200 px-2 text-sm outline-none focus:border-[#2563eb] bg-white"
-                        >
-                          <option value=""></option>
-                          <option value="A">A</option>
-                          <option value="B">B</option>
-                          <option value="C">C</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Avg days to pay</label>
-                        <input
-                          value={form.avgDaysToPay}
-                          onChange={(e) => updateForm('avgDaysToPay', e.target.value)}
-                          inputMode="numeric"
-                          className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Status & Pay terms */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Status</label>
-                        <select
-                          value={form.status}
-                          onChange={(e) => updateForm('status', e.target.value as StatusType)}
-                          className="h-[2.25rem] w-full rounded border border-[#6ea8fe] px-2 text-sm font-medium text-gray-800 outline-none ring-1 ring-[#6ea8fe] focus:border-[#6ea8fe] bg-white"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Approved">Approved</option>
-                          <option value="No buy">No buy</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1.5 block text-[0.8125rem] font-medium text-gray-600">Pay terms</label>
-                        <input
-                          value={form.payTerms}
-                          onChange={(e) => updateForm('payTerms', e.target.value)}
-                          className="h-[2.25rem] w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-[#f8f9fb] px-6 py-4">
-              <button
-                onClick={closeModal}
-                className="inline-flex h-9 items-center gap-2 rounded bg-[#1e293b] px-4 text-sm font-medium text-white transition hover:bg-black"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-                Close
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex h-9 items-center gap-2 rounded bg-[#2563eb] px-5 text-sm font-medium text-white transition hover:bg-[#4ab668] disabled:opacity-70"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
     </div>
   )
 }
