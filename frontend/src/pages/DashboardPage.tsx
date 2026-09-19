@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { dashboardApi, type DashboardData } from '@/api/dashboard'
 import { formatCurrency } from '@/utils'
 import PageShell from '@/components/ui/PageShell'
+import TrendChart from '@/components/dashboard/TrendChart'
 import { control } from '@/components/ui/Field'
 import { Money, StatusPill } from './WeekBoardPage'
 import type { StatementStatus } from '@/api/weeks'
 
-const GROSS = '#2563eb', NET = '#0f766e', LOSS = '#dc2626'
+const NET = '#0f766e'
 const PART_COLORS = { net: NET, driver_pay: '#3b82f6', fee: '#7c3aed', fixed: '#0891b2', fuel: '#ea580c', expenses: '#d97706', other: '#94a3b8' }
 
 // ── Period presets ────────────────────────────────────────────────────────────
@@ -98,7 +99,7 @@ export default function DashboardPage() {
 
           {/* 3. Trend and watch list */}
           <div className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-            <Card title="Gross and net by week" hint="Hover a week for its numbers">
+            <Card title="Gross and net by week" hint="Bars are gross, the line is what trucks keep">
               <TrendChart data={d.trend} />
             </Card>
             <Card title="Watch this week">
@@ -207,60 +208,6 @@ function Row({ label, value, detail, tone, to }: { label: string; value: string;
       <span className={`shrink-0 font-semibold tabular-nums ${tone === 'red' ? 'text-red-600' : tone === 'amber' ? 'text-amber-700' : 'text-slate-500'}`}>{value}</span>
     </Link>
   )
-}
-
-// ── Trend ─────────────────────────────────────────────────────────────────────
-
-function TrendChart({ data }: { data: DashboardData['trend'] }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [hover, setHover] = useState<number | null>(null)
-  const max = Math.max(1, ...data.map(x => Math.max(x.gross, Math.abs(x.net))))
-  const W = 720, H = 200, padL = 44, padR = 8, padT = 10, padB = 24
-  const innerW = W - padL - padR, innerH = H - padT - padB
-  const gw = innerW / data.length, bw = Math.max(3, Math.min(16, gw / 2 - 4))
-  const hasLoss = data.some(x => x.net < 0)
-  const zero = padT + innerH * (hasLoss ? 0.72 : 1)
-  const y = (v: number) => zero - v * ((zero - padT) / max)
-  const every = data.length > 26 ? 4 : data.length > 13 ? 2 : 1
-  const h = hover != null ? data[hover] : null
-  return (
-    <div ref={ref} className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full px-2 pt-2" role="img" aria-label="Weekly gross and net" onMouseLeave={() => setHover(null)}>
-        {[0, 0.5, 1].map(f => <g key={f}><line x1={padL} x2={W - padR} y1={y(f * max)} y2={y(f * max)} stroke="#f1f5f9" /><text x={padL - 8} y={y(f * max) + 3.5} textAnchor="end" fontSize={10} fill="#94a3b8">{short(f * max)}</text></g>)}
-        {data.map((x, i) => {
-          const x0 = padL + i * gw + (gw - (bw * 2 + 3)) / 2
-          return (
-            <g key={x.period_start} onMouseEnter={() => setHover(i)} opacity={x.in_range || hover === i ? 1 : 0.35}>
-              <rect x={padL + i * gw} y={padT} width={gw} height={innerH} fill={hover === i ? '#f1f5f9' : 'transparent'} rx={4} />
-              <rect x={x0} y={Math.min(y(x.gross), zero)} width={bw} height={Math.max(1, Math.abs(y(x.gross) - zero))} fill={GROSS} rx={2} opacity={x.gross ? 1 : 0.15} />
-              <rect x={x0 + bw + 3} y={Math.min(y(x.net), zero)} width={bw} height={Math.max(1, Math.abs(y(x.net) - zero))} fill={x.net < 0 ? LOSS : NET} rx={2} opacity={x.net ? 1 : 0.15} />
-              {(i % every === 0 || i === data.length - 1) && <text x={padL + i * gw + gw / 2} y={H - 8} textAnchor="middle" fontSize={10} fill={x.in_range ? '#334155' : '#94a3b8'}>{x.label.split('-')[0]}</text>}
-            </g>
-          )
-        })}
-        <line x1={padL} x2={W - padR} y1={zero} y2={zero} stroke="#cbd5e1" />
-      </svg>
-      {/* Hover detail sits in a fixed strip under the chart, so it never covers the bars */}
-      <div className="flex min-h-[2.25rem] flex-wrap items-center gap-x-5 gap-y-1 border-t border-slate-100 px-4 py-2 text-xs">
-        {h ? <>
-          <span className="font-bold text-slate-900">Week {h.label}</span>
-          <Legend color={GROSS} label="Gross" value={formatCurrency(h.gross)} />
-          <Legend color={h.net < 0 ? LOSS : NET} label="Net" value={formatCurrency(h.net)} />
-          <span className="text-slate-500">Driver pay {formatCurrency(h.driver_pay)}</span>
-          <span className="text-slate-500">Deductions {formatCurrency(h.deductions)}</span>
-          <span className="text-slate-500">{h.loads} loads · {h.miles.toLocaleString()} mi{h.rpm != null ? ` · $${h.rpm.toFixed(2)}/mi` : ''}</span>
-        </> : <>
-          <Legend color={GROSS} label="Gross" />
-          <Legend color={NET} label="Net to trucks" />
-          {hasLoss && <Legend color={LOSS} label="Negative week" />}
-        </>}
-      </div>
-    </div>
-  )
-}
-
-function Legend({ color, label, value }: { color: string; label: string; value?: string }) {
-  return <span className="flex items-center gap-1.5 text-slate-600"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: color }} />{label}{value && <span className="font-semibold tabular-nums text-slate-900">{value}</span>}</span>
 }
 
 // ── Breakdown as one bar ──────────────────────────────────────────────────────
