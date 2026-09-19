@@ -120,3 +120,10 @@ html { font-size: 16px; }
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+@layer utilities {
+  .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+  .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.12); border-radius: 9999px; }
+  .sidebar-scroll:hover::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.22); }
+}
