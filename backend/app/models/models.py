@@ -731,6 +731,8 @@ class Expense(Base):
     driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=True)
     receipt_path = Column(String(500))
     receipt_filename = Column(String(200))
+    state = Column(String(2), nullable=True)          # where the fuel was bought, for IFTA
+    gallons = Column(Float, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -1170,3 +1172,17 @@ class DriverAssignment(Base):
 
     driver = relationship("Driver", foreign_keys=[driver_id])
     truck = relationship("Truck", foreign_keys=[truck_id])
+
+
+class IftaMiles(Base):
+    """Miles driven per state per truck per quarter. Entered from the ELD summary until Samsara feeds it."""
+    __tablename__ = "ifta_miles"
+    __table_args__ = (UniqueConstraint("truck_id", "year", "quarter", "state", name="uq_ifta_miles"),)
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    truck_id = Column(Integer, ForeignKey("trucks.id"), nullable=False, index=True)
+    year = Column(Integer, nullable=False)
+    quarter = Column(Integer, nullable=False)
+    state = Column(String(2), nullable=False)
+    miles = Column(Integer, nullable=False, default=0)

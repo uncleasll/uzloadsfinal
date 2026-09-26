@@ -130,6 +130,7 @@ def dashboard(date_from: Optional[date] = Query(None, alias="from"), date_to: Op
                   "due_soon": [{"label": b["label"], "amount": b["amount"], "due_day": b["due_day"], "overdue": b["due_day"] < today.day} for b in bills_due_soon][:6]},
         "maintenance": {"due": maint["counts"]["RED"], "soon": maint["counts"]["AMBER"], "items": due_services[:6]},
         "invoices": _invoices_attention(db),
+        "documents": __import__("app.services.compliance", fromlist=["summary"]).summary(db),
     }
 
     # Trend: the range's weeks, padded backwards to at least MIN_TREND_WEEKS

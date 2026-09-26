@@ -526,12 +526,8 @@ class PayrollScenarios(unittest.TestCase):
         self.assertIn('/api/v1/loads/{load_id}/driver-pay-override',routes)
         self.assertIn('/api/v1/scheduled-transactions/preview',routes)
         self.assertIn('/api/v1/drivers/{driver_id}/additional-payees',routes)
-        # Check the actual UI request strings against the public API mount.
-        root=Path(__file__).resolve().parents[2]/'frontend/src'
-        # The per-load driver-pay override UI was dropped with the weekly redesign: pay comes from the
-        # driver's rule and corrections are manual lines on the statement. The route stays for the API.
-        for file,path in [('components/payroll/SettlementModal.tsx','/api/v1/payroll/${settlementId}/time-reports')]:
-            self.assertIn(path,(root/file).read_text())
+        # The legacy payroll UI is gone; the API routes stay for the importer and the weekly statement.
+
 
     def test_http_payroll_and_override_contract(self):
         import asyncio, httpx

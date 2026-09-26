@@ -161,3 +161,9 @@ python scripts/import_statements_excel.py "/path/STATEMENTS 2025.xlsx" --apply  
 - `app/services/billing.py`: `ready_to_invoice` (yetkazilgan, invoice yo'q), `overview` (tayyor / outstanding / overdue / faktorda / rezerv / aging 0-30-60-90 / broker bo'yicha), `send`, `funded`, `paid`, `reopen`, `packet_pdf` (invoice + POD/BOL sahifalari, yukdagi hujjatlar va chatdagi rasmlar).
 - API `/api/v1/billing/*`: overview, ready, invoices, POST invoices (bir nechta yuk, darrov jo'natish bilan), send, funded, paid, reopen, packet.pdf. Dashboard "Needs your attention" ga Invoices kartasi.
 - UI: `/invoices` (Pay ostida): Ready to invoice (belgilab "Invoice to broker" yoki "Send to factoring"), Outstanding, At the factor (avans, fee, "Funded", "Reserve in"), Paid; broker filtri; aging kartalari. Settings → Company: to'lov muddati va factoring sozlamalari. LoadModal dagi "Create invoice" endi Invoices sahifasiga olib boradi.
+
+## 15. Hujjat muddatlari, IFTA, eski modullar (2026-09-27)
+
+- `GET /api/v1/compliance/expiring?days=30`: haydovchi (CDL, medical…), truck va trailer hujjatlari, muddati o'tgan yoki yaqin. Dashboard "attention" da "Documents expiring" kartasi. UI: Fleet → Documents due (`/compliance`).
+- IFTA (migratsiya 029): `expenses.state`, `expenses.gallons` (Pilot importi to'ldiradi, eski qatorlar matndan o'qiladi: "…, TX · 90.0 gal"), `ifta_miles` (truck, yil, chorak, shtat, mil). `app/services/ifta.py` worksheet: shtat bo'yicha mil (ELD dan kiritiladi), sotib olingan gallon va narx (chek jurnalidan), fleet MPG, taxable gallon = mil ÷ MPG, net = taxable − sotib olingan. UI: Pay → IFTA (`/ifta`), truck bo'yicha "Miles by state" kiritish, yuk millari nazorat uchun.
+- Eski modullar o'chirildi: Payroll, Advanced payments, Settlement payments, Vendors, Reports, Placeholder sahifalar, `components/payroll`, `api/payroll.ts`, sidebar "More" guruhi. Backend routelari qoldi (importer va statement ishlatadi).

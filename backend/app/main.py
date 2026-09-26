@@ -35,7 +35,7 @@ DRIVER_PATHS = ("/api/v1/auth/me", "/api/v1/driver/", "/api/v1/chat/", "/api/v1/
 # Money and settings belong to the owner and the accountant. Dispatchers work loads, trucks and chat.
 DISPATCHER_DENY = ("/api/v1/weeks", "/api/v1/statements", "/api/v1/bills", "/api/v1/dashboard", "/api/v1/expenses", "/api/v1/maintenance",
                    "/api/v1/company", "/api/v1/payroll", "/api/v1/payments", "/api/v1/advanced-payments", "/api/v1/reports", "/api/v1/vendors",
-                   "/api/v1/invoices", "/api/v1/auth/invitations", "/api/v1/auth/users/")
+                   "/api/v1/invoices", "/api/v1/auth/invitations", "/api/v1/auth/users/", "/api/v1/billing", "/api/v1/ifta")
 
 
 def _is_public(path: str) -> bool:

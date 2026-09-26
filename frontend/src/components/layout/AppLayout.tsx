@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, CalendarRange, Package, Receipt, Headset, CreditCard, MessageSquare, Radio, FileText,
-  Users, Truck, Container, Wrench, Building2, Settings, MoreHorizontal,
+  Users, Truck, Container, Wrench, Building2, Settings, ShieldAlert, Fuel,
   ChevronDown, ChevronsLeft, ChevronsRight, Menu, X, LogOut, Building,
   type LucideIcon,
 } from 'lucide-react'
@@ -47,6 +47,7 @@ const SECTIONS: Section[] = [
       { label: 'Invoices', to: '/invoices', icon: FileText },
       { label: 'Dispatchers', to: '/dispatchers', icon: Headset },
       { label: 'Monthly bills', to: '/bills', icon: CreditCard },
+      { label: 'IFTA', to: '/ifta', icon: Fuel },
     ],
   },
   {
@@ -57,21 +58,13 @@ const SECTIONS: Section[] = [
       { label: 'Trailers', to: '/trailers', icon: Container },
       { label: 'Maintenance', to: '/maintenance', icon: Wrench },
       { label: 'Brokers', to: '/brokers', icon: Building2 },
+      { label: 'Documents due', to: '/compliance', icon: ShieldAlert },
     ],
   },
   {
     title: 'System',
     items: [
       { label: 'Settings', to: '/settings', icon: Settings },
-      {
-        label: 'More', icon: MoreHorizontal, children: [
-          { label: 'Driver payroll (legacy)', to: '/payroll' },
-          { label: 'Advanced payments', to: '/payments/advanced' },
-          { label: 'Settlement payments', to: '/payments' },
-          { label: 'Vendors', to: '/vendors' },
-          { label: 'Reports', to: '/reports/total-revenue' },
-        ],
-      },
     ],
   },
 ]

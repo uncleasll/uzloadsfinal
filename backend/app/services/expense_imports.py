@@ -118,7 +118,8 @@ def import_expenses(db: Session, filename: str, raw: bytes) -> dict:
             place = ", ".join(x for x in [str(r[c_city] or "").strip().title() if c_city is not None else "", str(r[c_state] or "").strip().upper() if c_state is not None else ""] if x)
             desc = " · ".join(x for x in [f"{marker}{key}", str(r[c_loc] or "").strip().title() if c_loc is not None else "", place,
                                           f"{gallons:.1f} gal" if gallons else "", str(r[c_drv] or "").strip().title() if c_drv is not None else ""] if x)
-            db.add(Expense(expense_date=d, category="Fuel", amount=money(amount), description=desc, truck_id=truck.id, is_active=True))
+            db.add(Expense(expense_date=d, category="Fuel", amount=money(amount), description=desc, truck_id=truck.id, is_active=True,
+                           state=(str(r[c_state] or "").strip().upper()[:2] or None) if c_state is not None else None, gallons=float(gallons) if gallons else None))
             existing.add(key); created += 1
     else:
         c_unit, c_amt, c_rec = _col(header, "equip id", "equipment id"), _col(header, "toll"), _col(header, "toll record id")

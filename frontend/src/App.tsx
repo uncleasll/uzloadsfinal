@@ -5,17 +5,11 @@ import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import LoadsPage from '@/pages/LoadsPage'
 import DriversPage from '@/pages/DriversPage'
-import PayrollPage from '@/pages/PayrollPage'
-import ReportsPage from '@/pages/ReportsPage'
 import TrucksPage from '@/pages/TrucksPage'
 import TrailersPage from '@/pages/TrailersPage'
 import BrokersPage from '@/pages/BrokersPage'
-import VendorsPage from '@/pages/VendorsPage'
-import PlaceholderPage from '@/pages/PlaceholderPage'
 import MyCompanyPage from '@/pages/MyCompanyPage'
 import ExpensesPage from '@/pages/ExpensesPage'
-import AdvancedPaymentsPage from '@/pages/AdvancedPaymentsPage'
-import PaymentsPage from '@/pages/PaymentsPage'
 import DashboardPage from '@/pages/DashboardPage'
 import DispatchPage from '@/pages/DispatchPage'
 import WeekBoardPage from '@/pages/WeekBoardPage'
@@ -28,6 +22,8 @@ import InvitePage from '@/pages/InvitePage'
 import DriverApp from '@/driver/DriverApp'
 import ChatPage from '@/pages/ChatPage'
 import InvoicesPage from '@/pages/InvoicesPage'
+import CompliancePage from '@/pages/CompliancePage'
+import IftaPage from '@/pages/IftaPage'
 
 /** Office pages: any signed-in office role. Drivers are sent to the driver app. */
 function RequireOffice({ children }: { children: JSX.Element }) {
@@ -46,7 +42,7 @@ function RoleHome() {
   return <Navigate to={user?.role === 'dispatcher' ? '/dispatch' : '/dashboard'} replace />
 }
 
-const OFFICE_ONLY = ['/dashboard', '/weeks', '/bills', '/invoices', '/settings', '/maintenance', '/accounting', '/payroll', '/payments', '/reports', '/vendors', '/my-company', '/dispatchers']
+const OFFICE_ONLY = ['/dashboard', '/weeks', '/bills', '/invoices', '/ifta', '/settings', '/maintenance', '/accounting', '/my-company', '/dispatchers']
 
 function RequireDriver({ children }: { children: JSX.Element }) {
   const { user, isAuthenticated, loading } = useAuth()
@@ -68,6 +64,8 @@ export default function App() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="chat" element={<ChatPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
+        <Route path="compliance" element={<CompliancePage />} />
+        <Route path="ifta" element={<IftaPage />} />
         <Route path="weeks" element={<WeekBoardPage />} />
         <Route path="weeks/:start/trucks/:truckId" element={<StatementPage />} />
         <Route path="dispatchers" element={<DispatchersPage />} />
@@ -76,25 +74,12 @@ export default function App() {
         <Route path="maintenance" element={<MaintenancePage />} />
         <Route path="loads" element={<LoadsPage />} />
         <Route path="drivers" element={<DriversPage />} />
-        <Route path="payroll" element={<PayrollPage />} />
-        <Route path="payments/advanced" element={<AdvancedPaymentsPage />} />
-        <Route path="reports/*" element={<ReportsPage />} />
         <Route path="trucks" element={<TrucksPage />} />
         <Route path="brokers" element={<BrokersPage />} />
-        <Route path="vendors" element={<VendorsPage />} />
         <Route path="dispatch" element={<DispatchPage />} />
         <Route path="my-company" element={<MyCompanyPage />} />
         <Route path="trailers" element={<TrailersPage />} />
-        <Route path="fuel/*" element={<PlaceholderPage title="Fuel" />} />
         <Route path="accounting/expenses" element={<ExpensesPage />} />
-        <Route path="payments" element={<PaymentsPage />} />
-        <Route path="accounting/*" element={<PlaceholderPage title="Accounting" />} />
-        <Route path="tolls/*" element={<PlaceholderPage title="Tolls" />} />
-        <Route path="safety/*" element={<PlaceholderPage title="Safety" />} />
-        <Route path="ifta/*" element={<PlaceholderPage title="IFTA" />} />
-        <Route path="users" element={<PlaceholderPage title="Users" />} />
-        <Route path="data-library/*" element={<PlaceholderPage title="Data Library" />} />
-        <Route path="docs" element={<PlaceholderPage title="Docs Exchange" />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
