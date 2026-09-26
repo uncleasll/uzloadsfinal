@@ -32,6 +32,10 @@ async def handle_payroll_error(request: Request, exc: PayrollError):
 
 # What a driver account may reach. Everything else in the API is the office.
 DRIVER_PATHS = ("/api/v1/auth/me", "/api/v1/driver/", "/api/v1/chat/", "/api/v1/files/")
+# Money and settings belong to the owner and the accountant. Dispatchers work loads, trucks and chat.
+DISPATCHER_DENY = ("/api/v1/weeks", "/api/v1/statements", "/api/v1/bills", "/api/v1/dashboard", "/api/v1/expenses", "/api/v1/maintenance",
+                   "/api/v1/company", "/api/v1/payroll", "/api/v1/payments", "/api/v1/advanced-payments", "/api/v1/reports", "/api/v1/vendors",
+                   "/api/v1/invoices", "/api/v1/auth/invitations", "/api/v1/auth/users/")
 
 
 def _is_public(path: str) -> bool:
@@ -58,6 +62,8 @@ async def auth_and_tenant(request: Request, call_next):
             return JSONResponse({"detail": "Not authenticated"}, status_code=401)
         if payload.get("role") == "driver" and not any(path.startswith(p) for p in DRIVER_PATHS):
             return JSONResponse({"detail": "Drivers use the driver app"}, status_code=403)
+        if payload.get("role") == "dispatcher" and (any(path.startswith(p) for p in DISPATCHER_DENY) or path.endswith("/rules")):
+            return JSONResponse({"detail": "This part is for the office"}, status_code=403)
     request.state.role = payload.get("role") if payload else None
     token = set_company_id(payload.get("company_id") if payload else None)
     try:

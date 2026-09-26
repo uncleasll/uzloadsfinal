@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, CalendarRange, Package, Receipt, Headset, CreditCard, MessageSquare,
+  LayoutDashboard, CalendarRange, Package, Receipt, Headset, CreditCard, MessageSquare, Radio,
   Users, Truck, Container, Wrench, Building2, Settings, MoreHorizontal,
   ChevronDown, ChevronsLeft, ChevronsRight, Menu, X, LogOut, Building,
   type LucideIcon,
@@ -15,12 +15,28 @@ type Group = { label: string; icon: LucideIcon; children: Leaf[] }
 type Item = (Leaf & { icon: LucideIcon }) | Group
 type Section = { title?: string; items: Item[] }
 
+const DISPATCHER_SECTIONS: Section[] = [
+  { items: [
+    { label: 'Dispatch', to: '/dispatch', icon: Radio },
+    { label: 'Loads', to: '/loads', icon: Package },
+    { label: 'Chat', to: '/chat', icon: MessageSquare },
+  ] },
+  { title: 'Fleet', items: [
+    { label: 'Drivers', to: '/drivers', icon: Users },
+    { label: 'Trucks', to: '/trucks', icon: Truck },
+    { label: 'Trailers', to: '/trailers', icon: Container },
+    { label: 'Brokers', to: '/brokers', icon: Building2 },
+  ] },
+  { title: 'Me', items: [{ label: 'My pay', to: '/dispatchers', icon: Headset }] },
+]
+
 const SECTIONS: Section[] = [
   {
     items: [
       { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
       { label: 'Weekly board', to: '/weeks', icon: CalendarRange },
       { label: 'Loads', to: '/loads', icon: Package },
+      { label: 'Dispatch', to: '/dispatch', icon: Radio },
       { label: 'Chat', to: '/chat', icon: MessageSquare },
       { label: 'Expenses', to: '/accounting/expenses', icon: Receipt },
     ],
@@ -48,7 +64,6 @@ const SECTIONS: Section[] = [
       { label: 'Settings', to: '/settings', icon: Settings },
       {
         label: 'More', icon: MoreHorizontal, children: [
-          { label: 'Dispatch board', to: '/dispatch' },
           { label: 'Driver payroll (legacy)', to: '/payroll' },
           { label: 'Advanced payments', to: '/payments/advanced' },
           { label: 'Settlement payments', to: '/payments' },
@@ -99,6 +114,7 @@ export default function AppLayout() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const location = useLocation()
   const { user } = useAuth()
+  const sections = user?.role === 'dispatcher' ? DISPATCHER_SECTIONS : SECTIONS
 
   const expanded = isMobile || !collapsed
   const unread = useUnreadCount()
@@ -108,7 +124,7 @@ export default function AppLayout() {
 
   // Open the group that owns the current route
   useEffect(() => {
-    for (const s of SECTIONS) for (const item of s.items) {
+    for (const s of sections) for (const item of s.items) {
       if (isGroup(item) && item.children.some(c => pathMatches(c.to))) {
         setOpenGroups(p => ({ ...p, [item.label]: true }))
       }
@@ -172,7 +188,7 @@ export default function AppLayout() {
 
       {/* Navigation */}
       <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2" aria-label="Main navigation">
-        {SECTIONS.map((section, si) => (
+        {sections.map((section, si) => (
           <div key={section.title ?? si} className={si === 0 ? '' : 'mt-2'}>
             {section.title && (
               <div className="relative h-6">

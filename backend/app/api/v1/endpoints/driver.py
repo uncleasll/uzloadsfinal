@@ -35,7 +35,7 @@ def _truck(db: Session, d: Driver) -> Truck | None:
 
 def _stop(load: Load, kind: str) -> dict | None:
     stops = sorted([s for s in load.stops if getattr(s.stop_type, "value", s.stop_type) == kind], key=lambda s: s.stop_order)
-    s = stops[0] if kind == "pickup" else (stops[-1] if stops else None)
+    s = (stops[0] if kind == "pickup" else stops[-1]) if stops else None
     if not s:
         return None
     return {"title": s.title, "address": s.address, "city": s.city, "state": s.state, "zip": s.zip_code,

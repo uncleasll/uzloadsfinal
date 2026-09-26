@@ -17,7 +17,7 @@ import ExpensesPage from '@/pages/ExpensesPage'
 import AdvancedPaymentsPage from '@/pages/AdvancedPaymentsPage'
 import PaymentsPage from '@/pages/PaymentsPage'
 import DashboardPage from '@/pages/DashboardPage'
-import DispatchBoardPage from '@/pages/DispatchBoardPage'
+import DispatchPage from '@/pages/DispatchPage'
 import WeekBoardPage from '@/pages/WeekBoardPage'
 import StatementPage from '@/pages/StatementPage'
 import DispatchersPage from '@/pages/DispatchersPage'
@@ -35,8 +35,17 @@ function RequireOffice({ children }: { children: JSX.Element }) {
   if (loading) return null
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />
   if (user?.role === 'driver') return <Navigate to="/driver" replace />
+  if (user?.role === 'dispatcher' && OFFICE_ONLY.some(p => location.pathname === p || location.pathname.startsWith(p + '/')) && location.pathname !== '/dispatchers') return <Navigate to="/dispatch" replace />
   return children
 }
+
+/** Dispatchers land on the board; the office lands on the dashboard. */
+function RoleHome() {
+  const { user } = useAuth()
+  return <Navigate to={user?.role === 'dispatcher' ? '/dispatch' : '/dashboard'} replace />
+}
+
+const OFFICE_ONLY = ['/dashboard', '/weeks', '/bills', '/settings', '/maintenance', '/accounting', '/payroll', '/payments', '/reports', '/vendors', '/my-company', '/dispatchers']
 
 function RequireDriver({ children }: { children: JSX.Element }) {
   const { user, isAuthenticated, loading } = useAuth()
@@ -54,7 +63,7 @@ export default function App() {
       <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/driver/*" element={<RequireDriver><DriverApp /></RequireDriver>} />
       <Route path="/" element={<RequireOffice><AppLayout /></RequireOffice>}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<RoleHome />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="chat" element={<ChatPage />} />
         <Route path="weeks" element={<WeekBoardPage />} />
@@ -71,7 +80,7 @@ export default function App() {
         <Route path="trucks" element={<TrucksPage />} />
         <Route path="brokers" element={<BrokersPage />} />
         <Route path="vendors" element={<VendorsPage />} />
-        <Route path="dispatch" element={<DispatchBoardPage />} />
+        <Route path="dispatch" element={<DispatchPage />} />
         <Route path="my-company" element={<MyCompanyPage />} />
         <Route path="trailers" element={<TrailersPage />} />
         <Route path="fuel/*" element={<PlaceholderPage title="Fuel" />} />

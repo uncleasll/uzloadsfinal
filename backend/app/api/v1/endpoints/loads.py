@@ -6,6 +6,7 @@ from datetime import date
 import os, uuid, io
 
 from app.db.session import get_db
+from app.api.v1.endpoints.auth import get_current_user
 from app.schemas.schemas import (
     LoadCreate, LoadUpdate, LoadOut, LoadListOut,
     LoadServiceCreate, LoadServiceOut, LoadNoteCreate, LoadNoteOut,
@@ -15,6 +16,10 @@ from app.crud import loads as crud
 from app.models.models import LoadDocument, LoadHistory
 from app.services.pdf_service import generate_invoice_pdf
 from app.core.config import settings
+
+def _role(u):
+    return u.role.value if hasattr(u.role, "value") else u.role
+
 
 router = APIRouter(prefix="/loads", tags=["loads"])
 
@@ -39,7 +44,10 @@ def list_loads(
     sort_by: str = Query("load_number"),
     sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db),
+    user=Depends(get_current_user),
 ):
+    if user is not None and _role(user) == "dispatcher":
+        dispatcher_id = user.dispatcher_id or -1          # a dispatcher only ever sees their own loads
     result = crud.get_loads(
         db, page=page, page_size=page_size,
         search=search, status=status, billing_status=billing_status,
@@ -66,9 +74,11 @@ def list_loads(
 
 
 @router.post("", response_model=LoadOut, status_code=201)
-def create_load(load_in: LoadCreate, db: Session = Depends(get_db)):
+def create_load(load_in: LoadCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    if user is not None and _role(user) == "dispatcher":
+        load_in.dispatcher_id = user.dispatcher_id       # their loads carry their name, whatever the form said
     try:
-        return crud.create_load(db, load_in, author="System")
+        return crud.create_load(db, load_in, author=user.name if user else "System")
     except ValueError as e:
         raise HTTPException(400, str(e))
 

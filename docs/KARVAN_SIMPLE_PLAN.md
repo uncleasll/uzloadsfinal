@@ -138,3 +138,10 @@ python scripts/import_statements_excel.py "/path/STATEMENTS 2025.xlsx" --apply  
 - Frontend `frontend/src/driver/`: PWA (`public/manifest.webmanifest`, `public/sw.js`, ikonkalar), `/driver` ostida 4 tab: Today, Loads, Chat, My week. Kamera to'g'ridan-to'g'ri ochiladi, rasm telefonda kichraytiriladi, GPS fonda o'qiladi.
 - Offline: `driver/outbox.ts` IndexedDB navbati. Har amal avval navbatga yoziladi, keyin tartib bilan yuboriladi; signal yo'q bo'lsa kutadi, qaytganda o'zi ketadi; server rad etsa (4xx) tashlab yuboradi va aytadi. Yuqorida "No signal / Sending N items" tasmasi. Ekranlar oxirgi ma'lumotni localStorage da saqlaydi, signalsiz ham ochiladi.
 - Tekshirildi: brauzerda telefon o'lchamida to'liq oqim (accept → on my way → loaded → POD → delivered), ofis chatida iz, yukda POD belgisi, haydovchi haftasi.
+
+## 12. Ekotizim 4-bosqich: dispatcher workspace (2026-09-26)
+
+- `GET /api/v1/dispatch/board`: har truck uchun holat (free / no_driver / Dispatched / En Route / Picked-up), hozirgi yuk va keyingi to'xtash, navbatdagi yuklar, chat id, oxirgi faollik, oxirgi GPS (haydovchi rasmidan). Truck biriktirilmagan ochiq yuklar ro'yxati va hisoblar.
+- `GET /api/v1/dispatch/my-week`: dispatcher faqat o'z qatorini ko'radi (gross, komissiya, to'langan-to'lanmagan).
+- Dispatcher roli: yuklar ro'yxatida faqat o'z yuklari, yaratgan yuki avtomatik uniki. Pul va sozlama yo'llari 403 (`DISPATCHER_DENY` main.py da): weeks, bills, dashboard, expenses, maintenance, company, rules, invitations, legacy modullar.
+- Frontend: `/dispatch` sahifasi (truck kartalari, filtr, "Load" tugmasi truckka yuk ochadi, "Needs a truck" ro'yxatidan truckka biriktirish, Chat tugmasi o'sha truck thread'iga). Dispatcher menyusi: Dispatch, Loads, Chat, Fleet (Drivers, Trucks, Trailers, Brokers), My pay. Ofis yo'llariga kirsa `/dispatch` ga qaytadi. Eski `DispatchBoardPage` o'chirildi.

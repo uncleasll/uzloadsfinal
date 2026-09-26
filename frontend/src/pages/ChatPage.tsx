@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { FileText, Image as ImageIcon, MapPin, Paperclip, Send, Truck, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { chatApi, fetchFileUrl, newClientId, type ChatAttachment, type ChatMessage, type Conversation } from '@/api/chat'
@@ -13,7 +13,8 @@ const POLL_MS = 5000
 export default function ChatPage() {
   const { user } = useAuth()
   const [convs, setConvs] = useState<Conversation[]>([])
-  const [activeId, setActiveId] = useState<number | null>(null)
+  const [params] = useSearchParams()
+  const [activeId, setActiveId] = useState<number | null>(() => (params.get('c') ? Number(params.get('c')) : null))
   const [filter, setFilter] = useState('')
 
   const loadConvs = useCallback(async () => {

@@ -6,6 +6,8 @@ import { officeApi, type DispatcherWeek } from '@/api/office'
 import { periodLabel, shiftWeek, toIso, weekStart } from '@/api/weeks'
 import { formatCurrency } from '@/utils'
 import { Money } from './WeekBoardPage'
+import { useAuth } from '@/hooks/useAuth'
+import { dispatchApi } from '@/api/dispatch'
 
 /** The Excel "Office" sheet: each dispatcher's gross for the week and the commission owed. */
 export default function DispatchersPage() {
@@ -13,13 +15,21 @@ export default function DispatchersPage() {
   const start = weekStart(params.get('week') || toIso(new Date()))
   const [data, setData] = useState<DispatcherWeek | null>(null)
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  const mine = user?.role === 'dispatcher'
 
   const load = useCallback(async () => {
     setLoading(true)
-    try { setData(await officeApi.dispatcherWeek(start)) }
+    try {
+      if (mine) {
+        const w = await dispatchApi.myWeek(start)
+        const r = w.rows[0]
+        setData({ rows: w.rows, totals: { loads: r?.loads ?? 0, gross: r?.gross ?? 0, commission: r?.commission ?? 0, paid: r?.paid ? (r.paid_amount ?? 0) : 0 } } as DispatcherWeek)
+      } else setData(await officeApi.dispatcherWeek(start))
+    }
     catch (e) { toast.error((e as Error).message) }
     finally { setLoading(false) }
-  }, [start])
+  }, [start, mine])
   useEffect(() => { load() }, [load])
 
   const setWeek = (iso: string) => setParams({ week: weekStart(iso) })
@@ -39,10 +49,10 @@ export default function DispatchersPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-slate-950">Dispatchers</h1>
+              <h1 className="text-xl font-bold tracking-tight text-slate-950">{mine ? 'My pay' : 'Dispatchers'}</h1>
               {loading && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />}
             </div>
-            <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Weekly gross per dispatcher and the commission owed</p>
+            <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">{mine ? 'Your loads this week and the commission they earn' : 'Weekly gross per dispatcher and the commission owed'}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -93,7 +103,7 @@ export default function DispatchersPage() {
                     : <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-500 ring-1 ring-slate-200">Not paid</span>}
                 </td>
                 <td className="px-3 py-2.5 text-right">
-                  {r.paid
+                  {mine ? null : r.paid
                     ? <button onClick={() => togglePaid(r.dispatcher_id, false)} className="btn-ghost h-7 rounded-md px-2 text-[0.6875rem]"><Undo2 className="h-3 w-3" />Undo</button>
                     : <button onClick={() => togglePaid(r.dispatcher_id, true)} disabled={r.commission <= 0} className="btn-primary h-7 rounded-md px-2.5 text-[0.6875rem]">Mark paid</button>}
                 </td>
