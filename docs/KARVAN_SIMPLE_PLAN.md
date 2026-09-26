@@ -130,3 +130,11 @@ python scripts/import_statements_excel.py "/path/STATEMENTS 2025.xlsx" --apply  
 - Chatdagi rasm yukka POD sifatida biriktiriladi (`POST /chat/attachments/{id}/to-load`), statementda POD belgisi chiqadi, merged PDF ga kiradi.
 - Ofis UI: `/chat` sahifasi (ro'yxat, thread, fayl yuborish, a'zolar tarixi, "Save as POD"), sidebar da o'qilmaganlar soni. Har 5 soniyada yangilanadi; WebSocket keyin.
 - Haydovchi API: `/api/v1/chat/*` va `/api/v1/files/*` driver roliga ochiq. Driver app 3-bosqichda.
+
+## 11. Ekotizim 3-bosqich: driver app (2026-09-26)
+
+- Backend `/api/v1/driver/*` (faqat driver roli): `me` (truck, hozirgi yuk, keyingilar, shu hafta), `loads`, `loads/{id}/status` (New → Dispatched → En Route → Picked-up → Delivered, Delivered uchun POD shart), `loads/{id}/photos` (POD/BOL/lumper/scale: muhrlanadi, yukka biriktiriladi, truck chatiga tushadi), `inspections` (bir nechta rasm, pre_trip/post_trip/damage/breakdown), `expenses` (chek + summa → xarajat jurnali, truckka), `odometer`, `statement` (oxirgi 4 hafta, haydovchi qatorlari bilan).
+- Hamma yozuvda `client_id`: qayta yuborilsa ikkilanmaydi.
+- Frontend `frontend/src/driver/`: PWA (`public/manifest.webmanifest`, `public/sw.js`, ikonkalar), `/driver` ostida 4 tab: Today, Loads, Chat, My week. Kamera to'g'ridan-to'g'ri ochiladi, rasm telefonda kichraytiriladi, GPS fonda o'qiladi.
+- Offline: `driver/outbox.ts` IndexedDB navbati. Har amal avval navbatga yoziladi, keyin tartib bilan yuboriladi; signal yo'q bo'lsa kutadi, qaytganda o'zi ketadi; server rad etsa (4xx) tashlab yuboradi va aytadi. Yuqorida "No signal / Sending N items" tasmasi. Ekranlar oxirgi ma'lumotni localStorage da saqlaydi, signalsiz ham ochiladi.
+- Tekshirildi: brauzerda telefon o'lchamida to'liq oqim (accept → on my way → loaded → POD → delivered), ofis chatida iz, yukda POD belgisi, haydovchi haftasi.

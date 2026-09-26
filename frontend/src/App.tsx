@@ -25,7 +25,7 @@ import BillsPage from '@/pages/BillsPage'
 import SettingsPage from '@/pages/SettingsPage'
 import MaintenancePage from '@/pages/MaintenancePage'
 import InvitePage from '@/pages/InvitePage'
-import DriverHomePage from '@/pages/DriverHomePage'
+import DriverApp from '@/driver/DriverApp'
 import ChatPage from '@/pages/ChatPage'
 
 /** Office pages: any signed-in office role. Drivers are sent to the driver app. */
@@ -52,7 +52,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
-      <Route path="/driver" element={<RequireDriver><DriverHomePage /></RequireDriver>} />
+      <Route path="/driver/*" element={<RequireDriver><DriverApp /></RequireDriver>} />
       <Route path="/" element={<RequireOffice><AppLayout /></RequireOffice>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />

@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     maintenance,
     dashboard,
     chat,
+    driver,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -38,3 +39,4 @@ api_router.include_router(office.router)
 api_router.include_router(maintenance.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(chat.router)
+api_router.include_router(driver.router)
