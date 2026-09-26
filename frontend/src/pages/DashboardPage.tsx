@@ -89,7 +89,8 @@ export default function DashboardPage() {
           {/* 2. What needs doing now */}
           <section>
             <SectionTitle>Needs your attention now</SectionTitle>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <Attention to="/invoices" label="Invoices" count={a!.invoices.ready_count + a!.invoices.overdue_count} amount={a!.invoices.overdue_count ? `${formatCurrency(a!.invoices.overdue_amount)} overdue` : `${formatCurrency(a!.invoices.ready_amount)} to invoice`} urgent={a!.invoices.overdue_count > 0} />
               <Attention to="/weeks" label="Statements to pay" count={a!.statements_ready.count} amount={formatCurrency(a!.statements_ready.driver_payouts)} />
               <Attention to="/dispatchers" label="Dispatchers to pay" count={a!.dispatchers_unpaid.count} amount={formatCurrency(a!.dispatchers_unpaid.amount)} />
               <Attention to="/bills" label="Bills this month" count={a!.bills.unpaid_count} amount={formatCurrency(a!.bills.remaining)} urgent={a!.bills.due_soon.some(b => b.overdue)} />

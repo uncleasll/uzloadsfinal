@@ -18,6 +18,7 @@ from app.api.v1.endpoints import (
     driver,
     dispatch,
     fleet,
+    billing,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -44,3 +45,4 @@ api_router.include_router(chat.router)
 api_router.include_router(driver.router)
 api_router.include_router(dispatch.router)
 api_router.include_router(fleet.router)
+api_router.include_router(billing.router)

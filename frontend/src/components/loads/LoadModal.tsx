@@ -148,7 +148,7 @@ export default function LoadModal({ loadId, onClose, onSaved, entities, initialT
                       <a href={loadsApi.getInvoiceRecordPdfUrl(invoice.id)} target="_blank" rel="noreferrer" className="btn-secondary h-8 rounded-lg px-3 text-[0.6875rem]"><FileText className="h-3.5 w-3.5" />PDF</a>
                       {invoice.status.toLowerCase() !== 'paid' && <button disabled={busy} onClick={() => run(() => loadsApi.markInvoicePaid(invoice.id), 'Invoice marked paid')} className="btn-primary h-8 rounded-lg px-3 text-[0.6875rem]">Mark paid</button>}
                     </div>
-                  : <button disabled={busy} onClick={() => run(() => loadsApi.createInvoiceFromLoad(loadId), 'Invoice created')} className="btn-primary h-8 rounded-lg px-3 text-[0.6875rem]">Create invoice</button>
+                  : <Link to="/invoices" className="btn-primary h-8 rounded-lg px-3 text-[0.6875rem]">Invoice it</Link>
               }>
                 <div className="space-y-1.5 px-4 py-3 text-xs">
                   <Line label="Rate" value={formatCurrency(load.rate)} />

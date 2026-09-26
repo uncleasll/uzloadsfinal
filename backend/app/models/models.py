@@ -23,6 +23,10 @@ class Company(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(200), nullable=False)
     week_start_day = Column(Integer, default=5, nullable=False)   # 0=Mon … 5=Sat
+    payment_terms_days = Column(Integer, default=30, nullable=True)
+    factoring_company = Column(String(200), nullable=True)
+    factoring_fee_pct = Column(Float, default=3.0, nullable=True)        # % of the invoice the factor keeps
+    factoring_advance_pct = Column(Float, default=90.0, nullable=True)   # % wired up front; the rest when the broker pays
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -745,10 +749,20 @@ class Invoice(Base):
     broker_id = Column(Integer, ForeignKey("brokers.id"), nullable=True)
     invoice_date = Column(Date, nullable=False)
     due_date = Column(Date, nullable=True)
-    status = Column(String(50), default="Pending")  # Pending/Sent/Paid/Overdue
+    status = Column(String(50), default="Pending")  # Pending (draft) | Sent | Factored | Funded | Paid
     amount = Column(Float, nullable=False)
     notes = Column(Text)
     is_active = Column(Boolean, default=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    channel = Column(String(20), nullable=True)                 # direct | factoring
+    sent_at = Column(Date, nullable=True)
+    funded_at = Column(Date, nullable=True)
+    paid_at = Column(Date, nullable=True)
+    fee_pct = Column(Float, nullable=True)
+    fee_amount = Column(Float, nullable=True)
+    advance_pct = Column(Float, nullable=True)
+    advance_amount = Column(Float, nullable=True)
+    paid_amount = Column(Float, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

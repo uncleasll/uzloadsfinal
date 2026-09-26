@@ -169,7 +169,7 @@ function CompanyTab() {
     if (!c) return
     setSaving(true)
     try {
-      const saved = await companyApi.update({ name: c.name, week_start_day: c.week_start_day })
+      const saved = await companyApi.update({ name: c.name, week_start_day: c.week_start_day, payment_terms_days: c.payment_terms_days, factoring_company: c.factoring_company, factoring_fee_pct: c.factoring_fee_pct, factoring_advance_pct: c.factoring_advance_pct })
       setC(saved)
       const stored = JSON.parse(localStorage.getItem('auth_user') || '{}'); localStorage.setItem('auth_user', JSON.stringify({ ...stored, company_name: saved.name }))
       toast.success('Company saved')
@@ -187,6 +187,14 @@ function CompanyTab() {
             {DAYS.map((d, i) => <option key={d} value={i}>{d}{i === 5 ? ' (most carriers)' : ''}</option>)}
           </select>
           <p className="mt-1 text-slate-500">Loads and expenses are grouped into weeks from this day. Weeks already paid are not touched.</p></div>
+        <div className="border-t border-slate-100 pt-3"><div className="mb-2 text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">Invoicing and factoring</div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block"><span className="mb-1 block text-[0.6875rem] font-semibold text-slate-500">Payment terms (days)</span><input inputMode="numeric" value={c.payment_terms_days} onChange={e => setC({ ...c, payment_terms_days: Number(e.target.value.replace(/\D/g, '')) || 0 })} className={input + ' w-full'} /></label>
+            <label className="block"><span className="mb-1 block text-[0.6875rem] font-semibold text-slate-500">Factoring company</span><input value={c.factoring_company || ''} onChange={e => setC({ ...c, factoring_company: e.target.value })} placeholder="RTS, OTR, Triumph…" className={input + ' w-full'} /></label>
+            <label className="block"><span className="mb-1 block text-[0.6875rem] font-semibold text-slate-500">Factoring fee %</span><input inputMode="decimal" value={c.factoring_fee_pct} onChange={e => setC({ ...c, factoring_fee_pct: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 })} className={input + ' w-full'} /></label>
+            <label className="block"><span className="mb-1 block text-[0.6875rem] font-semibold text-slate-500">Advance %</span><input inputMode="decimal" value={c.factoring_advance_pct} onChange={e => setC({ ...c, factoring_advance_pct: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 })} className={input + ' w-full'} /></label>
+          </div>
+          <p className="mt-1 text-slate-500">A broker's own quick-pay fee and terms win over these defaults.</p></div>
       </div>
       <button onClick={save} disabled={saving} className="btn-primary mt-4 h-9 rounded-lg px-4 text-xs">{saving ? 'Saving…' : 'Save'}</button>
     </div>

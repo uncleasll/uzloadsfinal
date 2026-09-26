@@ -17,6 +17,7 @@ export interface DashboardData {
     dispatchers_unpaid: { count: number; amount: number }
     bills: { month: string; remaining: number; unpaid_count: number; due_soon: Array<{ label: string; amount: number; due_day: number; overdue: boolean }> }
     maintenance: { due: number; soon: number; items: Array<{ unit_number: string; service_type: string; status: 'RED' | 'AMBER'; miles_left: number | null; days_left: number | null }> }
+    invoices: { ready_count: number; ready_amount: number; outstanding: number; overdue_count: number; overdue_amount: number; at_factor: number }
   }
   breakdown: { fee: number; fixed: number; fuel: number; expenses: number; other: number; driver_pay: number; net: number }
   brokers: Array<{ name: string; gross: number; loads: number }>

@@ -50,8 +50,8 @@ export const maintenanceApi = {
   saveIntervals: async (items: Interval[]): Promise<Interval[]> => (await client.put(`${V1}/maintenance/intervals`, items)).data,
 }
 
-export interface CompanyMe { id: number; name: string; week_start_day: number }
+export interface CompanyMe { id: number; name: string; week_start_day: number; payment_terms_days: number; factoring_company: string | null; factoring_fee_pct: number; factoring_advance_pct: number }
 export const companyApi = {
   me: async (): Promise<CompanyMe> => (await client.get(`${V1}/company/me`)).data,
-  update: async (data: { name: string; week_start_day: number }): Promise<CompanyMe> => (await client.put(`${V1}/company/me`, data)).data,
+  update: async (data: Omit<CompanyMe, 'id'>): Promise<CompanyMe> => (await client.put(`${V1}/company/me`, data)).data,
 }

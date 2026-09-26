@@ -27,6 +27,7 @@ import MaintenancePage from '@/pages/MaintenancePage'
 import InvitePage from '@/pages/InvitePage'
 import DriverApp from '@/driver/DriverApp'
 import ChatPage from '@/pages/ChatPage'
+import InvoicesPage from '@/pages/InvoicesPage'
 
 /** Office pages: any signed-in office role. Drivers are sent to the driver app. */
 function RequireOffice({ children }: { children: JSX.Element }) {
@@ -45,7 +46,7 @@ function RoleHome() {
   return <Navigate to={user?.role === 'dispatcher' ? '/dispatch' : '/dashboard'} replace />
 }
 
-const OFFICE_ONLY = ['/dashboard', '/weeks', '/bills', '/settings', '/maintenance', '/accounting', '/payroll', '/payments', '/reports', '/vendors', '/my-company', '/dispatchers']
+const OFFICE_ONLY = ['/dashboard', '/weeks', '/bills', '/invoices', '/settings', '/maintenance', '/accounting', '/payroll', '/payments', '/reports', '/vendors', '/my-company', '/dispatchers']
 
 function RequireDriver({ children }: { children: JSX.Element }) {
   const { user, isAuthenticated, loading } = useAuth()
@@ -66,6 +67,7 @@ export default function App() {
         <Route index element={<RoleHome />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="chat" element={<ChatPage />} />
+        <Route path="invoices" element={<InvoicesPage />} />
         <Route path="weeks" element={<WeekBoardPage />} />
         <Route path="weeks/:start/trucks/:truckId" element={<StatementPage />} />
         <Route path="dispatchers" element={<DispatchersPage />} />

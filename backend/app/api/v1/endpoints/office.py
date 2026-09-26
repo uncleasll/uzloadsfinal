@@ -178,10 +178,17 @@ def unpay_bill(bill_id: int, month: str, db: Session = Depends(get_db)):
 class CompanyIn(BaseModel):
     name: str
     week_start_day: int = Field(ge=0, le=6)   # 0 = Monday … 5 = Saturday, 6 = Sunday
+    payment_terms_days: Optional[int] = Field(default=30, ge=0, le=180)
+    factoring_company: Optional[str] = None
+    factoring_fee_pct: Optional[float] = Field(default=3.0, ge=0, le=20)
+    factoring_advance_pct: Optional[float] = Field(default=90.0, ge=0, le=100)
 
 
 def _company(c: Company) -> dict:
-    return {"id": c.id, "name": c.name, "week_start_day": c.week_start_day if c.week_start_day is not None else 5}
+    return {"id": c.id, "name": c.name, "week_start_day": c.week_start_day if c.week_start_day is not None else 5,
+            "payment_terms_days": c.payment_terms_days if c.payment_terms_days is not None else 30,
+            "factoring_company": c.factoring_company, "factoring_fee_pct": c.factoring_fee_pct if c.factoring_fee_pct is not None else 3.0,
+            "factoring_advance_pct": c.factoring_advance_pct if c.factoring_advance_pct is not None else 90.0}
 
 
 @router.get("/company/me")
@@ -202,5 +209,7 @@ def update_my_company(data: CompanyIn, db: Session = Depends(get_db)):
     if not data.name.strip():
         raise HTTPException(400, "Company name is required")
     c.name, c.week_start_day = data.name.strip(), data.week_start_day
+    c.payment_terms_days, c.factoring_company = data.payment_terms_days, (data.factoring_company or "").strip() or None
+    c.factoring_fee_pct, c.factoring_advance_pct = data.factoring_fee_pct, data.factoring_advance_pct
     db.commit()
     return _company(c)

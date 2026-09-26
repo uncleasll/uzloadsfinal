@@ -44,6 +44,13 @@ def _aggregate(stmts: list[TruckStatement]) -> dict:
     }
 
 
+def _invoices_attention(db: Session) -> dict:
+    from app.services import billing
+    o = billing.overview(db)
+    return {"ready_count": o["ready"]["count"], "ready_amount": o["ready"]["amount"], "outstanding": o["outstanding"]["amount"],
+            "overdue_count": o["overdue"]["count"], "overdue_amount": o["overdue"]["amount"], "at_factor": o["at_factor"]["amount"]}
+
+
 @router.get("/dashboard")
 def dashboard(date_from: Optional[date] = Query(None, alias="from"), date_to: Optional[date] = Query(None, alias="to"),
               db: Session = Depends(get_db)):
@@ -122,6 +129,7 @@ def dashboard(date_from: Optional[date] = Query(None, alias="from"), date_to: Op
         "bills": {"month": month, "remaining": bills["totals"]["remaining"], "unpaid_count": bills["totals"]["count"] - bills["totals"]["paid_count"],
                   "due_soon": [{"label": b["label"], "amount": b["amount"], "due_day": b["due_day"], "overdue": b["due_day"] < today.day} for b in bills_due_soon][:6]},
         "maintenance": {"due": maint["counts"]["RED"], "soon": maint["counts"]["AMBER"], "items": due_services[:6]},
+        "invoices": _invoices_attention(db),
     }
 
     # Trend: the range's weeks, padded backwards to at least MIN_TREND_WEEKS

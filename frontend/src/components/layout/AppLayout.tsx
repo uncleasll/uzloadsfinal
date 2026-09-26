@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, CalendarRange, Package, Receipt, Headset, CreditCard, MessageSquare, Radio,
+  LayoutDashboard, CalendarRange, Package, Receipt, Headset, CreditCard, MessageSquare, Radio, FileText,
   Users, Truck, Container, Wrench, Building2, Settings, MoreHorizontal,
   ChevronDown, ChevronsLeft, ChevronsRight, Menu, X, LogOut, Building,
   type LucideIcon,
@@ -44,6 +44,7 @@ const SECTIONS: Section[] = [
   {
     title: 'Pay',
     items: [
+      { label: 'Invoices', to: '/invoices', icon: FileText },
       { label: 'Dispatchers', to: '/dispatchers', icon: Headset },
       { label: 'Monthly bills', to: '/bills', icon: CreditCard },
     ],
