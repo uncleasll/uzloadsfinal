@@ -58,6 +58,7 @@ async def auth_and_tenant(request: Request, call_next):
             return JSONResponse({"detail": "Not authenticated"}, status_code=401)
         if payload.get("role") == "driver" and not any(path.startswith(p) for p in DRIVER_PATHS):
             return JSONResponse({"detail": "Drivers use the driver app"}, status_code=403)
+    request.state.role = payload.get("role") if payload else None
     token = set_company_id(payload.get("company_id") if payload else None)
     try:
         return await call_next(request)
@@ -86,13 +87,13 @@ async def handle_options(request: Request, call_next):
         )
     try:
         return await call_next(request)
-    except Exception:
+    except Exception as exc:
         traceback.print_exc()
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "Internal server error"},
-            headers=cors_headers,
-        )
+        body = {"detail": "Internal server error"}
+        # The owner sees what broke, so a support round-trip through the host's logs is not needed.
+        if getattr(request.state, "role", None) == "admin":
+            body["error"] = f"{type(exc).__name__}: {str(exc)[:600]}"
+        return JSONResponse(status_code=500, content=body, headers=cors_headers)
 
 app.add_middleware(
     CORSMiddleware,
