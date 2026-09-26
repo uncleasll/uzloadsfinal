@@ -13,7 +13,10 @@ depends_on = None
 
 
 def upgrade():
-    op.create_table('conversations',
+    # An earlier start-up created these tables outside Alembic; only create what is missing.
+    existing = set(sa.inspect(op.get_bind()).get_table_names())
+    if 'conversations' not in existing:
+      op.create_table('conversations',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('company_id', sa.Integer(), sa.ForeignKey('companies.id'), nullable=True, index=True),
         sa.Column('kind', sa.String(20), nullable=False),
@@ -22,7 +25,8 @@ def upgrade():
         sa.Column('title', sa.String(200), nullable=False),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
     )
-    op.create_table('conversation_members',
+    if 'conversation_members' not in existing:
+      op.create_table('conversation_members',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('company_id', sa.Integer(), sa.ForeignKey('companies.id'), nullable=True, index=True),
         sa.Column('conversation_id', sa.Integer(), sa.ForeignKey('conversations.id'), nullable=False, index=True),
@@ -31,7 +35,8 @@ def upgrade():
         sa.Column('left_at', sa.DateTime(), nullable=True),
         sa.Column('last_read_message_id', sa.Integer(), nullable=True),
     )
-    op.create_table('messages',
+    if 'messages' not in existing:
+      op.create_table('messages',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('company_id', sa.Integer(), sa.ForeignKey('companies.id'), nullable=True, index=True),
         sa.Column('conversation_id', sa.Integer(), sa.ForeignKey('conversations.id'), nullable=False, index=True),
@@ -43,7 +48,8 @@ def upgrade():
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), index=True),
         sa.UniqueConstraint('sender_id', 'client_id', name='uq_message_client_id'),
     )
-    op.create_table('attachments',
+    if 'attachments' not in existing:
+      op.create_table('attachments',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('company_id', sa.Integer(), sa.ForeignKey('companies.id'), nullable=True, index=True),
         sa.Column('message_id', sa.Integer(), sa.ForeignKey('messages.id'), nullable=True, index=True),

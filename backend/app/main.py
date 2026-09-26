@@ -11,7 +11,8 @@ from app.models import models
 import app.core.tenant  # noqa: F401  registers the company scoping hooks
 from app.api.v1 import api_router
 
-models.Base.metadata.create_all(bind=engine)
+# The schema is owned by Alembic (see render.yaml: `alembic upgrade head` runs before the server).
+# Creating tables here raced with migrations and left tables that Alembic then tried to create again.
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(
