@@ -30,7 +30,7 @@ async def handle_payroll_error(request: Request, exc: PayrollError):
 
 
 # What a driver account may reach. Everything else in the API is the office.
-DRIVER_PATHS = ("/api/v1/auth/me", "/api/v1/driver/")
+DRIVER_PATHS = ("/api/v1/auth/me", "/api/v1/driver/", "/api/v1/chat/", "/api/v1/files/")
 
 
 def _is_public(path: str) -> bool:

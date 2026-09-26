@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, CalendarRange, Package, Receipt, Headset, CreditCard,
+  LayoutDashboard, CalendarRange, Package, Receipt, Headset, CreditCard, MessageSquare,
   Users, Truck, Container, Wrench, Building2, Settings, MoreHorizontal,
   ChevronDown, ChevronsLeft, ChevronsRight, Menu, X, LogOut, Building,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { chatApi } from '@/api/chat'
 import karvanLogo from '@/assets/karvan-logo.png'
 
 type Leaf = { label: string; to: string; icon?: LucideIcon }
@@ -20,6 +21,7 @@ const SECTIONS: Section[] = [
       { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
       { label: 'Weekly board', to: '/weeks', icon: CalendarRange },
       { label: 'Loads', to: '/loads', icon: Package },
+      { label: 'Chat', to: '/chat', icon: MessageSquare },
       { label: 'Expenses', to: '/accounting/expenses', icon: Receipt },
     ],
   },
@@ -77,6 +79,19 @@ function useIsMobile() {
 
 const isGroup = (item: Item): item is Group => 'children' in item
 
+/** Total unread chat messages, refreshed every half minute for the sidebar badge. */
+function useUnreadCount() {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    let alive = true
+    const tick = () => chatApi.conversations().then(cs => { if (alive) setN(cs.reduce((s, c) => s + c.unread, 0)) }).catch(() => {})
+    tick()
+    const t = setInterval(tick, 30_000)
+    return () => { alive = false; clearInterval(t) }
+  }, [])
+  return n
+}
+
 export default function AppLayout() {
   const isMobile = useIsMobile()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY) === '1')
@@ -86,6 +101,7 @@ export default function AppLayout() {
   const { user } = useAuth()
 
   const expanded = isMobile || !collapsed
+  const unread = useUnreadCount()
 
   const pathMatches = (to: string) => location.pathname === to || location.pathname.startsWith(to + '/')
   const itemActive = (item: Item) => isGroup(item) ? item.children.some(c => pathMatches(c.to)) : pathMatches(item.to)
@@ -181,7 +197,8 @@ export default function AppLayout() {
                     >
                       {active && <ActiveBar />}
                       <Icon className={iconCls(active)} strokeWidth={active ? 2.2 : 1.9} />
-                      <span className={`ml-2.5 min-w-0 truncate ${fade}`}>{item.label}</span>
+                      <span className={`ml-2.5 min-w-0 flex-1 truncate ${fade}`}>{item.label}</span>
+                      {item.to === '/chat' && unread > 0 && <span className={`ml-1 rounded-full bg-blue-600 px-1.5 text-[0.625rem] font-bold text-white ${expanded ? '' : 'absolute right-1 top-1 px-1'}`}>{unread}</span>}
                     </NavLink>
                   )
                 }

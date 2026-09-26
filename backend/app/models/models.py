@@ -1054,3 +1054,84 @@ class TruckService(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     truck = relationship("Truck")
+
+
+# ─── Chat and documents (replaces Telegram) ───────────────────────────────────
+
+class Conversation(Base):
+    """A truck's group, a load's thread, or the company channel. Groups belong to the truck, not to a person."""
+    __tablename__ = "conversations"
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    kind = Column(String(20), nullable=False)            # truck | load | company | direct
+    truck_id = Column(Integer, ForeignKey("trucks.id"), nullable=True, index=True)
+    load_id = Column(Integer, ForeignKey("loads.id"), nullable=True, index=True)
+    title = Column(String(200), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    truck = relationship("Truck", foreign_keys=[truck_id])
+    load = relationship("Load", foreign_keys=[load_id])
+    members = relationship("ConversationMember", back_populates="conversation", cascade="all, delete-orphan")
+
+
+class ConversationMember(Base):
+    """Who is in a conversation, with history: a row per stint, closed by left_at when they leave."""
+    __tablename__ = "conversation_members"
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    joined_at = Column(DateTime, server_default=func.now())
+    left_at = Column(DateTime, nullable=True)
+    last_read_message_id = Column(Integer, nullable=True)
+
+    conversation = relationship("Conversation", back_populates="members")
+    user = relationship("User", foreign_keys=[user_id])
+
+
+class Message(Base):
+    __tablename__ = "messages"
+    __table_args__ = (UniqueConstraint("sender_id", "client_id", name="uq_message_client_id"),)
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=True)      # null = system
+    kind = Column(String(20), nullable=False, default="text")             # text | photo | file | voice | system
+    body = Column(Text, nullable=True)
+    client_id = Column(String(64), nullable=True)                         # set by the phone; makes offline resend safe
+    client_created_at = Column(DateTime, nullable=True)                   # phone clock when written offline
+    created_at = Column(DateTime, server_default=func.now(), index=True)  # server clock when received
+
+    sender = relationship("User", foreign_keys=[sender_id])
+    attachments = relationship("Attachment", back_populates="message", cascade="all, delete-orphan")
+
+
+class Attachment(Base):
+    """A photo or file. The stamp (when, where, who, which truck/load) is stored here and burned into photos."""
+    __tablename__ = "attachments"
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    message_id = Column(Integer, ForeignKey("messages.id"), nullable=True, index=True)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    truck_id = Column(Integer, ForeignKey("trucks.id"), nullable=True, index=True)
+    load_id = Column(Integer, ForeignKey("loads.id"), nullable=True, index=True)
+    category = Column(String(30), nullable=False, default="photo")        # photo | pod | bol | receipt | inspection | file | voice
+    storage_key = Column(String(500), nullable=False)
+    original_filename = Column(String(500), nullable=True)
+    content_type = Column(String(100), nullable=True)
+    size = Column(Integer, nullable=True)
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    taken_at = Column(DateTime, nullable=True)                            # phone clock at capture
+    received_at = Column(DateTime, server_default=func.now())             # server clock
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    sha256 = Column(String(64), nullable=True)
+    stamp = Column(Text, nullable=True)                                   # the exact text burned into the photo
+
+    message = relationship("Message", back_populates="attachments")
+    uploader = relationship("User", foreign_keys=[uploaded_by])

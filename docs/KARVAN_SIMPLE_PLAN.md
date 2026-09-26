@@ -120,3 +120,13 @@ python scripts/import_statements_excel.py "/path/STATEMENTS 2025.xlsx" --apply  
 - Taklif: Settings → Team → Invite. Link 7 kun, bir marta ishlaydi (`/invite/:token`). Qabul qilgan odam parol qo'yadi va kiradi. Haydovchi `/driver` ga tushadi, ofisga kira olmaydi (backend 403, frontend redirect).
 - Security: `/api/*` tokensiz 401 (login, register, invite preview/accept, health ochiq). Token: ofis 7 kun, haydovchi 30 kun. Kompaniyasiz akkaunt kira olmaydi. Login urinishlari: 8 ta/daqiqa, keyin 429. Deploy vaqtida standart parolli userlar yaratish olib tashlandi, login sahifasidagi demo tugmalar ham.
 - Eslatma: production dagi eski `admin@karvan.com` kabi kompaniyasiz akkauntlar endi kira olmaydi. Egasi `/register` orqali kompaniya ochadi va jamoani taklif qiladi.
+
+## 10. Ekotizim 2-bosqich: chat va hujjatlar (2026-09-26)
+
+- Jadvallar (migratsiya 025): `conversations` (company / truck / load), `conversation_members` (joined_at / left_at tarixi, last_read), `messages` (client_id bilan offline qayta yuborish xavfsiz, client_created_at va created_at ikkalasi), `attachments` (rasm/fayl, taken_at, received_at, lat/lng, sha256, stamp matni).
+- A'zolik o'zi sinxronlanadi: ofis hamma guruhda, truck guruhida hozirgi haydovchi. Haydovchi almashsa eskisi "left" bo'ladi, xabarlari qoladi. Birinchi to'ldirishda "joined" yozilmaydi.
+- Rasmga muhr: `app/services/photo_stamp.py` pastiga qora tasma: "Karvan · sana vaqt · kim" va "Truck · Load · turi · GPS". Rasm JPEG ga aylanadi, 2000px gacha.
+- Fayl saqlash: `app/services/storage.py`. `STORAGE_BACKEND=local` (dev) yoki `supabase` (prod: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_BUCKET`). Render diski deploy da o'chadi, prod da Supabase Storage bucket ochib env qo'yish kerak. Fayllar `/api/v1/files/{id}` orqali token bilan olinadi.
+- Chatdagi rasm yukka POD sifatida biriktiriladi (`POST /chat/attachments/{id}/to-load`), statementda POD belgisi chiqadi, merged PDF ga kiradi.
+- Ofis UI: `/chat` sahifasi (ro'yxat, thread, fayl yuborish, a'zolar tarixi, "Save as POD"), sidebar da o'qilmaganlar soni. Har 5 soniyada yangilanadi; WebSocket keyin.
+- Haydovchi API: `/api/v1/chat/*` va `/api/v1/files/*` driver roliga ochiq. Driver app 3-bosqichda.

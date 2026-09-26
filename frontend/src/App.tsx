@@ -26,6 +26,7 @@ import SettingsPage from '@/pages/SettingsPage'
 import MaintenancePage from '@/pages/MaintenancePage'
 import InvitePage from '@/pages/InvitePage'
 import DriverHomePage from '@/pages/DriverHomePage'
+import ChatPage from '@/pages/ChatPage'
 
 /** Office pages: any signed-in office role. Drivers are sent to the driver app. */
 function RequireOffice({ children }: { children: JSX.Element }) {
@@ -55,6 +56,7 @@ export default function App() {
       <Route path="/" element={<RequireOffice><AppLayout /></RequireOffice>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="chat" element={<ChatPage />} />
         <Route path="weeks" element={<WeekBoardPage />} />
         <Route path="weeks/:start/trucks/:truckId" element={<StatementPage />} />
         <Route path="dispatchers" element={<DispatchersPage />} />
