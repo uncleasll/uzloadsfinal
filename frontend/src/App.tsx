@@ -24,12 +24,24 @@ import DispatchersPage from '@/pages/DispatchersPage'
 import BillsPage from '@/pages/BillsPage'
 import SettingsPage from '@/pages/SettingsPage'
 import MaintenancePage from '@/pages/MaintenancePage'
+import InvitePage from '@/pages/InvitePage'
+import DriverHomePage from '@/pages/DriverHomePage'
 
-function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, loading } = useAuth()
+/** Office pages: any signed-in office role. Drivers are sent to the driver app. */
+function RequireOffice({ children }: { children: JSX.Element }) {
+  const { user, isAuthenticated, loading } = useAuth()
   const location = useLocation()
   if (loading) return null
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />
+  if (user?.role === 'driver') return <Navigate to="/driver" replace />
+  return children
+}
+
+function RequireDriver({ children }: { children: JSX.Element }) {
+  const { user, isAuthenticated, loading } = useAuth()
+  if (loading) return null
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.role !== 'driver') return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -38,7 +50,9 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/" element={<RequireAuth><AppLayout /></RequireAuth>}>
+      <Route path="/invite/:token" element={<InvitePage />} />
+      <Route path="/driver" element={<RequireDriver><DriverHomePage /></RequireDriver>} />
+      <Route path="/" element={<RequireOffice><AppLayout /></RequireOffice>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="weeks" element={<WeekBoardPage />} />

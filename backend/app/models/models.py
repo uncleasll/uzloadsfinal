@@ -534,9 +534,13 @@ class SettlementEmailLog(Base):
 # ── User / Auth ────────────────────────────────────────────────────────────────
 
 class UserRole(str, enum.Enum):
-    ADMIN = "admin"
+    ADMIN = "admin"          # the owner
     DISPATCHER = "dispatcher"
     ACCOUNTANT = "accountant"
+    DRIVER = "driver"
+
+
+OFFICE_ROLES = ("admin", "accountant", "dispatcher")
 
 
 class User(Base):
@@ -550,10 +554,31 @@ class User(Base):
     role = Column(enum_column(UserRole, "userrole"), default=UserRole.DISPATCHER, nullable=False)
     is_active = Column(Boolean, default=True)
     dispatcher_id = Column(Integer, ForeignKey("dispatchers.id"), nullable=True)
+    driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=True)
+    phone = Column(String(50), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     last_login = Column(DateTime, nullable=True)
 
     dispatcher = relationship("Dispatcher", foreign_keys=[dispatcher_id])
+    driver = relationship("Driver", foreign_keys=[driver_id])
+
+
+class Invitation(Base):
+    """The office invites a person by email; accepting the link creates their user in this company."""
+    __tablename__ = "invitations"
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    token = Column(String(64), nullable=False, unique=True, index=True)
+    name = Column(String(200), nullable=False)
+    email = Column(String(200), nullable=False)
+    role = Column(String(20), nullable=False)
+    driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=True)
+    dispatcher_id = Column(Integer, ForeignKey("dispatchers.id"), nullable=True)
+    invited_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    accepted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
 
 
 class DriverDocType(str, enum.Enum):

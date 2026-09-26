@@ -113,3 +113,10 @@ python scripts/import_statements_excel.py "/path/STATEMENTS 2025.xlsx" --apply  
 - Drivers, Trucks, Trailers, Brokers, My company shu qolipda qayta yozildi: bitta jadval, qatorga bosilsa o'ng panel, panelda Details / (Pay yoki Statement rules) / Documents. Truck-haydovchi biriktirish faqat Trucks sahifasida; Drivers sahifasi uni trucklardan o'qiydi.
 - Loads sahifasi: bitta `LoadForm` yaratish va tahrirlash uchun, panel faqat ko'rish. Yuk to'langan hafta, settlement yoki invoice orqali qulflanadi, "Delivered" holati qulflamaydi.
 - Dashboard davr tanlaydi: This week, Last week, Last 4 / 13 weeks, This month, Last month, This year, Custom (ikkita sana). Server ikki uchni to'liq statement haftalariga yaxlitlaydi (`GET /api/v1/dashboard?from=&to=`). Hamma raqam, "gross qayerga ketdi" doirasi, brokerlar va trucklar shu davr bo'yicha; "Needs your attention" esa har doim hozirgi holat. Trend grafigida hover bilan haftaning to'liq rasmi, KPI kartalarida 8 haftalik sparkline.
+
+## 9. Ekotizim 1-bosqich: roller, taklif, security (2026-09-26)
+
+- Roller: `admin` (egasi), `accountant`, `dispatcher`, `driver`. `users.driver_id`, `users.phone` (migratsiya 024). Haydovchi akkaunti `drivers` yozuviga bog'lanadi.
+- Taklif: Settings → Team → Invite. Link 7 kun, bir marta ishlaydi (`/invite/:token`). Qabul qilgan odam parol qo'yadi va kiradi. Haydovchi `/driver` ga tushadi, ofisga kira olmaydi (backend 403, frontend redirect).
+- Security: `/api/*` tokensiz 401 (login, register, invite preview/accept, health ochiq). Token: ofis 7 kun, haydovchi 30 kun. Kompaniyasiz akkaunt kira olmaydi. Login urinishlari: 8 ta/daqiqa, keyin 429. Deploy vaqtida standart parolli userlar yaratish olib tashlandi, login sahifasidagi demo tugmalar ham.
+- Eslatma: production dagi eski `admin@karvan.com` kabi kompaniyasiz akkauntlar endi kira olmaydi. Egasi `/register` orqali kompaniya ochadi va jamoani taklif qiladi.

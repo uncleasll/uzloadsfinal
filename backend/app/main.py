@@ -29,18 +29,35 @@ async def handle_payroll_error(request: Request, exc: PayrollError):
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
+# What a driver account may reach. Everything else in the API is the office.
+DRIVER_PATHS = ("/api/v1/auth/me", "/api/v1/driver/")
+
+
+def _is_public(path: str) -> bool:
+    if path in ("/api/v1/auth/login", "/api/v1/auth/register"):
+        return True
+    if path.startswith("/api/v1/auth/invitations/") and (path.endswith("/preview") or path.endswith("/accept")):
+        return True
+    return any(path == p or path.startswith(p) for p in ("/health", "/docs", "/openapi.json", "/redoc", "/uploads/"))
+
+
 @app.middleware("http")
-async def tenant_context(request: Request, call_next):
-    """Read the bearer token and scope every database query in this request to the user's company."""
+async def auth_and_tenant(request: Request, call_next):
+    """Every API call needs a valid token; the token's company scopes every query in the request."""
+    from fastapi.responses import JSONResponse
     from app.core.tenant import set_company_id, reset_company_id
     from app.services.auth_service import decode_token
-    company_id = None
+    path = request.url.path
+    payload = None
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
         payload = decode_token(auth[7:].strip())
-        if payload:
-            company_id = payload.get("company_id")
-    token = set_company_id(company_id)
+    if request.method != "OPTIONS" and path.startswith("/api/") and not _is_public(path):
+        if not payload or not payload.get("company_id"):
+            return JSONResponse({"detail": "Not authenticated"}, status_code=401)
+        if payload.get("role") == "driver" and not any(path.startswith(p) for p in DRIVER_PATHS):
+            return JSONResponse({"detail": "Drivers use the driver app"}, status_code=403)
+    token = set_company_id(payload.get("company_id") if payload else None)
     try:
         return await call_next(request)
     finally:
@@ -87,45 +104,6 @@ app.add_middleware(
 app.include_router(api_router)
 
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
-
-@app.on_event("startup")
-def startup_fix_snapshots():
-    try:
-        from app.db.session import SessionLocal
-        from app.models.models import Load, User
-        from app.services.driver_pay_service import take_snapshot
-        from app.services.auth_service import hash_password
-        db = SessionLocal()
-
-        default_users = [
-            ("Asilbek Karimov", "admin@karvan.com", "admin123", "admin"),
-            ("Sardor Rahimov", "dispatcher@karvan.com", "disp123", "dispatcher"),
-            ("Asilbek Karimov", "asilbekkarimov066@gmail.com", "Asilbek123", "dispatcher"),
-            ("Sardor Rahimov", "sardor@silkroad.com", "Sardor123", "dispatcher"),
-        ]
-        for name, email, password, role in default_users:
-            user = db.query(User).filter(User.email == email).first()
-            if user:
-                # Deploying must preserve existing account passwords and roles.
-                continue
-            else:
-                db.add(
-                    User(
-                        name=name,
-                        email=email,
-                        hashed_password=hash_password(password),
-                        role=role,
-                        is_active=True,
-                    )
-                )
-
-        # Historical pay must be reconciled explicitly; startup must not assign
-        # today's driver rates to old loads that lack a snapshot.
-        db.commit()
-        db.close()
-    except Exception:
-        traceback.print_exc()
-
 
 @app.get("/health")
 def health():

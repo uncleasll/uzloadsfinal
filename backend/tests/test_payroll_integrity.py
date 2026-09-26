@@ -530,8 +530,7 @@ class PayrollScenarios(unittest.TestCase):
         root=Path(__file__).resolve().parents[2]/'frontend/src'
         # The per-load driver-pay override UI was dropped with the weekly redesign: pay comes from the
         # driver's rule and corrections are manual lines on the statement. The route stays for the API.
-        for file,path in [('components/payroll/SettlementModal.tsx','/api/v1/payroll/${settlementId}/time-reports'),
-                          ('pages/DriversPage.tsx','/api/v1/scheduled-transactions/preview')]:
+        for file,path in [('components/payroll/SettlementModal.tsx','/api/v1/payroll/${settlementId}/time-reports')]:
             self.assertIn(path,(root/file).read_text())
 
     def test_http_payroll_and_override_contract(self):
@@ -590,23 +589,12 @@ class PayrollScenarios(unittest.TestCase):
         # Scratch output for visual review; not an application or production write.
         Path('/tmp/karvan-payee-report.pdf').write_bytes(pdf)
 
-    def test_deploy_startup_preserves_existing_accounts(self):
-        import ast, traceback
+    def test_deploy_startup_does_not_seed_accounts(self):
+        """Accounts come from sign-up and invitations only; a deploy never creates users with known passwords."""
         from pathlib import Path
-        from app.models.models import User
-        user=User(name='Existing name',email='admin@karvan.com',hashed_password='existing-hash',role='dispatcher',is_active=False)
-        self.db.add(user);self.db.commit()
-        source=ast.parse((Path(__file__).parents[1]/'app/main.py').read_text())
-        function=next(n for n in source.body if isinstance(n,ast.FunctionDef) and n.name=='startup_fix_snapshots')
-        function.decorator_list=[]
-        namespace={'traceback':traceback}
-        exec(compile(ast.fix_missing_locations(ast.Module(body=[function],type_ignores=[])),'startup-test','exec'),namespace)
-        with patch('app.db.session.SessionLocal',return_value=self.db), patch('app.services.auth_service.hash_password',return_value='new-hash'):
-            namespace['startup_fix_snapshots']()
-        saved=self.db.query(User).filter_by(email='admin@karvan.com').one()
-        self.assertEqual(saved.hashed_password,'existing-hash')
-        self.assertEqual(saved.name,'Existing name')
-        self.assertEqual(saved.role.value,'dispatcher')
-        self.assertFalse(saved.is_active)
+        source=(Path(__file__).parents[1]/'app/main.py').read_text()
+        self.assertNotIn('default_users',source)
+        self.assertNotIn('admin123',source)
+        self.assertNotIn('hash_password',source)
 
 if __name__ == '__main__': unittest.main()

@@ -6,11 +6,12 @@ import { officeApi } from '@/api/office'
 import { weeksApi, type DriverRules, type TruckRules } from '@/api/weeks'
 import type { Dispatcher, Driver, Truck } from '@/types'
 import RulesPanel from '@/components/weeks/RulesPanel'
+import TeamTab from '@/components/settings/TeamTab'
 import { formatCurrency } from '@/utils'
 import { companyApi, type CompanyMe } from '@/api/maintenance'
 import { useAuth } from '@/hooks/useAuth'
 
-type Tab = 'company' | 'trucks' | 'drivers' | 'dispatchers'
+type Tab = 'company' | 'trucks' | 'drivers' | 'dispatchers' | 'team'
 const input = 'h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100'
 
 /** The three rule sets behind every weekly statement, in one place. */
@@ -24,7 +25,7 @@ export default function SettingsPage() {
           <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-400">Truck deductions, driver pay and dispatcher commissions. Changes apply to every week that is not paid yet.</p>
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
-          {([['company', 'Company'], ['trucks', 'Trucks'], ['drivers', 'Drivers'], ['dispatchers', 'Dispatchers']] as const).map(([k, l]) => (
+          {([['company', 'Company'], ['trucks', 'Trucks'], ['drivers', 'Drivers'], ['dispatchers', 'Dispatchers'], ['team', 'Team']] as const).map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)} aria-pressed={tab === k} className={`rounded-md px-3 py-1.5 text-[0.6875rem] font-semibold transition ${tab === k ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>{l}</button>
           ))}
         </div>
@@ -34,6 +35,7 @@ export default function SettingsPage() {
         {tab === 'trucks' && <TrucksTab />}
         {tab === 'drivers' && <DriversTab />}
         {tab === 'dispatchers' && <DispatchersTab />}
+        {tab === 'team' && <TeamTab />}
       </div>
     </div>
   )

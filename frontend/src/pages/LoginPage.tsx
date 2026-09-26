@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
 import karvanLogo from '@/assets/karvan-logo.png'
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, sessionExpired } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,8 +18,8 @@ export default function LoginPage() {
     if (!email || !password) return toast.error('Please enter email and password')
     setLoading(true)
     try {
-      await login(email, password)
-      navigate('/dashboard', { replace: true })
+      const user = await login(email, password)
+      navigate(user.role === 'driver' ? '/driver' : location.state?.from?.pathname || '/dashboard', { replace: true })
     } catch (err: unknown) {
       toast.error((err as Error).message || 'Invalid credentials')
     } finally { setLoading(false) }
@@ -43,6 +44,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 border border-blue-100">
           <h1 className="text-xl font-bold text-gray-900 mb-1">Sign in to your account</h1>
           <p className="text-sm text-gray-500 mb-6">Enter your credentials to continue</p>
+          {sessionExpired && <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Your session expired. Sign in again, then retry the document.</p>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -73,21 +75,6 @@ export default function LoginPage() {
           </form>
           <p className="mt-4 text-center text-xs text-slate-500">New company? <Link to="/register" className="font-semibold text-blue-700 hover:underline">Create an account</Link></p>
 
-          <div className="mt-6 pt-5 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center mb-2">Quick login (demo)</p>
-            <div className="space-y-1">
-              {[
-                { label: 'Admin', email: 'admin@karvan.com', pass: 'admin123' },
-                { label: 'Asilbek Karimov', email: 'asilbekkarimov066@gmail.com', pass: 'Asilbek123' },
-              ].map(c => (
-                <button key={c.email} onClick={() => { setEmail(c.email); setPassword(c.pass) }}
-                  className="w-full text-left px-3 py-1.5 rounded text-xs text-gray-500 hover:bg-gray-50 flex items-center justify-between">
-                  <span className="font-semibold text-gray-700">{c.label}</span>
-                  <span className="text-gray-400">{c.email}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
         <p className="text-center text-white/20 text-xs mt-5">&copy; 2026 Karvan TMS</p>
       </div>
