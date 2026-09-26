@@ -86,7 +86,9 @@ def sync_memberships(db: Session) -> None:
     for truck in db.query(Truck).filter(Truck.is_active == True).all():  # noqa: E712
         conv = ensure_truck_conversation(db, truck)
         wanted = {u.id: u for u in office}
-        drv = drivers.get(truck.driver_id) if truck.driver_id else None
+        from app.services.fleet import effective_driver
+        eff = effective_driver(db, truck)
+        drv = drivers.get(eff.id) if eff else None
         if drv:
             wanted[drv.id] = drv
         _reconcile(db, conv, wanted)

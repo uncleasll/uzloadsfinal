@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.v1.endpoints.auth import require_user
 from app.db.session import get_db
 from app.models.models import Attachment, Conversation, Load, Message, Truck
-from app.services import dispatcher_pay, weekly_statement as ws
+from app.services import dispatcher_pay, fleet, weekly_statement as ws
 
 router = APIRouter(prefix="/dispatch", tags=["dispatch"])
 
@@ -55,9 +55,11 @@ def board(db: Session = Depends(get_db), user=Depends(require_user)):
         conv_id = convs.get(t.id)
         last_msg = db.query(Message).filter(Message.conversation_id == conv_id).order_by(Message.id.desc()).first() if conv_id else None
         last_pos = (db.query(Attachment).filter(Attachment.truck_id == t.id, Attachment.lat.isnot(None)).order_by(Attachment.id.desc()).first())
+        drv = fleet.effective_driver(db, t)
         rows.append({
-            "truck_id": t.id, "unit_number": t.unit_number, "driver": t.driver.name if t.driver else None, "driver_id": t.driver_id,
-            "state": ("no_driver" if not t.driver_id else "free" if not current else getattr(current.status, "value", current.status)),
+            "truck_id": t.id, "unit_number": t.unit_number, "driver": drv.name if drv else None, "driver_id": drv.id if drv else None,
+            "temporary_driver": bool(drv and drv.id != t.driver_id), "truck_status": t.status, "status_note": t.status_note,
+            "state": (t.status if t.status != "active" else "no_driver" if not drv else "free" if not current else getattr(current.status, "value", current.status)),
             "current_load": _load(current) if current else None, "queued": [_load(l) for l in mine[1:]],
             "conversation_id": conv_id,
             "last_activity": last_msg.created_at.isoformat() if last_msg and last_msg.created_at else None,
@@ -65,10 +67,12 @@ def board(db: Session = Depends(get_db), user=Depends(require_user)):
             "last_position": {"lat": last_pos.lat, "lng": last_pos.lng, "at": (last_pos.taken_at or last_pos.received_at).isoformat()} if last_pos else None,
         })
     unassigned = [_load(l) for l in loads if not l.truck_id]
+    idle = fleet.idle_drivers(db)
     return {
-        "today": date.today().isoformat(), "trucks": rows, "unassigned": unassigned,
+        "today": date.today().isoformat(), "trucks": rows, "unassigned": unassigned, "idle_drivers": idle,
         "counts": {"free": sum(1 for r in rows if r["state"] == "free"), "on_load": sum(1 for r in rows if r["current_load"]),
-                   "no_driver": sum(1 for r in rows if r["state"] == "no_driver"), "unassigned": len(unassigned)},
+                   "no_driver": sum(1 for r in rows if r["state"] == "no_driver"), "down": sum(1 for r in rows if r["truck_status"] != "active"),
+                   "unassigned": len(unassigned), "idle_drivers": len(idle)},
     }
 
 

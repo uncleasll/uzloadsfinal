@@ -30,7 +30,8 @@ def _driver(db: Session, user) -> Driver:
 
 
 def _truck(db: Session, d: Driver) -> Truck | None:
-    return db.query(Truck).filter(Truck.driver_id == d.id, Truck.is_active == True).first()  # noqa: E712
+    from app.services.fleet import effective_truck
+    return effective_truck(db, d)
 
 
 def _stop(load: Load, kind: str) -> dict | None:
@@ -75,7 +76,8 @@ def me(db: Session = Depends(get_db), user=Depends(require_user)):
         db.commit()
     return {
         "driver": {"id": d.id, "name": d.name, "phone": d.phone},
-        "truck": {"id": truck.id, "unit_number": truck.unit_number, "make": truck.make, "model": truck.model, "plate": truck.plate} if truck else None,
+        "truck": {"id": truck.id, "unit_number": truck.unit_number, "make": truck.make, "model": truck.model, "plate": truck.plate,
+                  "status": truck.status, "status_note": truck.status_note, "temporary": truck.driver_id != d.id} if truck else None,
         "current_load": _load(db, open_loads[0]) if open_loads else None,
         "upcoming": [_load(db, l) for l in open_loads[1:6]],
         "week": week,
@@ -179,7 +181,8 @@ async def inspection(files: list[UploadFile] = File(...), kind: str = Form("pre_
         chat.store_attachment(db, user=user, data=data, filename=f.filename or "photo.jpg", content_type=f.content_type or "image/jpeg",
                               category="inspection", truck_id=truck.id, taken_at=taken_at, lat=lat, lng=lng, message=m)
     if kind == "breakdown":
-        truck.notes = ((truck.notes or "") + f"\n[{datetime.utcnow():%Y-%m-%d %H:%M}] Breakdown reported by {d.name}: {notes or ''}").strip()
+        from app.services.fleet import set_truck_status
+        set_truck_status(db, truck, "in_shop", f"Breakdown reported by {d.name}" + (f": {notes}" if notes else ""), user)
     db.commit(); db.refresh(m)
     return chat._msg(m)
 

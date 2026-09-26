@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, MessageSquare, Plus, RefreshCw } from 'lucide-react'
+import { MapPin, MessageSquare, Plus, RefreshCw, Wrench } from 'lucide-react'
+import { fleetApi, type IdleDriver } from '@/api/fleet'
+import { Field, Grid } from '@/components/ui/Field'
 import toast from 'react-hot-toast'
 import { dispatchApi, type Board, type BoardLoad, type BoardTruck } from '@/api/dispatch'
 import { loadsApi } from '@/api/loads'
@@ -14,6 +16,7 @@ import LoadModal from '@/components/loads/LoadModal'
 const POLL_MS = 15_000
 const STATE: Record<BoardTruck['state'], { label: string; tone: 'green' | 'slate' | 'blue' | 'amber' | 'red' }> = {
   free: { label: 'Free', tone: 'green' }, no_driver: { label: 'No driver', tone: 'slate' }, New: { label: 'Assigned', tone: 'blue' },
+  in_shop: { label: 'In shop', tone: 'red' }, out_of_service: { label: 'Out of service', tone: 'red' },
   Dispatched: { label: 'Dispatched', tone: 'blue' }, 'En Route': { label: 'En route', tone: 'amber' }, 'Picked-up': { label: 'Loaded', tone: 'amber' },
 }
 
@@ -25,6 +28,7 @@ export default function DispatchPage() {
   const [filter, setFilter] = useState<'all' | 'free' | 'busy'>('all')
   const [newFor, setNewFor] = useState<number | null | 'any'>(null)
   const [openLoad, setOpenLoad] = useState<number | null>(null)
+  const [placing, setPlacing] = useState<IdleDriver | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -44,7 +48,7 @@ export default function DispatchPage() {
 
   const c = b?.counts
   return (
-    <PageShell title="Dispatch" subtitle={b ? `${c!.free} free · ${c!.on_load} on a load · ${c!.unassigned} need a truck` : 'Loading…'}
+    <PageShell title="Dispatch" subtitle={b ? `${c!.free} free · ${c!.on_load} on a load · ${c!.unassigned} need a truck${c!.down ? ` · ${c!.down} down` : ''}${c!.idle_drivers ? ` · ${c!.idle_drivers} driver${c!.idle_drivers === 1 ? '' : 's'} waiting` : ''}` : 'Loading…'}
       actions={<>
         <button onClick={load} disabled={loading} className="btn-secondary h-9 rounded-lg px-3 text-xs"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />Refresh</button>
         <button onClick={() => setNewFor('any')} className="btn-primary h-9 rounded-lg px-3.5 text-xs"><Plus className="h-4 w-4" />New load</button>
@@ -63,6 +67,22 @@ export default function DispatchPage() {
           </section>
 
           <aside className="space-y-2.5">
+            {b.idle_drivers.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-white shadow-sm">
+                <header className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
+                  <h2 className="text-xs font-bold text-slate-900">Drivers without a truck</h2>
+                  <span className="rounded-full bg-amber-50 px-2 text-[0.6875rem] font-bold text-amber-700">{b.idle_drivers.length}</span>
+                </header>
+                <ul className="divide-y divide-slate-100">
+                  {b.idle_drivers.map(d => (
+                    <li key={d.driver_id} className="flex items-center gap-2 px-4 py-2.5">
+                      <span className="min-w-0 flex-1"><span className="block font-semibold text-slate-900">{d.name}</span><span className="block truncate text-[0.6875rem] text-slate-500">{d.reason}</span></span>
+                      <button onClick={() => setPlacing(d)} className="btn-primary h-7 rounded-md px-2 text-[0.6875rem]">Put on a truck</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
               <header className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
                 <h2 className="text-xs font-bold text-slate-900">Needs a truck</h2>
@@ -93,6 +113,7 @@ export default function DispatchPage() {
 
       {newFor !== null && <LoadForm entities={entities} presetTruckId={newFor === 'any' ? undefined : newFor} onClose={() => setNewFor(null)} onSaved={() => { setNewFor(null); load() }} />}
       {openLoad != null && <LoadModal loadId={openLoad} entities={entities} onClose={() => setOpenLoad(null)} onSaved={load} />}
+      {placing && b && <PlaceDriver driver={placing} trucks={b.trucks} onClose={() => setPlacing(null)} onDone={() => { setPlacing(null); load() }} />}
     </PageShell>
   )
 }
@@ -103,7 +124,7 @@ function TruckCard({ t, onAssign, onOpenLoad }: { t: BoardTruck; onAssign: () =>
   return (
     <div className={`rounded-lg border bg-white p-3.5 shadow-sm ${t.state === 'free' ? 'border-emerald-200' : 'border-slate-200'}`}>
       <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0"><span className="text-sm font-bold text-slate-950">{t.unit_number}</span><span className="ml-2 truncate text-slate-600">{t.driver || 'No driver'}</span></div>
+        <div className="min-w-0"><span className="text-sm font-bold text-slate-950">{t.unit_number}</span><span className="ml-2 truncate text-slate-600">{t.driver || 'No driver'}</span>{t.temporary_driver && <span className="ml-1 text-[0.625rem] font-semibold uppercase text-amber-700">temp</span>}</div>
         <Pill tone={s.tone}>{s.label}</Pill>
       </div>
       {l ? (
@@ -114,14 +135,15 @@ function TruckCard({ t, onAssign, onOpenLoad }: { t: BoardTruck; onAssign: () =>
           {l.next_stop && <div className="text-[0.6875rem] text-slate-500">Next: {l.next_stop.title || place(l.next_stop)}{l.next_stop.date ? ` · ${fmtDate(l.next_stop.date)}` : ''}{l.pod ? ' · POD ✓' : ''}</div>}
           {t.queued.length > 0 && <div className="mt-1 text-[0.6875rem] text-slate-400">+{t.queued.length} more queued</div>}
         </div>
-      ) : t.state === 'no_driver' ? <p className="mt-2 text-[0.6875rem] text-slate-400">Assign a driver on the Trucks page.</p>
+      ) : t.truck_status !== 'active' ? <p className="mt-2 flex items-center gap-1 text-[0.6875rem] text-red-700"><Wrench className="h-3 w-3" />{t.status_note || STATE[t.state].label}</p>
+        : t.state === 'no_driver' ? <p className="mt-2 text-[0.6875rem] text-slate-400">Assign a driver on the Trucks page.</p>
         : <p className="mt-2 text-[0.6875rem] text-emerald-700">Ready for a load.</p>}
       <div className="mt-2.5 flex items-center gap-2 text-[0.6875rem] text-slate-500">
         {t.last_position && <a href={`https://maps.google.com/?q=${t.last_position.lat},${t.last_position.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 hover:underline"><MapPin className="h-3 w-3" />{timeAgo(t.last_position.at)}</a>}
         {t.last_activity && <span className="truncate">{t.last_activity_text}</span>}
         <span className="ml-auto flex shrink-0 gap-1">
           {t.conversation_id && <Link to={`/chat?c=${t.conversation_id}`} className="btn-secondary h-7 rounded-md px-2 text-[0.6875rem]"><MessageSquare className="h-3 w-3" />Chat</Link>}
-          {t.driver_id && <button onClick={onAssign} className="btn-primary h-7 rounded-md px-2 text-[0.6875rem]"><Plus className="h-3 w-3" />Load</button>}
+          {t.driver_id && t.truck_status === 'active' && <button onClick={onAssign} className="btn-primary h-7 rounded-md px-2 text-[0.6875rem]"><Plus className="h-3 w-3" />Load</button>}
         </span>
       </div>
     </div>
@@ -131,3 +153,42 @@ function TruckCard({ t, onAssign, onOpenLoad }: { t: BoardTruck; onAssign: () =>
 const place = (s: { city: string | null; state: string | null } | null) => (s ? [s.city, s.state].filter(Boolean).join(', ') || '—' : '—')
 const fmtDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 function timeAgo(iso: string) { const s = (Date.now() - new Date(iso.endsWith('Z') ? iso : iso + 'Z').getTime()) / 1000; return s < 3600 ? `${Math.max(1, Math.floor(s / 60))}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago` }
+
+/** Put an idle driver on a truck for a while (their own is in the shop) or for good. */
+function PlaceDriver({ driver, trucks, onClose, onDone }: { driver: IdleDriver; trucks: BoardTruck[]; onClose: () => void; onDone: () => void }) {
+  const candidates = trucks.filter(t => t.truck_status === 'active' && !t.driver_id)
+  const [truckId, setTruckId] = useState(candidates[0] ? String(candidates[0].truck_id) : '')
+  const [end, setEnd] = useState('')
+  const [reason, setReason] = useState(driver.own_truck ? `${driver.own_truck} ${driver.reason}` : '')
+  const [busy, setBusy] = useState(false)
+  const save = async () => {
+    if (!truckId) return toast.error('Pick a truck')
+    setBusy(true)
+    try { await fleetApi.assign({ driver_id: driver.driver_id, truck_id: Number(truckId), end_date: end || null, reason }); toast.success(`${driver.name} is on the truck`); onDone() }
+    catch (e) { toast.error((e as Error).message) }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="modal-overlay !z-[60]" onClick={onClose}>
+      <div className="modal-container max-w-md p-5 text-xs" onClick={e => e.stopPropagation()}>
+        <h2 className="text-base font-bold text-slate-950">Put {driver.name} on a truck</h2>
+        <p className="mb-4 mt-0.5 text-slate-500">{driver.reason}. Their pay lands on the truck they drive.</p>
+        <Grid>
+          <Field label="Truck" required span={2}>
+            <select value={truckId} onChange={e => setTruckId(e.target.value)} className={control}>
+              <option value="">Pick a free truck…</option>
+              {candidates.map(t => <option key={t.truck_id} value={t.truck_id}>{t.unit_number}</option>)}
+            </select>
+          </Field>
+          <Field label="Until" hint="Leave empty for until further notice."><input type="date" value={end} onChange={e => setEnd(e.target.value)} className={control} /></Field>
+          <Field label="Reason"><input value={reason} onChange={e => setReason(e.target.value)} className={control} /></Field>
+        </Grid>
+        {candidates.length === 0 && <p className="mt-3 rounded-lg bg-amber-50 p-2 text-amber-800">No free truck without a driver right now.</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onClose} className="btn-ghost h-9 rounded-lg px-3">Cancel</button>
+          <button onClick={save} disabled={busy || !truckId} className="btn-primary h-9 rounded-lg px-4">{busy ? 'Saving…' : 'Assign'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -8,12 +8,13 @@ export interface BoardLoad {
 }
 export interface BoardTruck {
   truck_id: number; unit_number: string; driver: string | null; driver_id: number | null
-  state: 'free' | 'no_driver' | 'New' | 'Dispatched' | 'En Route' | 'Picked-up'
+  state: 'free' | 'no_driver' | 'in_shop' | 'out_of_service' | 'New' | 'Dispatched' | 'En Route' | 'Picked-up'
+  temporary_driver: boolean; truck_status: 'active' | 'in_shop' | 'out_of_service'; status_note: string | null
   current_load: BoardLoad | null; queued: BoardLoad[]; conversation_id: number | null
   last_activity: string | null; last_activity_text: string | null
   last_position: { lat: number; lng: number; at: string } | null
 }
-export interface Board { today: string; trucks: BoardTruck[]; unassigned: BoardLoad[]; counts: { free: number; on_load: number; no_driver: number; unassigned: number } }
+export interface Board { today: string; trucks: BoardTruck[]; unassigned: BoardLoad[]; idle_drivers: import('./fleet').IdleDriver[]; counts: { free: number; on_load: number; no_driver: number; down: number; unassigned: number; idle_drivers: number } }
 
 export const dispatchApi = {
   board: async (): Promise<Board> => (await client.get('/api/v1/dispatch/board')).data,

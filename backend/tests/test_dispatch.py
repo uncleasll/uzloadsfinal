@@ -45,7 +45,7 @@ class DispatchWorkspace(unittest.TestCase):
         t551 = next(t for t in b['trucks'] if t['unit_number'] == '551')
         self.assertEqual(t551['current_load']['number'], 'J1'); self.assertEqual(t551['current_load']['next_stop']['city'], 'Chicago')
         self.assertEqual([l['number'] for l in b['unassigned']], ['I1'])
-        self.assertEqual(b['counts'], {'free': 1, 'on_load': 1, 'no_driver': 1, 'unassigned': 1})
+        self.assertEqual(b['counts'], {'free': 1, 'on_load': 1, 'no_driver': 1, 'down': 0, 'unassigned': 1, 'idle_drivers': 0})
 
     def test_dispatcher_sees_own_loads_and_no_money(self):
         mine = self.c.get('/api/v1/loads', headers=self.jh).json()

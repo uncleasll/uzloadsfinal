@@ -113,6 +113,9 @@ class Truck(Base):
     # Weekly statement rules (Excel: fee % of gross, fixed deduction template)
     fee_pct = Column(Float, default=0.0)
     carry_negative = Column(Boolean, default=True)
+    status = Column(String(20), default="active", nullable=False)     # active | in_shop | out_of_service
+    status_note = Column(Text, nullable=True)
+    status_since = Column(DateTime, nullable=True)
 
     loads = relationship("Load", back_populates="truck")
     driver = relationship("Driver", foreign_keys=[driver_id])
@@ -1135,3 +1138,21 @@ class Attachment(Base):
 
     message = relationship("Message", back_populates="attachments")
     uploader = relationship("User", foreign_keys=[uploaded_by])
+
+
+class DriverAssignment(Base):
+    """A driver on a truck for a period: a temporary swap while their own truck is in the shop, or a permanent move."""
+    __tablename__ = "driver_assignments"
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=False, index=True)
+    truck_id = Column(Integer, ForeignKey("trucks.id"), nullable=False, index=True)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)          # null = until further notice
+    reason = Column(String(200), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    driver = relationship("Driver", foreign_keys=[driver_id])
+    truck = relationship("Truck", foreign_keys=[truck_id])

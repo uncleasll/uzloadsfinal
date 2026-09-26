@@ -87,6 +87,9 @@ class DriverSimple(BaseModel):
 class TruckOut(TruckBase):
     id: int
     created_at: Optional[datetime] = None
+    status: Optional[str] = "active"
+    status_note: Optional[str] = None
+    status_since: Optional[datetime] = None
     driver: Optional[DriverSimple] = None
     documents: List[TruckDocumentOut] = []
 

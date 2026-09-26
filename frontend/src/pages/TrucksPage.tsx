@@ -11,6 +11,7 @@ import Drawer, { DrawerTabs } from '@/components/ui/Drawer'
 import { Field, Grid, Section, US_STATES, control, textarea } from '@/components/ui/Field'
 import UnitDocuments, { DocsSummary } from '@/components/ui/UnitDocuments'
 import RulesPanel from '@/components/weeks/RulesPanel'
+import { fleetApi, TRUCK_STATUS_LABEL, type Assignment, type TruckStatus } from '@/api/fleet'
 
 const OWNERSHIP = ['Owned', 'Leased', 'Owner-operator']
 
@@ -94,7 +95,7 @@ export default function TrucksPage() {
                 <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">{r ? `${r.fee_pct}%` : '—'}</td>
                 <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-slate-900">{fixed == null ? '—' : formatCurrency(fixed)}</td>
                 <td className="px-3 py-2.5"><DocsSummary docs={t.documents} /></td>
-                <td className="px-3 py-2.5">{t.is_active ? <Pill tone="green">Active</Pill> : <Pill tone="slate">Inactive</Pill>}</td>
+                <td className="px-3 py-2.5">{!t.is_active ? <Pill tone="slate">Inactive</Pill> : t.status === 'in_shop' ? <Pill tone="red">In shop</Pill> : t.status === 'out_of_service' ? <Pill tone="red">Out of service</Pill> : <Pill tone="green">In service</Pill>}</td>
                 <td className="px-3 py-2.5 text-right">
                   <button onClick={e => { e.stopPropagation(); remove(t) }} aria-label={`Delete truck ${t.unit_number}`} className="text-slate-300 transition hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
                 </td>
@@ -116,7 +117,7 @@ export default function TrucksPage() {
 
 // ── Drawer ────────────────────────────────────────────────────────────────────
 
-type Tab = 'details' | 'rules' | 'documents'
+type Tab = 'details' | 'rules' | 'documents' | 'history'
 
 function TruckDrawer({ truck, drivers, onClose, onSaved }: { truck: Truck; drivers: { id: number; name: string }[]; onClose: () => void; onSaved: () => void }) {
   const [tab, setTab] = useState<Tab>('details')
@@ -126,10 +127,11 @@ function TruckDrawer({ truck, drivers, onClose, onSaved }: { truck: Truck; drive
       title={`Truck ${truck.unit_number}`}
       subtitle={[[truck.year, truck.make, truck.model].filter(Boolean).join(' '), truck.driver?.name].filter(Boolean).join(' · ') || 'No driver assigned'}
       badge={truck.is_active ? <Pill tone="green">Active</Pill> : <Pill tone="slate">Inactive</Pill>}
-      tabs={<DrawerTabs value={tab} onChange={setTab} items={[{ key: 'details', label: 'Details' }, { key: 'rules', label: 'Statement rules' }, { key: 'documents', label: 'Documents', count: docs.length }]} />}
+      tabs={<DrawerTabs value={tab} onChange={setTab} items={[{ key: 'details', label: 'Details' }, { key: 'rules', label: 'Statement rules' }, { key: 'documents', label: 'Documents', count: docs.length }, { key: 'history', label: 'Status & drivers' }]} />}
       onClose={onClose}
     >
       {tab === 'details' && <TruckFields truck={truck} drivers={drivers} onSaved={onSaved} />}
+      {tab === 'history' && <StatusAndDrivers truck={truck} drivers={drivers} onChanged={onSaved} />}
       {tab === 'rules' && <RulesPanel truckId={truck.id} driverId={truck.driver_id ?? null} onSaved={onSaved} onClose={() => setTab('details')} />}
       {tab === 'documents' && (
         <UnitDocuments docs={docs}
@@ -201,6 +203,68 @@ function TruckFields({ truck, drivers, onSaved }: { truck?: Truck; drivers: { id
         </label>
         <button onClick={save} disabled={saving || (!!truck && !dirty)} className="btn-primary h-9 rounded-lg px-4 text-xs">{saving ? 'Saving…' : truck ? 'Save changes' : 'Add truck'}</button>
       </div>
+    </div>
+  )
+}
+
+/** Where the truck is (service, shop, out) and who has driven it, with temporary swaps. */
+function StatusAndDrivers({ truck, drivers, onChanged }: { truck: Truck; drivers: { id: number; name: string }[]; onChanged: () => void }) {
+  const [status, setStatus] = useState<TruckStatus>((truck.status as TruckStatus) || 'active')
+  const [note, setNote] = useState(truck.status_note || '')
+  const [hist, setHist] = useState<Assignment[]>([])
+  const [adding, setAdding] = useState(false)
+  const [a, setA] = useState({ driver_id: '', end_date: '', reason: '' })
+  const [busy, setBusy] = useState(false)
+  const loadHist = () => fleetApi.truckHistory(truck.id).then(h => setHist(h.assignments)).catch(() => {})
+  useEffect(() => { loadHist() }, [truck.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const saveStatus = async () => {
+    setBusy(true)
+    try { await fleetApi.setTruckStatus(truck.id, status, note); toast.success(`Truck ${truck.unit_number}: ${TRUCK_STATUS_LABEL[status]}`); onChanged() }
+    catch (e) { toast.error((e as Error).message) } finally { setBusy(false) }
+  }
+  const addAssignment = async () => {
+    if (!a.driver_id) return toast.error('Pick a driver')
+    setBusy(true)
+    try { await fleetApi.assign({ driver_id: Number(a.driver_id), truck_id: truck.id, end_date: a.end_date || null, reason: a.reason }); toast.success('Driver assigned'); setAdding(false); setA({ driver_id: '', end_date: '', reason: '' }); loadHist(); onChanged() }
+    catch (e) { toast.error((e as Error).message) } finally { setBusy(false) }
+  }
+  const end = async (x: Assignment) => { try { await fleetApi.endAssignment(x.id); loadHist(); onChanged() } catch (e) { toast.error((e as Error).message) } }
+  return (
+    <div className="space-y-3">
+      <Section title="Status" description="In shop or out of service means no loads and the driver shows as waiting on the Dispatch board.">
+        <Grid cols={3}>
+          <Field label="Status"><select value={status} onChange={e => setStatus(e.target.value as TruckStatus)} className={control}>{(Object.keys(TRUCK_STATUS_LABEL) as TruckStatus[]).map(k => <option key={k} value={k}>{TRUCK_STATUS_LABEL[k]}</option>)}</select></Field>
+          <Field label="Note" span={2}><input value={note} onChange={e => setNote(e.target.value)} className={control} placeholder="What is wrong, which shop, expected date…" /></Field>
+        </Grid>
+        <div className="mt-3 flex items-center justify-between text-[0.6875rem] text-slate-500">
+          <span>{truck.status_since ? `Since ${new Date(truck.status_since + 'Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</span>
+          <button onClick={saveStatus} disabled={busy} className="btn-primary h-8 rounded-lg px-3 text-xs">Save status</button>
+        </div>
+      </Section>
+      <Section title="Who drives it" description={`Permanent driver: ${truck.driver?.name || 'none'} (set on Details). Temporary swaps go here.`}
+        action={!adding && <button onClick={() => setAdding(true)} className="btn-secondary h-8 rounded-lg px-2.5 text-xs"><Plus className="h-3.5 w-3.5" />Put a driver on it</button>}>
+        {adding && (
+          <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50/40 p-3">
+            <Grid cols={3}>
+              <Field label="Driver" required><select value={a.driver_id} onChange={e => setA({ ...a, driver_id: e.target.value })} className={control}><option value="">Pick…</option>{drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>
+              <Field label="Until" hint="Empty = until further notice"><input type="date" value={a.end_date} onChange={e => setA({ ...a, end_date: e.target.value })} className={control} /></Field>
+              <Field label="Reason"><input value={a.reason} onChange={e => setA({ ...a, reason: e.target.value })} className={control} /></Field>
+            </Grid>
+            <div className="mt-3 flex justify-end gap-2"><button onClick={() => setAdding(false)} className="btn-ghost h-8 rounded-lg px-3 text-xs">Cancel</button><button onClick={addAssignment} disabled={busy} className="btn-primary h-8 rounded-lg px-3 text-xs">Assign</button></div>
+          </div>
+        )}
+        {hist.length === 0 ? <p className="py-4 text-center text-slate-400">No temporary assignments yet.</p> : (
+          <ul className="divide-y divide-slate-100">
+            {hist.map(x => (
+              <li key={x.id} className="flex items-center gap-3 py-2">
+                <span className="min-w-0 flex-1"><span className="font-semibold text-slate-900">{x.driver}</span><span className="ml-1.5 text-slate-500">{x.start_date} → {x.end_date || 'open'}{x.reason ? ` · ${x.reason}` : ''}</span></span>
+                {x.open ? <Pill tone="amber">Now</Pill> : <Pill tone="slate">Past</Pill>}
+                {x.open && <button onClick={() => end(x)} className="btn-ghost h-7 rounded-md px-2 text-[0.6875rem]">End today</button>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
     </div>
   )
 }

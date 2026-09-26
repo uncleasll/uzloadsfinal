@@ -9,7 +9,7 @@ export interface DriverLoad {
 }
 export interface DriverHome {
   driver: { id: number; name: string; phone: string | null }
-  truck: { id: number; unit_number: string; make: string | null; model: string | null; plate: string | null } | null
+  truck: { id: number; unit_number: string; make: string | null; model: string | null; plate: string | null; status: 'active' | 'in_shop' | 'out_of_service'; status_note: string | null; temporary: boolean } | null
   current_load: DriverLoad | null
   upcoming: DriverLoad[]
   week: { period: string; loads: number; gross: number; driver_pay: number; driver_payout: number; status: string; odometer: number | null } | null

@@ -149,7 +149,8 @@ def generate(db: Session, truck_id: int, start: date, author: str = "System") ->
     gross = money(gross)
 
     # Driver: the driver on the week's loads, else the truck's assigned driver
-    driver = next((l.driver for l in loads if l.driver), None) or truck.driver
+    from app.services.fleet import effective_driver
+    driver = next((l.driver for l in loads if l.driver), None) or effective_driver(db, truck, end)
     stmt.driver_id = driver.id if driver else None
 
     # 2. Fee

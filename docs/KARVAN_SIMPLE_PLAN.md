@@ -145,3 +145,11 @@ python scripts/import_statements_excel.py "/path/STATEMENTS 2025.xlsx" --apply  
 - `GET /api/v1/dispatch/my-week`: dispatcher faqat o'z qatorini ko'radi (gross, komissiya, to'langan-to'lanmagan).
 - Dispatcher roli: yuklar ro'yxatida faqat o'z yuklari, yaratgan yuki avtomatik uniki. Pul va sozlama yo'llari 403 (`DISPATCHER_DENY` main.py da): weeks, bills, dashboard, expenses, maintenance, company, rules, invitations, legacy modullar.
 - Frontend: `/dispatch` sahifasi (truck kartalari, filtr, "Load" tugmasi truckka yuk ochadi, "Needs a truck" ro'yxatidan truckka biriktirish, Chat tugmasi o'sha truck thread'iga). Dispatcher menyusi: Dispatch, Loads, Chat, Fleet (Drivers, Trucks, Trailers, Brokers), My pay. Ofis yo'llariga kirsa `/dispatch` ga qaytadi. Eski `DispatchBoardPage` o'chirildi.
+
+## 13. Ekotizim 5-bosqich: truck holati va vaqtincha haydovchi (2026-09-26)
+
+- `trucks.status` (active / in_shop / out_of_service), `status_note`, `status_since`; `driver_assignments` (driver, truck, start_date, end_date, reason) — migratsiya 027.
+- `app/services/fleet.py`: `effective_driver(truck, on)` (sanali biriktirish doimiy haydovchidan ustun), `effective_truck(driver, on)`, `idle_drivers` (trucki yo'q yoki trucki ishlamayapti), `set_truck_status` (truck chatiga system xabar), `assign` (bitta haydovchi ikki truckda bo'lmaydi: eski ochiq biriktirish yopiladi), `end_assignment`, `truck_history`.
+- Ulanishlar: statement haydovchisi = yuklar haydovchisi, bo'lmasa o'sha haftaning effective haydovchisi; truck chat guruhida effective haydovchi; driver app "mening truckim" = effective truck (vaqtincha bo'lsa belgilanadi, truck ishlamasa qizil ogohlantirish); haydovchi "Breakdown" yuborsa truck avtomatik `in_shop`.
+- API `/api/v1/fleet/*`: `PUT trucks/{id}/status`, `GET idle-drivers`, `POST assignments`, `POST assignments/{id}/end`, `GET trucks/{id}/history`. Dispatch doskasida `idle_drivers` va `counts.down`.
+- UI: Dispatch doskasida "Drivers without a truck" paneli → "Put on a truck" (bo'sh truck, muddat, sabab); truck kartasida In shop / Out of service va TEMP belgisi. Trucks sahifasida "Status & drivers" tabi: holat + izoh, vaqtincha biriktirishlar tarixi, "End today".

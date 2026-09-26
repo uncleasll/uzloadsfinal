@@ -57,7 +57,10 @@ export default function TodayScreen() {
 
   return (
     <div className="space-y-3 p-3">
-      <Header title={`Hi ${home.driver.name.split(' ')[0]}`} sub={home.truck ? `Truck ${home.truck.unit_number}${home.truck.make ? ` · ${home.truck.make} ${home.truck.model || ''}` : ''}` : 'No truck assigned yet'} action={<SignOut />} />
+      <Header title={`Hi ${home.driver.name.split(' ')[0]}`} sub={home.truck ? `Truck ${home.truck.unit_number}${home.truck.temporary ? ' (temporary)' : ''}${home.truck.make ? ` · ${home.truck.make} ${home.truck.model || ''}` : ''}` : 'No truck assigned yet'} action={<SignOut />} />
+      {home.truck && home.truck.status !== 'active' && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><b>Truck {home.truck.unit_number} is {home.truck.status === 'in_shop' ? 'in the shop' : 'out of service'}.</b>{home.truck.status_note ? ` ${home.truck.status_note}.` : ''} Dispatch will tell you which truck to take.</div>
+      )}
 
       {cur ? (
         <Card className="border-blue-200">

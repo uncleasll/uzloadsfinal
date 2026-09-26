@@ -64,6 +64,9 @@ export interface Truck {
   purchase_price?: number
   notes?: string
   is_active: boolean
+  status?: 'active' | 'in_shop' | 'out_of_service'
+  status_note?: string | null
+  status_since?: string | null
   created_at?: string
   documents?: TruckDocument[]
 }
