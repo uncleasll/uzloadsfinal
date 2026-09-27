@@ -77,11 +77,20 @@ def ensure_demo(db: Session) -> dict[str, User]:
                          phone=f"seed-v{SEED_VERSION}" if role == "admin" else {"driver": "555-0101"}.get(role))
                 db.add(u)
             users[role] = u
-        db.flush()
-        if db.query(Truck).first():
-            db.commit(); return users
-        _seed(db, users)
+        users["admin"].phone = "seed-building"
         db.commit()
+        try:
+            _seed(db, users)
+            users["admin"].phone = f"seed-v{SEED_VERSION}"
+            db.commit()
+        except Exception as e:                       # leave a readable trace; the next call wipes and rebuilds
+            import traceback; traceback.print_exc()
+            db.rollback()
+            u = db.query(User).filter(User.email == DEMO_EMAILS["admin"]).first()
+            if u:
+                u.phone = f"seed-failed: {type(e).__name__}: {str(e)[:120]}"
+                db.commit()
+            raise RuntimeError(f"Demo seed failed: {type(e).__name__}: {str(e)[:300]}") from e
         for u in users.values():
             db.refresh(u)
         return users

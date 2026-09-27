@@ -132,7 +132,10 @@ def demo_login(role: str = "admin", db: Session = Depends(get_db)):
     from app.services.demo import ensure_demo
     if role not in ("admin", "dispatcher", "driver"):
         raise HTTPException(400, "Unknown role")
-    users = ensure_demo(db)
+    try:
+        users = ensure_demo(db)
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
     user = users[role]
     return {"access_token": _token(user), "token_type": "bearer", "user": _u(user, db), "demo": True}
 
