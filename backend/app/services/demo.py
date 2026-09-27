@@ -13,7 +13,7 @@ from app.services.auth_service import hash_password
 
 DEMO_EMAILS = {"admin": "owner@demo.karvan", "dispatcher": "dispatch@demo.karvan", "driver": "driver@demo.karvan"}
 DEMO_PASSWORD = "karvan-demo"
-SEED_VERSION = 2          # bump when the seed changes; an older demo company is wiped and rebuilt
+SEED_VERSION = 3          # bump when the seed changes; an older demo company is wiped and rebuilt
 
 
 def _wipe_company(db: Session, company_id: int) -> None:
