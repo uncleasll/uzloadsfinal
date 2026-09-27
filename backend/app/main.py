@@ -72,11 +72,20 @@ async def auth_and_tenant(request: Request, call_next):
         reset_company_id(token)
 
 
+import re as _re
+_VERCEL = _re.compile(r"^https://[a-z0-9-]+(\.[a-z0-9-]+)*\.vercel\.app$")
+
+
+def _origin_ok(origin: str) -> bool:
+    """Our three products all live on vercel.app until custom domains; the list in settings still applies."""
+    return origin in settings.cors_origins_list or bool(_VERCEL.match(origin))
+
+
 @app.middleware("http")
 async def handle_options(request: Request, call_next):
     origin = request.headers.get("origin", "")
     cors_headers = {}
-    if origin in settings.cors_origins_list:
+    if _origin_ok(origin):
         cors_headers = {
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Credentials": "true",
@@ -104,6 +113,7 @@ async def handle_options(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
