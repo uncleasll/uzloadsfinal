@@ -109,3 +109,25 @@ class Chat(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class DatabaseStorageTest(unittest.TestCase):
+    def test_roundtrip_in_database(self):
+        from sqlalchemy import create_engine
+        from sqlalchemy.pool import StaticPool
+        from app.models.models import Base
+        from app.services.storage import DatabaseStorage
+        import app.db.session as sess
+        engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+        Base.metadata.create_all(engine)
+        from sqlalchemy.orm import sessionmaker
+        old = sess.SessionLocal; sess.SessionLocal = sessionmaker(bind=engine)
+        try:
+            s = DatabaseStorage()
+            s.put('1/2026/09/a.jpg', b'\xff\xd8photo', 'image/jpeg')
+            f = s.get('1/2026/09/a.jpg')
+            self.assertEqual((f.data, f.content_type), (b'\xff\xd8photo', 'image/jpeg'))
+            s.put('1/2026/09/a.jpg', b'new', 'image/jpeg'); self.assertEqual(s.get('1/2026/09/a.jpg').data, b'new')
+            s.delete('1/2026/09/a.jpg'); self.assertIsNone(s.get('1/2026/09/a.jpg'))
+        finally:
+            sess.SessionLocal = old

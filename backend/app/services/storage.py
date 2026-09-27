@@ -59,12 +59,55 @@ class SupabaseStorage:
         httpx.request("DELETE", f"{self.base}/{key}", headers=self.headers, timeout=30)
 
 
+class DatabaseStorage:
+    """Files as rows in the app's own database. No account, no keys, survives every deploy.
+    Fine for a fleet's photos; move to Supabase or S3 when the database grows past a few GB."""
+
+    def _session(self):
+        from app.db.session import SessionLocal
+        return SessionLocal()
+
+    def put(self, key: str, data: bytes, content_type: str) -> None:
+        from app.models.models import FileBlob
+        db = self._session()
+        try:
+            row = db.query(FileBlob).filter(FileBlob.key == key).first()
+            if row:
+                row.data, row.content_type, row.size = data, content_type, len(data)
+            else:
+                db.add(FileBlob(key=key, content_type=content_type, size=len(data), data=data))
+            db.commit()
+        finally:
+            db.close()
+
+    def get(self, key: str) -> StoredFile | None:
+        from app.models.models import FileBlob
+        db = self._session()
+        try:
+            row = db.query(FileBlob).filter(FileBlob.key == key).first()
+            return StoredFile(bytes(row.data), row.content_type or _guess_type(key)) if row else None
+        finally:
+            db.close()
+
+    def delete(self, key: str) -> None:
+        from app.models.models import FileBlob
+        db = self._session()
+        try:
+            db.query(FileBlob).filter(FileBlob.key == key).delete(synchronize_session=False)
+            db.commit()
+        finally:
+            db.close()
+
+
 def _guess_type(key: str) -> str:
     import mimetypes
     return mimetypes.guess_type(key)[0] or "application/octet-stream"
 
 
 def storage():
-    if settings.STORAGE_BACKEND == "supabase":
+    backend = settings.STORAGE_BACKEND
+    if backend == "supabase" and settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY:
         return SupabaseStorage(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY, settings.SUPABASE_BUCKET)
+    if backend == "db" or (backend != "local" and not settings.DATABASE_URL.startswith("sqlite")):
+        return DatabaseStorage()          # production default: nothing to configure, nothing lost on deploy
     return LocalStorage(os.path.join(settings.UPLOAD_DIR, "files"))

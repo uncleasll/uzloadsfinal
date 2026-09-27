@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     OPENAI_API_KEY: str = ""
     OPENAI_LOAD_MODEL: str = "gpt-4.1"
-    # Files: "local" writes under UPLOAD_DIR/files; "supabase" uses Supabase Storage (set the three values below).
-    STORAGE_BACKEND: str = "local"
+    # Files: "auto" = database on Postgres, disk on SQLite; "db"; "local" (UPLOAD_DIR/files); "supabase" (three values below).
+    STORAGE_BACKEND: str = "auto"
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_BUCKET: str = "karvan-files"

@@ -1,4 +1,4 @@
-from sqlalchemy import (
+from sqlalchemy import (LargeBinary, 
     Column, Integer, String, Float, Date, DateTime, Text,
     ForeignKey, Boolean, Enum as SAEnum, func, UniqueConstraint, JSON
 )
@@ -1186,3 +1186,15 @@ class IftaMiles(Base):
     quarter = Column(Integer, nullable=False)
     state = Column(String(2), nullable=False)
     miles = Column(Integer, nullable=False, default=0)
+
+
+class FileBlob(Base):
+    """Uploaded files kept in the database itself, so they survive a redeploy without any storage account."""
+    __tablename__ = "file_blobs"
+
+    id = Column(Integer, primary_key=True)
+    key = Column(String(500), nullable=False, unique=True, index=True)
+    content_type = Column(String(100), nullable=True)
+    size = Column(Integer, nullable=False, default=0)
+    data = Column(LargeBinary, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())

@@ -4,7 +4,7 @@ import io
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-MAX_SIDE = 2000
+MAX_SIDE = 1600
 
 
 def stamp_photo(data: bytes, lines: list[str]) -> tuple[bytes, int, int]:
@@ -30,5 +30,5 @@ def stamp_photo(data: bytes, lines: list[str]) -> tuple[bytes, int, int]:
         draw.text((pad, y), line, fill=(255, 255, 255) if i == 0 else (203, 213, 225), font=font)
         y += line_h
     buf = io.BytesIO()
-    out.save(buf, "JPEG", quality=88, optimize=True)
+    out.save(buf, "JPEG", quality=82, optimize=True)
     return buf.getvalue(), w, h
