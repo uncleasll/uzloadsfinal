@@ -62,8 +62,10 @@ class Demo(unittest.TestCase):
         with company_scope(None):
             u2 = self.db.query(User).filter(User.email == demo_svc.DEMO_EMAILS['admin']).first()
             self.assertEqual(u2.phone, f'seed-v{demo_svc.SEED_VERSION}')          # rebuilt with the current seed
-            new_ids = {t.id for t in self.db.query(Truck).filter(Truck.company_id == o2['user']['company_id']).all()}
-            self.assertEqual(len(new_ids), 5); self.assertFalse(old_truck_ids & new_ids)   # the old rows are gone
+            units = sorted(t.unit_number for t in self.db.query(Truck).filter(Truck.company_id == o2['user']['company_id']).all())
+            self.assertEqual(units, ['301', '322', '328', '551', '780'])                     # rebuilt from the current seed
+            self.assertEqual(self.db.query(Truck).count(), 5)                                  # and nothing of the old one is left
+        self.assertEqual(len(old_truck_ids), 5)
 
 
 if __name__ == '__main__':
