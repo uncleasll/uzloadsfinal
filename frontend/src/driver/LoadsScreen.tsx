@@ -10,7 +10,7 @@ import { whereAmI } from './geo'
 import { nextAfter } from './TodayScreen'
 
 const CACHE_KEY = 'karvan.driver.loads'
-const STATUS_TONE: Record<string, string> = { New: 'bg-slate-100 text-slate-600', Dispatched: 'bg-blue-50 text-blue-700', 'En Route': 'bg-amber-50 text-amber-700', 'Picked-up': 'bg-amber-50 text-amber-700', Delivered: 'bg-emerald-50 text-emerald-700', Closed: 'bg-slate-100 text-slate-500' }
+const STATUS_TONE: Record<string, string> = { New: 'bg-slate-100 text-slate-600', Dispatched: 'bg-[var(--accent-soft)] text-[var(--accent)]', 'En Route': 'bg-amber-50 text-amber-700', 'Picked-up': 'bg-amber-50 text-amber-700', Delivered: 'bg-emerald-50 text-emerald-700', Closed: 'bg-slate-100 text-slate-500' }
 
 export default function LoadsScreen() {
   return <Routes><Route index element={<List />} /><Route path=":id" element={<Detail />} /></Routes>
@@ -109,7 +109,7 @@ function StopBlock({ label, stop }: { label: string; stop: DriverLoad['pickup'] 
     <div>
       <div className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">{label}{stop.date ? ` · ${new Date(stop.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</div>
       <div className="text-base font-bold text-slate-950">{stop.title || stop.city}</div>
-      <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" className="text-sm text-blue-700">{addr}</a>
+      <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" className="text-sm text-[var(--accent)]">{addr}</a>
       {stop.notes && <p className="mt-1 text-xs text-slate-600">{stop.notes}</p>}
     </div>
   )

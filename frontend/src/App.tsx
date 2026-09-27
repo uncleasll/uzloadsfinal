@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { APP, roleAllowedHere } from '@/product'
 import WrongAppPage from '@/pages/WrongAppPage'
 import AppLayout from '@/components/layout/AppLayout'
+import DispatchLayout from '@/components/layout/DispatchLayout'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import LoadsPage from '@/pages/LoadsPage'
@@ -62,7 +63,7 @@ export default function App() {
       {APP === 'office' && <Route path="/register" element={<RegisterPage />} />}
       <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/driver/*" element={<RequireDriver><DriverApp /></RequireDriver>} />
-      {APP !== 'driver' && <Route path="/" element={<RequireOffice><AppLayout /></RequireOffice>}>
+      {APP !== 'driver' && <Route path="/" element={<RequireOffice>{APP === 'dispatch' ? <DispatchLayout /> : <AppLayout />}</RequireOffice>}>
         <Route index element={<RoleHome />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="chat" element={<ChatPage />} />

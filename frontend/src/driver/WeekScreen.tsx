@@ -14,14 +14,14 @@ export default function WeekScreen() {
       <Header title="My week" sub={data.truck ? `Truck ${data.truck}` : 'No truck assigned'} />
       {data.weeks.length === 0 && <Card><p className="text-sm text-slate-400">No statements yet.</p></Card>}
       {data.weeks.map((w, i) => (
-        <Card key={w.period_start} className={i === 0 ? 'border-blue-200' : ''}>
+        <Card key={w.period_start} className={i === 0 ? 'border-[var(--accent)]/30' : ''}>
           <button onClick={() => setOpen(open === w.period_start ? null : w.period_start)} className="flex w-full items-center justify-between text-left">
             <div>
               <div className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">{i === 0 ? 'This week' : 'Week'} · {w.period}</div>
               <div className="text-2xl font-bold tabular-nums text-slate-950">{money(w.driver_payout)}</div>
               <div className="text-xs text-slate-500">{w.loads} loads · {money(w.gross)} gross · pay {money(w.driver_pay)}{w.driver_deductions ? ` − ${money(w.driver_deductions)}` : ''}</div>
             </div>
-            <span className={`rounded-full px-2 py-0.5 text-[0.6875rem] font-bold ${w.status === 'paid' ? 'bg-emerald-50 text-emerald-700' : w.status === 'ready' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>{w.status === 'paid' ? 'Paid' : w.status === 'ready' ? 'Ready' : 'In progress'}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[0.6875rem] font-bold ${w.status === 'paid' ? 'bg-emerald-50 text-emerald-700' : w.status === 'ready' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'bg-slate-100 text-slate-500'}`}>{w.status === 'paid' ? 'Paid' : w.status === 'ready' ? 'Ready' : 'In progress'}</span>
           </button>
           {open === w.period_start && (
             <div className="mt-3 divide-y divide-slate-100 border-t border-slate-100 text-sm">

@@ -8,13 +8,14 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<AuthUser>
   register: (p: { company_name: string; name: string; email: string; password: string }) => Promise<void>
   acceptInvite: (token: string, p: { password: string; phone?: string }) => Promise<AuthUser>
+  demo: (role: 'admin' | 'dispatcher' | 'driver') => Promise<AuthUser>
   logout: () => void
   isAuthenticated: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null, loading: true, sessionExpired: false,
-  login: async () => ({} as AuthUser), register: async () => {}, acceptInvite: async () => ({} as AuthUser), logout: () => {},
+  login: async () => ({} as AuthUser), register: async () => {}, acceptInvite: async () => ({} as AuthUser), demo: async () => ({} as AuthUser), logout: () => {},
   isAuthenticated: false,
 })
 
@@ -64,6 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res.user
   }
 
+  const demo = async (role: 'admin' | 'dispatcher' | 'driver') => {
+    const res = await authApi.demo(role)
+    localStorage.setItem('auth_token', res.access_token)
+    localStorage.setItem('auth_user', JSON.stringify(res.user))
+    setUser(res.user)
+    setSessionExpired(false)
+    return res.user
+  }
+
   const logout = () => {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
@@ -72,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, sessionExpired, login, register, acceptInvite, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, sessionExpired, login, register, acceptInvite, demo, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   )

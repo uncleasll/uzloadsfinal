@@ -33,7 +33,7 @@ export const Card = ({ children, className = '' }: { children: ReactNode; classN
 export const BigButton = ({ children, onClick, tone = 'primary', disabled }: { children: ReactNode; onClick?: () => void; tone?: 'primary' | 'secondary' | 'danger'; disabled?: boolean }) => (
   <button onClick={onClick} disabled={disabled}
     className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold transition active:scale-[0.99] disabled:opacity-40 ${
-      tone === 'primary' ? 'bg-blue-600 text-white' : tone === 'danger' ? 'bg-red-600 text-white' : 'border border-slate-200 bg-white text-slate-800'}`}>
+      tone === 'primary' ? 'bg-[var(--accent)] text-white' : tone === 'danger' ? 'bg-red-600 text-white' : 'border border-slate-200 bg-white text-slate-800'}`}>
     {children}
   </button>
 )

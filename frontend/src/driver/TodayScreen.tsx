@@ -63,9 +63,9 @@ export default function TodayScreen() {
       )}
 
       {cur ? (
-        <Card className="border-blue-200">
+        <Card className="border-[var(--accent)]/30">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[0.6875rem] font-bold uppercase tracking-wide text-blue-700">Current load</span>
+            <span className="text-[0.6875rem] font-bold uppercase tracking-wide text-[var(--accent)]">Current load</span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.6875rem] font-bold text-slate-600">{cur.status}</span>
           </div>
           <div className="text-lg font-bold text-slate-950">#{cur.number} <span className="text-sm font-semibold text-slate-500">· {cur.broker?.name}</span></div>
@@ -102,7 +102,7 @@ export default function TodayScreen() {
             <div><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">This week · {home.week.period}</div>
               <div className="text-2xl font-bold tabular-nums text-slate-950">{money(home.week.driver_pay)}</div>
               <div className="text-xs text-slate-500">{home.week.loads} loads · {money(home.week.gross)} gross</div></div>
-            <Link to="/driver/week" className="text-xs font-semibold text-blue-700">Details</Link>
+            <Link to="/driver/week" className="text-xs font-semibold text-[var(--accent)]">Details</Link>
           </div>
         </Card>
       )}
@@ -116,7 +116,7 @@ export default function TodayScreen() {
           <div className="flex h-12 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2">
             <Gauge className="h-5 w-5 shrink-0 text-slate-500" />
             <input value={odo} onChange={e => setOdo(e.target.value)} inputMode="numeric" placeholder={home.week?.odometer ? home.week.odometer.toLocaleString() : 'Odometer'} className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" onKeyDown={e => e.key === 'Enter' && saveOdometer()} />
-            {odo && <button onClick={saveOdometer} className="text-xs font-bold text-blue-700">Save</button>}
+            {odo && <button onClick={saveOdometer} className="text-xs font-bold text-[var(--accent)]">Save</button>}
           </div>
         </div>
       </Card>
@@ -145,7 +145,7 @@ export default function TodayScreen() {
 
 function ReceiptPhoto({ onPick }: { onPick: (blob: Blob) => void }) {
   return (
-    <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-bold text-white">
+    <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[var(--accent)] text-sm font-bold text-white">
       <Receipt className="h-5 w-5" />Photo of the receipt
       <input type="file" accept="image/*" capture="environment" className="hidden" onChange={async e => { const f = e.target.files?.[0]; if (f) onPick(await (await import('./geo')).shrinkPhoto(f)) }} />
     </label>
@@ -159,7 +159,7 @@ function Route({ stop, label }: { stop: DriverLoad['pickup']; label: string }) {
     <div className="mt-2 flex gap-2 text-sm">
       <span className="w-14 shrink-0 text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">{label}</span>
       <div className="min-w-0"><div className="font-semibold text-slate-900">{stop.title || stop.city}</div>
-        <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline-offset-2 hover:underline">{addr}</a>
+        <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" className="text-xs text-[var(--accent)] underline-offset-2 hover:underline">{addr}</a>
         {stop.date && <div className="text-xs text-slate-500">{new Date(stop.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>}</div>
     </div>
   )

@@ -1,83 +1,93 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
+import { Eye, EyeOff, PlayCircle, Radio, Smartphone, Wallet } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useAuth } from '@/hooks/useAuth'
+import { APP, APP_META, APP_URLS, DEMO_ENABLED, appForRole } from '@/product'
 import karvanLogo from '@/assets/karvan-logo.png'
-import { APP, APP_META, appForRole } from '@/product'
 
+const PITCH: Record<typeof APP, string[]> = {
+  office: ['Weekly statements that match your Excel to the cent', 'Loads, expenses, invoices and factoring in one place', 'See what needs paying before it is late'],
+  dispatch: ['Every truck on one board: free, loaded, in the shop', 'Assign a load in one click, it lands on the driver\'s phone', 'Chat with drivers, POD photos come back stamped'],
+  driver: ['Your load, one big button at a time', 'POD and receipts from the camera, works without signal', 'See your pay for the week, every week'],
+}
+const ICON = { office: Wallet, dispatch: Radio, driver: Smartphone }[APP]
+
+/** One sign-in screen per product, in that product's colors, with a demo door for anyone curious. */
 export default function LoginPage() {
-  const { login, sessionExpired } = useAuth()
+  const { login, demo, sessionExpired } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
+  const m = APP_META[APP]
+
+  const landing = (role: string) => APP === 'driver' || role === 'driver' ? '/driver' : APP === 'dispatch' || role === 'dispatcher' ? '/dispatch' : location.state?.from?.pathname || APP_META[appForRole(role)].home
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email || !password) return toast.error('Please enter email and password')
+    if (!email || !password) return toast.error('Enter your email and password')
     setLoading(true)
-    try {
-      const user = await login(email, password)
-      navigate(APP === 'driver' || user.role === 'driver' ? '/driver' : APP === 'dispatch' || user.role === 'dispatcher' ? '/dispatch' : location.state?.from?.pathname || APP_META[appForRole(user.role)].home, { replace: true })
-    } catch (err: unknown) {
-      toast.error((err as Error).message || 'Invalid credentials')
-    } finally { setLoading(false) }
+    try { const user = await login(email, password); navigate(landing(user.role), { replace: true }) }
+    catch (err) { toast.error((err as Error).message || 'Invalid credentials') }
+    finally { setLoading(false) }
+  }
+  const tryDemo = async () => {
+    setLoading(true)
+    try { const user = await demo(m.demoRole); toast.success(`Welcome to ${user.company_name}`); navigate(landing(user.role), { replace: true }) }
+    catch (err) { toast.error((err as Error).message) }
+    finally { setLoading(false) }
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-3">
-            <div className="h-12 w-12 shrink-0">
-              <img src={karvanLogo} alt="Karvan" className="h-full w-full object-contain" />
-            </div>
-            <div className="text-left">
-              <div className="text-white font-bold text-2xl leading-tight">{APP_META[APP].name}</div>
-              <div className="text-white/40 text-xs">{APP_META[APP].tagline}</div>
-            </div>
+    <div className="flex min-h-screen" style={{ background: m.bg }}>
+      {/* Left: the product */}
+      <div className="hidden w-[46%] flex-col justify-between p-10 text-white lg:flex" style={{ background: `linear-gradient(160deg, ${m.bg}, ${m.accent}33)` }}>
+        <div className="flex items-center gap-3">
+          <img src={m.icon} alt="" className="h-11 w-11 rounded-xl" />
+          <div><div className="text-lg font-bold leading-tight">{m.name}</div><div className="text-xs text-white/60">Karvan for trucking companies</div></div>
+        </div>
+        <div>
+          <ICON className="mb-5 h-10 w-10" style={{ color: m.accent }} />
+          <h2 className="text-3xl font-bold leading-tight">{m.tagline}</h2>
+          <ul className="mt-6 space-y-2.5 text-sm text-white/80">
+            {PITCH[APP].map(t => <li key={t} className="flex gap-2.5"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: m.accent }} />{t}</li>)}
+          </ul>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/50">
+          {(['office', 'dispatch', 'driver'] as const).filter(k => k !== APP && APP_URLS[k]).map(k => <a key={k} href={`${APP_URLS[k].replace(/\/+$/, '')}/login`} className="hover:text-white">{APP_META[k].name} →</a>)}
+        </div>
+      </div>
+
+      {/* Right: sign in */}
+      <div className="flex flex-1 items-center justify-center px-4 py-10">
+        <div className="w-full max-w-sm">
+          <div className="mb-6 flex items-center gap-3 lg:hidden">
+            <img src={m.icon} alt="" className="h-10 w-10 rounded-xl" />
+            <div><div className="text-base font-bold leading-tight text-white">{m.name}</div><div className="text-xs text-white/60">{m.tagline}</div></div>
           </div>
-          <p className="text-white/40 text-sm"></p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 border border-blue-100">
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Sign in to your account</h1>
-          <p className="text-sm text-gray-500 mb-6">Enter your credentials to continue</p>
-          {sessionExpired && <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Your session expired. Sign in again, then retry the document.</p>}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Email address</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@company.com" autoComplete="email"
-                className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Password</label>
-              <div className="relative">
-                <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••" autoComplete="current-password"
-                  className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 pr-10" />
-                <button type="button" onClick={() => setShowPass(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPass
-                    ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
-                    : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                  }
-                </button>
-              </div>
-            </div>
-            <button type="submit" disabled={loading}
-              className="w-full py-2.5 bg-brand-600 text-white font-semibold rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-60 mt-2 flex items-center justify-center gap-2 text-sm">
-              {loading ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Signing in...</> : 'Sign In'}
-            </button>
+          <form onSubmit={handleSubmit} className="rounded-2xl bg-white p-6 shadow-2xl shadow-black/40">
+            <h1 className="text-xl font-bold text-slate-950">Sign in</h1>
+            <p className="mb-5 mt-0.5 text-xs text-slate-500">{sessionExpired ? 'Your session ended. Sign in again.' : APP === 'driver' ? 'Use the link the office sent you, or your email and password.' : 'Your Karvan account.'}</p>
+            <label className="block"><span className="mb-1 block text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">Email</span>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" placeholder="you@company.com" className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]" /></label>
+            <label className="mt-3 block"><span className="mb-1 block text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">Password</span>
+              <span className="relative block">
+                <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" placeholder="••••••••" className="h-11 w-full rounded-lg border border-slate-200 px-3 pr-10 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]" />
+                <button type="button" onClick={() => setShowPass(v => !v)} aria-label="Show password" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">{showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+              </span></label>
+            <button type="submit" disabled={loading} className="mt-5 h-11 w-full rounded-lg text-sm font-bold text-white transition disabled:opacity-50" style={{ background: m.accent }}>{loading ? 'Signing in…' : 'Sign in'}</button>
+            {DEMO_ENABLED && (
+              <button type="button" onClick={tryDemo} disabled={loading} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50">
+                <PlayCircle className="h-4 w-4" style={{ color: m.accent }} />Try the demo as {m.demoRole === 'admin' ? 'the owner' : m.demoRole === 'dispatcher' ? 'a dispatcher' : 'a driver'}
+              </button>
+            )}
+            {APP === 'office' && <p className="mt-4 text-center text-xs text-slate-500">New company? <Link to="/register" className="font-semibold hover:underline" style={{ color: m.accent }}>Create an account</Link></p>}
           </form>
-          {APP === 'office' && <p className="mt-4 text-center text-xs text-slate-500">New company? <Link to="/register" className="font-semibold text-blue-700 hover:underline">Create an account</Link></p>}
-
+          <p className="mt-5 text-center text-xs text-white/30">© 2026 Karvan</p>
         </div>
-        <p className="text-center text-white/20 text-xs mt-5">&copy; 2026 Karvan TMS</p>
       </div>
     </div>
   )

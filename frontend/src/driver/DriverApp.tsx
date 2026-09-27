@@ -24,7 +24,7 @@ export default function DriverApp() {
   return (
     <div className="flex h-[100dvh] flex-col bg-slate-50 text-slate-900">
       {(!online || pending.length > 0) && (
-        <div className={`flex items-center gap-2 px-4 py-1.5 text-xs font-semibold ${online ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-100'}`}>
+        <div className={`flex items-center gap-2 px-4 py-1.5 text-xs font-semibold ${online ? 'bg-[var(--accent)] text-white' : 'bg-slate-800 text-slate-100'}`}>
           {online ? <UploadCloud className="h-3.5 w-3.5" /> : <CloudOff className="h-3.5 w-3.5" />}
           {online ? `Sending ${pending.length} item${pending.length === 1 ? '' : 's'}…` : `No signal. ${pending.length ? `${pending.length} waiting to send.` : 'Everything you do is saved and sent later.'}`}
         </div>
@@ -50,7 +50,7 @@ export default function DriverApp() {
 
 function Tab({ to, icon: Icon, label, end }: { to: string; icon: typeof Home; label: string; end?: boolean }) {
   return (
-    <NavLink to={to} end={end} className={({ isActive }) => `flex flex-col items-center gap-0.5 py-2 text-[0.6875rem] font-semibold ${isActive ? 'text-blue-700' : 'text-slate-500'}`}>
+    <NavLink to={to} end={end} className={({ isActive }) => `flex flex-col items-center gap-0.5 py-2 text-[0.6875rem] font-semibold ${isActive ? 'text-[var(--accent)]' : 'text-slate-500'}`}>
       <Icon className="h-5 w-5" />{label}
     </NavLink>
   )

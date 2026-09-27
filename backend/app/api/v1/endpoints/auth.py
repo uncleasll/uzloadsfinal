@@ -126,6 +126,17 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
     return {"access_token": _token(user), "token_type": "bearer", "user": _u(user, db)}
 
 
+@router.post("/demo")
+def demo_login(role: str = "admin", db: Session = Depends(get_db)):
+    """Public: open the sandbox company as owner, dispatcher or driver. Nothing here is real."""
+    from app.services.demo import ensure_demo
+    if role not in ("admin", "dispatcher", "driver"):
+        raise HTTPException(400, "Unknown role")
+    users = ensure_demo(db)
+    user = users[role]
+    return {"access_token": _token(user), "token_type": "bearer", "user": _u(user, db), "demo": True}
+
+
 @router.get("/me")
 def me(current_user=Depends(require_user), db: Session = Depends(get_db)):
     return _u(current_user, db)

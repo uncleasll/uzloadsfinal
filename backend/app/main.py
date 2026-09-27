@@ -39,7 +39,7 @@ DISPATCHER_DENY = ("/api/v1/weeks", "/api/v1/statements", "/api/v1/bills", "/api
 
 
 def _is_public(path: str) -> bool:
-    if path in ("/api/v1/auth/login", "/api/v1/auth/register"):
+    if path in ("/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/demo"):
         return True
     if path.startswith("/api/v1/auth/invitations/") and (path.endswith("/preview") or path.endswith("/accept")):
         return True

@@ -13,6 +13,7 @@ html { font-size: 16px; }
 @media (min-width: 3200px) { html { font-size: 24px; } }
 
 @layer base {
+  :root { --accent: #2563eb; --accent-soft: #eff6ff; }
   * { box-sizing: border-box; }
 
   body {

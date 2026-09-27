@@ -38,6 +38,7 @@ export const authApi = {
   register: async (p: { company_name: string; name: string; email: string; password: string }): Promise<Session> =>
     (await client.post('/api/v1/auth/register', p)).data,
   me: async (): Promise<AuthUser> => (await client.get('/api/v1/auth/me')).data,
+  demo: async (role: 'admin' | 'dispatcher' | 'driver'): Promise<Session> => (await client.post('/api/v1/auth/demo', null, { params: { role } })).data,
 
   listUsers: async (): Promise<AuthUser[]> => (await client.get('/api/v1/auth/users')).data,
   updateUser: async (id: number, p: Partial<{ name: string; phone: string; role: Role; is_active: boolean; driver_id: number | null; dispatcher_id: number | null; password: string }>): Promise<AuthUser> =>
