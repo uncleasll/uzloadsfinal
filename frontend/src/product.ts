@@ -11,8 +11,8 @@ export const APP: AppKind = ((import.meta.env.VITE_APP as AppKind) || 'office')
 
 export const APP_META: Record<AppKind, { name: string; short: string; tagline: string; home: string; manifest: string; theme: string; accent: string; accentSoft: string; bg: string; demoRole: 'admin' | 'dispatcher' | 'driver'; icon: string }> = {
   office: { name: 'Karvan Office', short: 'Karvan', tagline: 'Weekly statements, loads and money for trucking companies', home: '/dashboard', manifest: '/manifest-office.webmanifest', theme: '#0f172a', accent: '#2563eb', accentSoft: '#eff6ff', bg: '#07111f', demoRole: 'admin', icon: '/icon-office-192.png' },
-  dispatch: { name: 'Karvan Dispatch', short: 'Dispatch', tagline: 'Trucks, loads and drivers in one board', home: '/dispatch', manifest: '/manifest-dispatch.webmanifest', theme: '#c2410c', accent: '#ea580c', accentSoft: '#fff7ed', bg: '#1c1917', demoRole: 'dispatcher', icon: '/icon-dispatch-192.png' },
-  driver: { name: 'Karvan Driver', short: 'Driver', tagline: 'Your loads, your papers, your pay', home: '/driver', manifest: '/manifest-driver.webmanifest', theme: '#047857', accent: '#059669', accentSoft: '#ecfdf5', bg: '#052e21', demoRole: 'driver', icon: '/icon-driver-192.png' },
+  dispatch: { name: 'Karvan Dispatch', short: 'Dispatch', tagline: 'Trucks, loads and drivers in one board', home: '/dispatch', manifest: '/manifest-dispatch.webmanifest', theme: '#0f172a', accent: '#2563eb', accentSoft: '#eff6ff', bg: '#07111f', demoRole: 'dispatcher', icon: '/icon-dispatch-192.png' },
+  driver: { name: 'Karvan Driver', short: 'Driver', tagline: 'Your loads, your papers, your pay', home: '/driver', manifest: '/manifest-driver.webmanifest', theme: '#0f172a', accent: '#2563eb', accentSoft: '#eff6ff', bg: '#07111f', demoRole: 'driver', icon: '/icon-driver-192.png' },
 }
 
 export const APP_URLS: Record<AppKind, string> = {
