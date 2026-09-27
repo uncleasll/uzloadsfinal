@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
 import karvanLogo from '@/assets/karvan-logo.png'
+import { APP, APP_META, appForRole } from '@/product'
 
 export default function LoginPage() {
   const { login, sessionExpired } = useAuth()
@@ -19,7 +20,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const user = await login(email, password)
-      navigate(user.role === 'driver' ? '/driver' : location.state?.from?.pathname || '/dashboard', { replace: true })
+      navigate(APP === 'driver' || user.role === 'driver' ? '/driver' : APP === 'dispatch' || user.role === 'dispatcher' ? '/dispatch' : location.state?.from?.pathname || APP_META[appForRole(user.role)].home, { replace: true })
     } catch (err: unknown) {
       toast.error((err as Error).message || 'Invalid credentials')
     } finally { setLoading(false) }
@@ -34,11 +35,11 @@ export default function LoginPage() {
               <img src={karvanLogo} alt="Karvan" className="h-full w-full object-contain" />
             </div>
             <div className="text-left">
-              <div className="text-white font-bold text-2xl leading-tight">Karvan</div>
-              <div className="text-white/40 text-xs uppercase tracking-widest">karvan</div>
+              <div className="text-white font-bold text-2xl leading-tight">{APP_META[APP].name}</div>
+              <div className="text-white/40 text-xs">{APP_META[APP].tagline}</div>
             </div>
           </div>
-          <p className="text-white/40 text-sm">Transportation Management System</p>
+          <p className="text-white/40 text-sm"></p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 border border-blue-100">
@@ -73,7 +74,7 @@ export default function LoginPage() {
               {loading ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Signing in...</> : 'Sign In'}
             </button>
           </form>
-          <p className="mt-4 text-center text-xs text-slate-500">New company? <Link to="/register" className="font-semibold text-blue-700 hover:underline">Create an account</Link></p>
+          {APP === 'office' && <p className="mt-4 text-center text-xs text-slate-500">New company? <Link to="/register" className="font-semibold text-blue-700 hover:underline">Create an account</Link></p>}
 
         </div>
         <p className="text-center text-white/20 text-xs mt-5">&copy; 2026 Karvan TMS</p>

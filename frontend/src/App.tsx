@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { APP, roleAllowedHere } from '@/product'
+import WrongAppPage from '@/pages/WrongAppPage'
 import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
@@ -31,15 +33,16 @@ function RequireOffice({ children }: { children: JSX.Element }) {
   const location = useLocation()
   if (loading) return null
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />
+  if (!roleAllowedHere(user?.role)) return <WrongAppPage />
   if (user?.role === 'driver') return <Navigate to="/driver" replace />
-  if (user?.role === 'dispatcher' && OFFICE_ONLY.some(p => location.pathname === p || location.pathname.startsWith(p + '/')) && location.pathname !== '/dispatchers') return <Navigate to="/dispatch" replace />
+  if ((APP === 'dispatch' || user?.role === 'dispatcher') && OFFICE_ONLY.some(p => location.pathname === p || location.pathname.startsWith(p + '/')) && location.pathname !== '/dispatchers') return <Navigate to="/dispatch" replace />
   return children
 }
 
 /** Dispatchers land on the board; the office lands on the dashboard. */
 function RoleHome() {
   const { user } = useAuth()
-  return <Navigate to={user?.role === 'dispatcher' ? '/dispatch' : '/dashboard'} replace />
+  return <Navigate to={APP === 'driver' ? '/driver' : APP === 'dispatch' || user?.role === 'dispatcher' ? '/dispatch' : '/dashboard'} replace />
 }
 
 const OFFICE_ONLY = ['/dashboard', '/weeks', '/bills', '/invoices', '/ifta', '/settings', '/maintenance', '/accounting', '/my-company', '/dispatchers']
@@ -48,7 +51,7 @@ function RequireDriver({ children }: { children: JSX.Element }) {
   const { user, isAuthenticated, loading } = useAuth()
   if (loading) return null
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (user?.role !== 'driver') return <Navigate to="/dashboard" replace />
+  if (user?.role !== 'driver') return APP === 'driver' ? <WrongAppPage /> : <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -56,10 +59,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      {APP === 'office' && <Route path="/register" element={<RegisterPage />} />}
       <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/driver/*" element={<RequireDriver><DriverApp /></RequireDriver>} />
-      <Route path="/" element={<RequireOffice><AppLayout /></RequireOffice>}>
+      {APP !== 'driver' && <Route path="/" element={<RequireOffice><AppLayout /></RequireOffice>}>
         <Route index element={<RoleHome />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="chat" element={<ChatPage />} />
@@ -80,8 +83,9 @@ export default function App() {
         <Route path="my-company" element={<MyCompanyPage />} />
         <Route path="trailers" element={<TrailersPage />} />
         <Route path="accounting/expenses" element={<ExpensesPage />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Route>
+        <Route path="*" element={<RoleHome />} />
+      </Route>}
+      {APP === 'driver' && <Route path="*" element={<Navigate to="/driver" replace />} />}
     </Routes>
   )
 }

@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:driver": "tsc && VITE_APP=driver vite build",
+    "build:dispatch": "tsc && VITE_APP=dispatch vite build",
+    "build:office": "tsc && VITE_APP=office vite build",
     "preview": "vite preview"
   },
   "dependencies": {

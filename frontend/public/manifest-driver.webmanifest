@@ -1,6 +1,6 @@
 {
   "name": "Karvan Driver",
-  "short_name": "Karvan",
+  "short_name": "Driver",
   "start_url": "/driver",
   "scope": "/",
   "display": "standalone",

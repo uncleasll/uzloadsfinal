@@ -30,7 +30,7 @@ export default function InvitePage() {
     try {
       const user = await acceptInvite(token, { password, phone: phone || undefined })
       toast.success(`Welcome to ${preview?.company_name}`)
-      navigate(user.role === 'driver' ? '/driver' : '/dashboard', { replace: true })
+      navigate(user.role === 'driver' ? '/driver' : user.role === 'dispatcher' ? '/dispatch' : '/dashboard', { replace: true })
     } catch (err) { toast.error((err as Error).message) }
     finally { setLoading(false) }
   }
