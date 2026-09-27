@@ -13,6 +13,7 @@ const POLL_MS = 5000
 export default function ChatPage() {
   const { user } = useAuth()
   const [convs, setConvs] = useState<Conversation[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [params] = useSearchParams()
   const [activeId, setActiveId] = useState<number | null>(() => (params.get('c') ? Number(params.get('c')) : null))
   const [filter, setFilter] = useState('')
@@ -23,6 +24,7 @@ export default function ChatPage() {
       setConvs(list)
       setActiveId(a => a ?? list[0]?.id ?? null)
     } catch (e) { toast.error((e as Error).message) }
+    finally { setLoaded(true) }
   }, [])
   useEffect(() => { loadConvs(); const t = setInterval(loadConvs, POLL_MS); return () => clearInterval(t) }, [loadConvs])
 
@@ -56,7 +58,7 @@ export default function ChatPage() {
               </span>
             </button>
           ))}
-          {visible.length === 0 && <p className="px-3 py-8 text-center text-slate-400">No conversations yet. Add a truck and its driver.</p>}
+          {visible.length === 0 && <p className="px-3 py-8 text-center text-slate-400">{loaded ? 'No conversations yet. Add a truck and its driver.' : 'Loading…'}</p>}
         </div>
       </aside>
 

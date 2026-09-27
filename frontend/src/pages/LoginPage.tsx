@@ -36,9 +36,10 @@ export default function LoginPage() {
   }
   const tryDemo = async () => {
     setLoading(true)
-    try { const user = await demo(m.demoRole); toast.success(`Welcome to ${user.company_name}`); navigate(landing(user.role), { replace: true }) }
-    catch (err) { toast.error((err as Error).message) }
-    finally { setLoading(false) }
+    const slow = setTimeout(() => toast('Waking up the demo server, a few more seconds…', { id: 'demo-wake' }), 4000)
+    try { const user = await demo(m.demoRole); toast.dismiss('demo-wake'); toast.success(`Welcome to ${user.company_name}`); navigate(landing(user.role), { replace: true }) }
+    catch (err) { toast.dismiss('demo-wake'); toast.error((err as Error).message) }
+    finally { clearTimeout(slow); setLoading(false) }
   }
 
   return (
