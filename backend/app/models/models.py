@@ -744,9 +744,10 @@ class Expense(Base):
 
 class Invoice(Base):
     __tablename__ = "invoices"
+    __table_args__ = (UniqueConstraint("company_id", "invoice_number", name="uq_invoice_number_per_company"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    invoice_number = Column(Integer, unique=True, nullable=False, index=True)
+    invoice_number = Column(Integer, nullable=False, index=True)
     load_id = Column(Integer, ForeignKey("loads.id"), nullable=False)
     broker_id = Column(Integer, ForeignKey("brokers.id"), nullable=True)
     invoice_date = Column(Date, nullable=False)

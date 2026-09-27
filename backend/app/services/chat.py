@@ -75,32 +75,58 @@ def ensure_load_conversation(db: Session, load: Load) -> Conversation:
 
 def sync_memberships(db: Session) -> None:
     """Office people are in every group. A truck's group has its current driver's account; a driver who moved on is
-    marked as left (their messages stay). Called on every conversation listing, so it needs no other hook."""
+    marked as left (their messages stay). Called on every conversation listing, so it runs on a handful of queries."""
     office = office_users(db)
     drivers = {u.driver_id: u for u in db.query(User).filter(User.is_active == True, User.role == "driver", User.driver_id.isnot(None)).all()}  # noqa: E712
+    trucks = db.query(Truck).options(joinedload(Truck.driver)).filter(Truck.is_active == True).all()  # noqa: E712
+    from app.services.fleet import effective_drivers
+    eff = effective_drivers(db, trucks)
 
-    channel = ensure_company_channel(db)
-    wanted = {u.id: u for u in office} | {u.id: u for u in drivers.values()}
-    _reconcile(db, channel, wanted)
+    convs = db.query(Conversation).options(joinedload(Conversation.load)).all()
+    by_truck = {c.truck_id: c for c in convs if c.kind == "truck"}
+    channel = next((c for c in convs if c.kind == "company"), None) or ensure_company_channel(db)
+    for truck in trucks:
+        if truck.id not in by_truck:
+            by_truck[truck.id] = ensure_truck_conversation(db, truck)
 
-    for truck in db.query(Truck).filter(Truck.is_active == True).all():  # noqa: E712
-        conv = ensure_truck_conversation(db, truck)
-        wanted = {u.id: u for u in office}
-        from app.services.fleet import effective_driver
-        eff = effective_driver(db, truck)
-        drv = drivers.get(eff.id) if eff else None
+    active: dict[int, dict[int, ConversationMember]] = {}
+    for m in db.query(ConversationMember).options(joinedload(ConversationMember.user)).filter(ConversationMember.left_at.is_(None)).all():
+        active.setdefault(m.conversation_id, {})[m.user_id] = m
+    with_history = {cid for (cid,) in db.query(Message.conversation_id).group_by(Message.conversation_id).all()}
+
+    def reconcile(conv: Conversation, wanted: dict[int, User]) -> None:
+        current = active.get(conv.id, {})
+        announce = conv.id in with_history   # a brand-new group fills silently
+        for uid, u in wanted.items():
+            if uid not in current:
+                db.add(ConversationMember(conversation_id=conv.id, user_id=u.id, joined_at=datetime.utcnow()))
+                if announce:
+                    db.add(Message(conversation_id=conv.id, sender_id=None, kind="system", body=f"{u.name} joined"))
+        for uid, m in current.items():
+            if uid not in wanted:
+                m.left_at = datetime.utcnow()
+                db.add(Message(conversation_id=conv.id, sender_id=None, kind="system", body=f"{m.user.name if m.user else 'Someone'} left"))
+
+    office_map = {u.id: u for u in office}
+    reconcile(channel, office_map | {u.id: u for u in drivers.values()})
+    for truck in trucks:
+        wanted = dict(office_map)
+        d = eff.get(truck.id)
+        drv = drivers.get(d.id) if d else None
         if drv:
             wanted[drv.id] = drv
-        _reconcile(db, conv, wanted)
-
-    for conv in db.query(Conversation).filter(Conversation.kind == "load").all():
+        reconcile(by_truck[truck.id], wanted)
+    for conv in convs:
+        if conv.kind != "load":
+            continue
+        wanted = dict(office_map)
         load = conv.load
-        wanted = {u.id: u for u in office}
         drv = drivers.get(load.driver_id) if load and load.driver_id else None
         if drv:
             wanted[drv.id] = drv
-        _reconcile(db, conv, wanted)
-    db.commit()
+        reconcile(conv, wanted)
+    if db.new or db.dirty:
+        db.commit()
 
 
 def _reconcile(db: Session, conv: Conversation, wanted: dict[int, User]) -> None:
@@ -124,18 +150,25 @@ def is_member(db: Session, conv_id: int, user: User) -> bool:
 
 def conversations_for(db: Session, user: User) -> list[dict]:
     sync_memberships(db)
-    rows = (db.query(ConversationMember).options(joinedload(ConversationMember.conversation))
+    from sqlalchemy import and_, or_
+    rows = (db.query(ConversationMember)
+              .options(joinedload(ConversationMember.conversation).joinedload(Conversation.members).joinedload(ConversationMember.user))
               .filter(ConversationMember.user_id == user.id, ConversationMember.left_at.is_(None)).all())
+    ids = [m.conversation_id for m in rows] or [0]
+    last_ids = dict(db.query(Message.conversation_id, func.max(Message.id)).filter(Message.conversation_id.in_(ids)).group_by(Message.conversation_id).all())
+    lasts = {m.conversation_id: m for m in (db.query(Message).options(joinedload(Message.sender), joinedload(Message.attachments))
+                                              .filter(Message.id.in_(list(last_ids.values()) or [0])).all())}
+    unread_of = dict(db.query(Message.conversation_id, func.count(Message.id))
+                       .filter(or_(*[and_(Message.conversation_id == m.conversation_id, Message.id > (m.last_read_message_id or 0)) for m in rows]) if rows else False,
+                               Message.kind != "system", Message.sender_id != user.id)
+                       .group_by(Message.conversation_id).all()) if rows else {}
     out = []
     for m in rows:
         conv = m.conversation
-        last = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.id.desc()).first()
-        unread = (db.query(func.count(Message.id))
-                    .filter(Message.conversation_id == conv.id, Message.id > (m.last_read_message_id or 0),
-                            Message.kind != "system", Message.sender_id != user.id).scalar() or 0)
+        last = lasts.get(conv.id)
         out.append({
             "id": conv.id, "kind": conv.kind, "title": conv.title, "truck_id": conv.truck_id, "load_id": conv.load_id,
-            "unread": int(unread),
+            "unread": int(unread_of.get(conv.id, 0)),
             "last_message": _msg(last) if last else None,
             "members": [{"user_id": x.user_id, "name": x.user.name if x.user else "?", "role": _role(x.user) if x.user else None}
                         for x in conv.members if x.left_at is None],

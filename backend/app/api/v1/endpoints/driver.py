@@ -69,7 +69,7 @@ def me(db: Session = Depends(get_db), user=Depends(require_user)):
     week = None
     if truck:
         start = ws.week_start(date.today(), db=db)
-        s = ws.generate(db, truck.id, start)
+        s = ws.ensure(db, truck.id, start)
         week = {"period": ws.period_label(start), "loads": len([x for x in s.lines if x.kind == "load"]), "gross": s.gross,
                 "driver_pay": s.driver_pay, "driver_payout": s.driver_payout, "status": s.status,
                 "odometer": (mt.current_odometer(db, truck.id).reading if mt.current_odometer(db, truck.id) else None)}
@@ -244,9 +244,10 @@ def statement(db: Session = Depends(get_db), user=Depends(require_user)):
         return {"weeks": []}
     out = []
     start = ws.week_start(date.today(), db=db)
+    mark = ws.changes_mark(db)
     for i in range(4):
         w = start - __import__("datetime").timedelta(days=7 * i)
-        s = ws.generate(db, truck.id, w)
+        s = ws.ensure(db, truck.id, w, mark=mark)
         loads = [x for x in s.lines if x.kind == "load"]
         out.append({"period": ws.period_label(w), "period_start": w.isoformat(), "status": s.status, "loads": len(loads),
                     "gross": s.gross, "driver_pay": s.driver_pay, "driver_deductions": s.driver_deductions, "driver_payout": s.driver_payout,

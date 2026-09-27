@@ -35,6 +35,8 @@ def update_driver(db: Session, driver_id: int, driver_in: DriverUpdate) -> Optio
         return None
     for k, v in driver_in.model_dump(exclude_unset=True).items():
         setattr(driver, k, v)
+    from app.services.weekly_statement import invalidate_drafts
+    invalidate_drafts(db)
     db.commit()
     db.refresh(driver)
     return driver
@@ -104,6 +106,8 @@ def update_truck(db: Session, truck_id: int, truck_in: TruckUpdate) -> Optional[
         return None
     for k, v in truck_in.model_dump(exclude_unset=True).items():
         setattr(truck, k, v)
+    from app.services.weekly_statement import invalidate_drafts
+    invalidate_drafts(db, truck_id=truck.id)
     db.commit()
     db.refresh(truck)
     return truck

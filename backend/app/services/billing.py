@@ -30,7 +30,12 @@ def terms_days(db: Session, broker: Broker | None) -> int:
 
 
 def next_number(db: Session) -> int:
-    return (db.query(func.max(Invoice.invoice_number)).scalar() or 1000) + 1
+    """Invoice numbers count per company: two companies can both have #1001."""
+    q = db.query(func.max(Invoice.invoice_number))
+    cid = get_company_id()
+    if cid is not None:
+        q = q.filter(Invoice.company_id == cid)
+    return (q.scalar() or 1000) + 1
 
 
 def invoice_amount(load: Load) -> float:

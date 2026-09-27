@@ -4,6 +4,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.v1.endpoints.auth import require_user
@@ -48,14 +49,20 @@ def board(db: Session = Depends(get_db), user=Depends(require_user)):
         if l.truck_id:
             by_truck.setdefault(l.truck_id, []).append(l)
     convs = {c.truck_id: c.id for c in db.query(Conversation).filter(Conversation.kind == "truck").all()}
+    # Latest message per truck group and latest GPS-stamped photo per truck: two queries for the whole board
+    last_ids = dict(db.query(Message.conversation_id, func.max(Message.id)).filter(Message.conversation_id.in_(list(convs.values()) or [0])).group_by(Message.conversation_id).all())
+    last_msgs = {m.conversation_id: m for m in db.query(Message).filter(Message.id.in_(list(last_ids.values()) or [0])).all()}
+    pos_ids = dict(db.query(Attachment.truck_id, func.max(Attachment.id)).filter(Attachment.truck_id.in_([t.id for t in trucks] or [0]), Attachment.lat.isnot(None)).group_by(Attachment.truck_id).all())
+    last_positions = {a.truck_id: a for a in db.query(Attachment).filter(Attachment.id.in_(list(pos_ids.values()) or [0])).all()}
+    drivers = fleet.effective_drivers(db, trucks)
     rows = []
     for t in trucks:
         mine = by_truck.get(t.id, [])
         current = mine[0] if mine else None
         conv_id = convs.get(t.id)
-        last_msg = db.query(Message).filter(Message.conversation_id == conv_id).order_by(Message.id.desc()).first() if conv_id else None
-        last_pos = (db.query(Attachment).filter(Attachment.truck_id == t.id, Attachment.lat.isnot(None)).order_by(Attachment.id.desc()).first())
-        drv = fleet.effective_driver(db, t)
+        last_msg = last_msgs.get(conv_id) if conv_id else None
+        last_pos = last_positions.get(t.id)
+        drv = drivers.get(t.id)
         rows.append({
             "truck_id": t.id, "unit_number": t.unit_number, "driver": drv.name if drv else None, "driver_id": drv.id if drv else None,
             "temporary_driver": bool(drv and drv.id != t.driver_id), "truck_status": t.status, "status_note": t.status_note,

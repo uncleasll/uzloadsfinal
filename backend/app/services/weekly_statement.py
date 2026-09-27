@@ -94,6 +94,41 @@ def get_statement(db: Session, truck_id: int, start: date) -> TruckStatement | N
               .filter(TruckStatement.truck_id == truck_id, TruckStatement.period_start == start).first())
 
 
+def changes_mark(db: Session) -> datetime | None:
+    """When the company's loads or expenses last changed: a draft generated after that is still right."""
+    from sqlalchemy import func
+    marks = []
+    for cls in (Load, Expense):
+        marks += list(db.query(func.max(cls.updated_at), func.max(cls.created_at)).first() or ())
+    marks = [m for m in marks if m is not None]
+    return max(marks) if marks else None
+
+
+def is_fresh(stmt: TruckStatement | None, mark: datetime | None) -> bool:
+    if stmt is None:
+        return False
+    if stmt.status != StatementStatus.DRAFT.value:
+        return True
+    return bool(stmt.updated_at) and (mark is None or stmt.updated_at >= mark)
+
+
+def invalidate_drafts(db: Session, truck_id: int | None = None) -> None:
+    """Rules, pay or who drives what changed: every draft is rebuilt on its next read. Paid and ready weeks stay."""
+    q = db.query(TruckStatement).filter(TruckStatement.status == StatementStatus.DRAFT.value)
+    if truck_id is not None:
+        q = q.filter(TruckStatement.truck_id == truck_id)
+    q.update({TruckStatement.updated_at: None}, synchronize_session=False)
+
+
+def ensure(db: Session, truck_id: int, start: date, mark: datetime | None = None) -> TruckStatement:
+    """The statement for truck + week, regenerated only when something changed since it was last built."""
+    start = week_start(start, db=db)
+    stmt = get_statement(db, truck_id, start)
+    if is_fresh(stmt, changes_mark(db) if mark is None else mark):
+        return stmt
+    return generate(db, truck_id, start)
+
+
 def loads_for_week(db: Session, truck_id: int, start: date) -> list[Load]:
     end = week_end(start)
     from sqlalchemy import or_
@@ -230,6 +265,7 @@ def generate(db: Session, truck_id: int, start: date, author: str = "System") ->
     stmt.carry_in = carry_in
     stmt.net = money(Decimal(str(gross)) - Decimal(str(fee)) - Decimal(str(stmt.deductions))
                      - Decimal(str(driver_pay)) - Decimal(str(carry_in)))
+    stmt.updated_at = datetime.utcnow()   # stamped even when the totals did not move, so is_fresh() can trust it
     db.flush()
     db.expire(stmt, ["lines"])
     return get_statement(db, truck_id, start)
@@ -308,19 +344,24 @@ def set_status(db: Session, stmt: TruckStatement, status: str, ach_reference: st
 
 # ── Board ─────────────────────────────────────────────────────────────────────
 
-def board(db: Session, start: date) -> list[dict]:
-    """One row per active truck for the week; generates missing drafts so nothing is hidden."""
+def board(db: Session, start: date, refresh: bool = True) -> list[dict]:
+    """One row per active truck for the week; generates missing drafts so nothing is hidden.
+    refresh=True rebuilds every draft (the board page); refresh=False only rebuilds drafts that are out of date
+    (the dashboard, the driver app), because a rebuild costs a dozen round trips per truck."""
     start = week_start(start, db=db)
     trucks = db.query(Truck).options(joinedload(Truck.driver)).filter(Truck.is_active == True).order_by(Truck.unit_number).all()
-    existing = {s.truck_id: s for s in db.query(TruckStatement).options(joinedload(TruckStatement.lines), joinedload(TruckStatement.driver))
+    existing = {s.truck_id: s for s in db.query(TruckStatement)
+                .options(joinedload(TruckStatement.lines).joinedload(StatementLine.load), joinedload(TruckStatement.driver), joinedload(TruckStatement.truck))
                 .filter(TruckStatement.period_start == start).all()}
-    rows = []
+    mark = None if refresh else changes_mark(db)
+    rows, changed = [], False
     for t in trucks:
         s = existing.get(t.id)
-        if not s or s.status == StatementStatus.DRAFT.value:
-            s = generate(db, t.id, start)
+        if not s or (s.status == StatementStatus.DRAFT.value and (refresh or not is_fresh(s, mark))):
+            s = generate(db, t.id, start); changed = True
         rows.append(summary(s))
-    db.commit()
+    if changed:
+        db.commit()
     return rows
 
 

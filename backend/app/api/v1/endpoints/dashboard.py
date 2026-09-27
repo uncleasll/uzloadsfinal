@@ -56,7 +56,7 @@ def dashboard(date_from: Optional[date] = Query(None, alias="from"), date_to: Op
               db: Session = Depends(get_db)):
     today = date.today()
     this_week = ws.week_start(today, db=db)
-    ws.board(db, this_week)                          # make sure the current week's drafts exist
+    rows_now = ws.board(db, this_week, refresh=False)   # this week's drafts exist and are current; no full rebuild
 
     # The selected range, snapped to whole statement weeks. Default: this week.
     first = ws.week_start(date_from or today, db=db)
@@ -108,7 +108,6 @@ def dashboard(date_from: Optional[date] = Query(None, alias="from"), date_to: Op
         t["gross"] = money(t["gross"]); t["net"] = money(t["net"]); t["rpm"] = round(t["gross"] / t["miles"], 2) if t["miles"] else None
 
     # What needs paying right now (independent of the range)
-    rows_now = ws.board(db, this_week)
     unpaid = db.query(TruckStatement).filter(TruckStatement.status == "ready").all()
     negative = [r for r in rows_now if r["net"] < 0]
     disp = dispatcher_pay.week_rows(db, this_week)

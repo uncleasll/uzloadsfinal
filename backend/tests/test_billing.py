@@ -92,3 +92,19 @@ class Billing(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_invoice_numbers_count_per_company(self):
+        """Two companies both start at #1001: numbering never leaks across tenants."""
+        r = self.c.post('/api/v1/billing/invoices', json={'load_ids': [self.l1.id], 'send': 'direct'}, headers=self.oh)
+        self.assertEqual(r.status_code, 201, r.text); self.assertEqual(r.json()[0]['invoice_number'], 1001)
+        other = self.c.post('/api/v1/auth/register', json={'company_name': 'Beta', 'name': 'Owner', 'email': 'o@beta.com', 'password': 'secret-123'}).json()
+        cid2, oh2 = other['user']['company_id'], {'Authorization': f"Bearer {other['access_token']}"}
+        with company_scope(cid2):
+            d = Driver(name='Ali', is_active=True); t = Truck(unit_number='1', is_active=True, driver=d); b = Broker(name='TQL', is_broker=True)
+            self.db.add_all([d, t, b]); self.db.flush()
+            l = Load(load_number=1, po_number='T1', truck_id=t.id, driver_id=d.id, broker_id=b.id, load_date=date.today() - timedelta(days=2), rate=900, is_active=True, status=LoadStatus.DELIVERED, billing_status=BillingStatus.PENDING)
+            self.db.add(l); self.db.commit()
+        r = self.c.post('/api/v1/billing/invoices', json={'load_ids': [l.id], 'send': 'direct'}, headers=oh2)
+        self.assertEqual(r.status_code, 201, r.text); self.assertEqual(r.json()[0]['invoice_number'], 1001)
+        r = self.c.post('/api/v1/billing/invoices', json={'load_ids': [self.l2.id], 'send': 'direct'}, headers=self.oh)
+        self.assertEqual(r.json()[0]['invoice_number'], 1002)

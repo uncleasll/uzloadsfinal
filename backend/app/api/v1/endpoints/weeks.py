@@ -35,7 +35,7 @@ def _run(db: Session, fn, *args):
 @router.get("/weeks/{start}")
 def week_board(start: date, db: Session = Depends(get_db)):
     start = ws.week_start(start, db=db)
-    rows = ws.board(db, start)
+    rows = ws.board(db, start, refresh=False)   # drafts rebuild when loads, expenses, rules or drivers changed; Refresh rebuilds all
     totals = {k: round(sum(r[k] for r in rows), 2) for k in ("gross", "fee", "deductions", "driver_pay", "driver_payout", "carry_in", "net")}
     totals["loads"] = sum(r["loads"] for r in rows)
     totals["miles"] = sum(r["miles"] for r in rows)
@@ -181,6 +181,7 @@ def set_truck_rules(truck_id: int, data: TruckRulesIn, db: Session = Depends(get
             db.add(row)
         row.label, row.amount, row.effective_from, row.effective_to, row.is_active, row.sort_order = \
             d.label.strip(), d.amount, d.effective_from, d.effective_to, d.is_active, i
+    ws.invalidate_drafts(db, truck_id=t.id)
     db.commit()
     db.refresh(t)
     return _truck_rules(t)
@@ -227,6 +228,7 @@ def set_driver_rules(driver_id: int, data: DriverRulesIn, db: Session = Depends(
             row = DriverDeduction(driver_id=d.id)
             db.add(row)
         row.label, row.amount, row.effective_from, row.effective_to, row.is_active = x.label.strip(), x.amount, x.effective_from, x.effective_to, x.is_active
+    ws.invalidate_drafts(db)
     db.commit()
     db.refresh(d)
     return _driver_rules(d)

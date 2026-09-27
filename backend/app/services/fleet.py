@@ -19,6 +19,22 @@ def assignment_on(db: Session, on: date, *, truck_id: int | None = None, driver_
     return q.order_by(DriverAssignment.start_date.desc(), DriverAssignment.id.desc()).first()
 
 
+def assignments_on(db: Session, on: date) -> list[DriverAssignment]:
+    """Every assignment in force on a day, newest first, drivers and trucks loaded: one query for a whole board."""
+    return (db.query(DriverAssignment).options(joinedload(DriverAssignment.driver), joinedload(DriverAssignment.truck))
+              .filter(DriverAssignment.start_date <= on, (DriverAssignment.end_date.is_(None)) | (DriverAssignment.end_date >= on))
+              .order_by(DriverAssignment.start_date.desc(), DriverAssignment.id.desc()).all())
+
+
+def effective_drivers(db: Session, trucks: list[Truck], on: date | None = None) -> dict[int, Driver | None]:
+    """truck_id → who drives it on the day, for every truck at once."""
+    on = on or date.today()
+    by_truck: dict[int, DriverAssignment] = {}
+    for a in assignments_on(db, on):
+        by_truck.setdefault(a.truck_id, a)
+    return {t.id: (by_truck[t.id].driver if t.id in by_truck else t.driver) for t in trucks}
+
+
 def effective_driver(db: Session, truck: Truck, on: date | None = None) -> Driver | None:
     """A dated assignment beats the truck's permanent driver."""
     a = assignment_on(db, on or date.today(), truck_id=truck.id)
@@ -37,15 +53,26 @@ def idle_drivers(db: Session, on: date | None = None) -> list[dict]:
     """Active drivers with no truck to drive today: no truck at all, or their truck is down and nobody moved them."""
     on = on or date.today()
     out = []
+    by_driver: dict[int, DriverAssignment] = {}
+    for a in assignments_on(db, on):
+        by_driver.setdefault(a.driver_id, a)
+    owned: dict[int, Truck] = {}
+    for t in db.query(Truck).filter(Truck.is_active == True, Truck.driver_id.isnot(None)).order_by(Truck.id.desc()).all():  # noqa: E712
+        owned[t.driver_id] = t
     for d in db.query(Driver).filter(Driver.is_active == True).order_by(Driver.name).all():  # noqa: E712
-        t = effective_truck(db, d, on)
+        t = by_driver[d.id].truck if d.id in by_driver else owned.get(d.id)
         if t is None or t.status != "active":
-            own = db.query(Truck).filter(Truck.driver_id == d.id, Truck.is_active == True).first()  # noqa: E712
+            own = owned.get(d.id)
             out.append({"driver_id": d.id, "name": d.name, "phone": d.phone,
                         "reason": "no truck" if own is None else f"truck {own.unit_number} is {own.status.replace('_', ' ')}",
                         "own_truck": own.unit_number if own else None,
                         "since": own.status_since.isoformat() if own and own.status_since else None})
     return out
+
+
+def _drafts_changed(db: Session, truck_id: int | None = None) -> None:
+    from app.services.weekly_statement import invalidate_drafts
+    invalidate_drafts(db, truck_id)
 
 
 def set_truck_status(db: Session, truck: Truck, status: str, note: str | None, user: User | None) -> Truck:
@@ -61,6 +88,7 @@ def set_truck_status(db: Session, truck: Truck, status: str, note: str | None, u
     label = {"active": "back in service", "in_shop": "in the shop", "out_of_service": "out of service"}[status]
     db.add(Message(conversation_id=conv.id, sender_id=user.id if user else None, kind="system",
                    body=f"Truck {truck.unit_number} is {label}" + (f": {note}" if note else "")))
+    _drafts_changed(db, truck.id)
     db.commit(); db.refresh(truck)
     return truck
 
@@ -79,12 +107,14 @@ def assign(db: Session, *, driver: Driver, truck: Truck, start: date, end: date 
     until = f" until {end:%m/%d}" if end else ""
     db.add(Message(conversation_id=conv.id, sender_id=user.id if user else None, kind="system",
                    body=f"{driver.name} drives truck {truck.unit_number} from {start:%m/%d}{until}" + (f" ({reason})" if reason else "")))
+    _drafts_changed(db)
     db.commit(); db.refresh(a)
     return a
 
 
 def end_assignment(db: Session, a: DriverAssignment, on: date | None = None) -> DriverAssignment:
     a.end_date = on or date.today()
+    _drafts_changed(db)
     db.commit(); db.refresh(a)
     return a
 
