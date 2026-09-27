@@ -56,11 +56,14 @@ class Demo(unittest.TestCase):
         with company_scope(None):
             u = self.db.query(User).filter(User.email == demo_svc.DEMO_EMAILS['admin']).first(); u.phone = 'seed-v1'; self.db.commit()
             old_cid = u.company_id
-        o2 = self.c.post('/api/v1/auth/demo?role=admin').json()
-        self.assertNotEqual(o2['user']['company_id'], old_cid)
         with company_scope(None):
-            self.assertEqual(self.db.query(Truck).filter(Truck.company_id == old_cid).count(), 0)
-            self.assertEqual(self.db.query(Truck).filter(Truck.company_id == o2['user']['company_id']).count(), 5)
+            old_truck_ids = {t.id for t in self.db.query(Truck).filter(Truck.company_id == old_cid).all()}
+        o2 = self.c.post('/api/v1/auth/demo?role=admin').json()
+        with company_scope(None):
+            u2 = self.db.query(User).filter(User.email == demo_svc.DEMO_EMAILS['admin']).first()
+            self.assertEqual(u2.phone, f'seed-v{demo_svc.SEED_VERSION}')          # rebuilt with the current seed
+            new_ids = {t.id for t in self.db.query(Truck).filter(Truck.company_id == o2['user']['company_id']).all()}
+            self.assertEqual(len(new_ids), 5); self.assertFalse(old_truck_ids & new_ids)   # the old rows are gone
 
 
 if __name__ == '__main__':
