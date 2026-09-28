@@ -117,19 +117,27 @@ def _clear_company_data(db: Session, company_id: int) -> None:
     from sqlalchemy import text
     from app.models.models import Base
     scoped = {t.name for t in Base.metadata.sorted_tables if "company_id" in t.c}
-    for t in reversed(Base.metadata.sorted_tables):
-        if t.name == "companies":
-            continue
-        if t.name == "users":
-            db.execute(text("DELETE FROM users WHERE company_id = :cid AND role != 'admin'"), {"cid": company_id})
-            continue
-        if "company_id" in t.c:
-            db.execute(text(f"DELETE FROM {t.name} WHERE company_id = :cid"), {"cid": company_id})
-            continue
-        for fk in t.foreign_keys:
-            parent = fk.column.table
-            if parent.name in scoped and parent.name != "users":
-                db.execute(text(f"DELETE FROM {t.name} WHERE {fk.parent.name} IN (SELECT id FROM {parent.name} WHERE company_id = :cid)"), {"cid": company_id})
+    done: list[str] = []
+    def run(sql: str) -> None:
+        n = db.execute(text(sql), {"cid": company_id}).rowcount
+        done.append(f"{sql.split(' WHERE')[0]}={n}")
+    try:
+        for t in reversed(Base.metadata.sorted_tables):
+            if t.name == "companies":
+                continue
+            if t.name == "users":
+                run("DELETE FROM users WHERE company_id = :cid AND role != 'admin'")
+                continue
+            if "company_id" in t.c:
+                run(f"DELETE FROM {t.name} WHERE company_id = :cid")
+                continue
+            for fk in t.foreign_keys:
+                parent = fk.column.table
+                if parent.name in scoped and parent.name != "users":
+                    run(f"DELETE FROM {t.name} WHERE {fk.parent.name} IN (SELECT id FROM {parent.name} WHERE company_id = :cid)")
+    except Exception as e:
+        db.rollback()
+        raise RuntimeError(f"clear failed after {done}: {str(e)[:300]}") from e
     db.commit()
 
 
