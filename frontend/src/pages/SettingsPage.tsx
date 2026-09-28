@@ -197,6 +197,34 @@ function CompanyTab() {
           <p className="mt-1 text-slate-500">A broker's own quick-pay fee and terms win over these defaults.</p></div>
       </div>
       <button onClick={save} disabled={saving} className="btn-primary mt-4 h-9 rounded-lg px-4 text-xs">{saving ? 'Saving…' : 'Save'}</button>
+      <SampleDataCard />
+    </div>
+  )
+}
+
+/** One click fills an empty company with a month of work, so every screen has something on it from day one. */
+function SampleDataCard() {
+  const [busy, setBusy] = useState(false)
+  const [accounts, setAccounts] = useState<Array<{ role: string; name: string; email: string; password: string }> | null>(null)
+  const fill = async () => {
+    if (!window.confirm('Fill this company with a sample fleet: 5 trucks, 4 drivers, 2 dispatchers, 4 brokers, four weeks of loads, statements, invoices, expenses, papers and chat history? Only works while the company has no trucks.')) return
+    setBusy(true)
+    try { const r = await companyApi.fillSampleData(); setAccounts(r.accounts); toast.success('Sample fleet loaded. Open the dashboard.') }
+    catch (e) { toast.error((e as Error).message) }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="mt-5 border-t border-slate-100 pt-4 text-xs">
+      <div className="mb-1 text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">Starter data</div>
+      <p className="text-slate-500">New company? Load a realistic month of work to see how every screen behaves: trucks, drivers, loads, weekly statements, invoices, expenses, papers and chat. It also creates a dispatcher and a driver account for the Dispatch and Driver apps.</p>
+      <button onClick={fill} disabled={busy} className="btn-ghost mt-2 h-8 rounded-md border border-slate-200 px-3 text-[0.6875rem] font-semibold">{busy ? 'Loading, about a minute…' : 'Fill with a sample fleet'}</button>
+      {accounts && (
+        <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
+          <div className="mb-1 font-bold text-slate-800">Accounts for the other two apps</div>
+          {accounts.map(a => <div key={a.email} className="text-slate-700"><span className="font-semibold">{a.name}</span> ({a.role}) · {a.email} · password <code className="rounded bg-white px-1">{a.password}</code></div>)}
+          <p className="mt-1 text-slate-500">You can change or remove them on the Team tab.</p>
+        </div>
+      )}
     </div>
   )
 }

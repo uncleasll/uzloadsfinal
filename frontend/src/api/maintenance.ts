@@ -54,4 +54,7 @@ export interface CompanyMe { id: number; name: string; week_start_day: number; p
 export const companyApi = {
   me: async (): Promise<CompanyMe> => (await client.get(`${V1}/company/me`)).data,
   update: async (data: Omit<CompanyMe, 'id'>): Promise<CompanyMe> => (await client.put(`${V1}/company/me`, data)).data,
+  /** A month of realistic work for an empty company; returns the dispatcher and driver accounts it created. */
+  fillSampleData: async (): Promise<{ accounts: Array<{ role: string; name: string; email: string; password: string }> }> =>
+    (await client.post(`${V1}/company/me/sample-data`, null, { timeout: 180000 })).data,
 }

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, joinedload
 
+from app.api.v1.endpoints.auth import require_admin
 from app.db.session import get_db
 from app.models.models import BillPayment, Company, Dispatcher, RecurringBill
 from app.core.tenant import get_company_id
@@ -213,3 +214,13 @@ def update_my_company(data: CompanyIn, db: Session = Depends(get_db)):
     c.factoring_fee_pct, c.factoring_advance_pct = data.factoring_fee_pct, data.factoring_advance_pct
     db.commit()
     return _company(c)
+
+
+@router.post("/company/me/sample-data", status_code=201)
+def fill_with_sample_data(db: Session = Depends(get_db), user=Depends(require_admin)):
+    """A month of realistic work for an empty company, plus a dispatcher and a driver account for the other two apps."""
+    from app.services.demo import fill_company
+    try:
+        return fill_company(db, user)
+    except ValueError as e:
+        raise HTTPException(400, str(e))

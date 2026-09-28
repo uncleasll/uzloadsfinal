@@ -96,6 +96,35 @@ def ensure_demo(db: Session) -> dict[str, User]:
         return users
 
 
+SAMPLE_PASSWORD = "karvan-2026"
+
+
+def fill_company(db: Session, owner: User) -> dict:
+    """Put the same month of realistic work into the owner's own company: fleet, people, loads, statements,
+    invoices, expenses, papers and chat. Adds a dispatcher and a driver account so the three apps all have someone
+    to sign in as. Refuses when the company already has trucks, so nothing real gets mixed with sample rows."""
+    cid = owner.company_id
+    with company_scope(cid):
+        if db.query(Truck).count():
+            raise ValueError("This company already has trucks. Sample data only goes into an empty company.")
+        c = db.get(Company, cid)
+        if c.week_start_day is None: c.week_start_day = 5
+        if not c.factoring_company: c.factoring_company, c.factoring_fee_pct, c.factoring_advance_pct = "RTS Financial", 3, 90
+        if c.payment_terms_days is None: c.payment_terms_days = 30
+        users = {"admin": owner}
+        for role, name in (("dispatcher", "Jasur Toshev"), ("driver", "Bobur Nasimov")):
+            email = f"{role}@{cid}.karvan.local"
+            u = db.query(User).filter(User.email == email).first()
+            if not u:
+                u = User(name=name, email=email, hashed_password=hash_password(SAMPLE_PASSWORD), role=role, is_active=True, company_id=cid,
+                         phone="555-0101" if role == "driver" else None)
+                db.add(u)
+            users[role] = u
+        db.commit()
+        _seed(db, users)
+        return {"accounts": [{"role": r, "name": users[r].name, "email": users[r].email, "password": SAMPLE_PASSWORD} for r in ("dispatcher", "driver")]}
+
+
 def _seed(db: Session, users: dict[str, User]) -> None:
     from app.services import billing, chat, dispatcher_pay, maintenance as mt, weekly_statement as ws
     from app.models.models import Expense
