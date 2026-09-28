@@ -32,7 +32,7 @@ export const authApi = {
     const form = new URLSearchParams()
     form.append('username', email)
     form.append('password', password)
-    const { data } = await client.post('/api/v1/auth/login', form, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
+    const { data } = await client.post('/api/v1/auth/login', form, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 120000 })
     return data
   },
   register: async (p: { company_name: string; name: string; email: string; password: string }): Promise<Session> =>
