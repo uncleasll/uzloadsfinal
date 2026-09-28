@@ -30,20 +30,30 @@ class SampleData(unittest.TestCase):
         r = self.c.post('/api/v1/company/me/sample-data', headers=self.oh)
         self.assertEqual(r.status_code, 201, r.text)
         accounts = r.json()['accounts']
-        self.assertEqual(sorted(a['role'] for a in accounts), ['dispatcher', 'driver'])
+        self.assertEqual(sorted(a['role'] for a in accounts), ['accountant', 'dispatcher', 'dispatcher', 'driver', 'driver', 'driver', 'driver'])
         self.assertEqual(len(self.c.get('/api/v1/trucks', headers=self.oh).json()), 5)
         d = self.c.get('/api/v1/dashboard', headers=self.oh).json()
         self.assertGreater(d['period']['gross'], 0)
         convs = self.c.get('/api/v1/chat/conversations', headers=self.oh).json()
-        self.assertTrue(any(c['title'] == 'Truck 551' and c['last_message'] for c in convs))
+        # every working truck group has its driver in it and talk in it; live loads have threads
+        for unit in ('551', '328', '780', '301'):
+            g = next(c for c in convs if c['title'] == f'Truck {unit}')
+            self.assertTrue(g['last_message'], unit)
+            self.assertTrue(any(m['role'] == 'driver' for m in g['members']), unit)
+        self.assertGreaterEqual(sum(1 for c in convs if c['kind'] == 'load'), 4)
+        self.assertGreaterEqual(len(next(c for c in convs if c['kind'] == 'company')['members']), 8)
         # the driver account opens the driver app inside the same company
         drv = next(a for a in accounts if a['role'] == 'driver')
         tok = self.c.post('/api/v1/auth/login', data={'username': drv['email'], 'password': drv['password']}).json()['access_token']
         me = self.c.get('/api/v1/driver/me', headers={'Authorization': f'Bearer {tok}'}).json()
         self.assertEqual(me['truck']['unit_number'], '551')
-        # never on top of existing data
+        # never on top of existing data, unless asked to replace it
         r = self.c.post('/api/v1/company/me/sample-data', headers=self.oh)
         self.assertEqual(r.status_code, 400)
+        r = self.c.post('/api/v1/company/me/sample-data?replace=true', headers=self.oh)
+        self.assertEqual(r.status_code, 201, r.text)
+        self.assertEqual(len(self.c.get('/api/v1/trucks', headers=self.oh).json()), 5)
+        self.assertEqual(self.c.get('/api/v1/auth/me', headers=self.oh).json()['email'], 'a@real.com')
 
     def test_only_the_owner(self):
         r = self.c.post('/api/v1/company/me/sample-data', headers=self.oh)

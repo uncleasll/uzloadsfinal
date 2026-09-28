@@ -35,7 +35,7 @@ class Demo(unittest.TestCase):
         # second call reuses the same company
         o2 = self.c.post('/api/v1/auth/demo?role=admin').json()
         self.assertEqual(o2['user']['company_id'], o['user']['company_id'])
-        self.assertEqual(self.c.get('/api/v1/auth/users', headers=oh).json().__len__(), 3)
+        self.assertEqual(self.c.get('/api/v1/auth/users', headers=oh).json().__len__(), 8)   # owner, 2 dispatchers, 4 drivers, accountant
         # the demo is full: statements paid, invoices in every state, chat with photos, bills, papers
         ov = self.c.get('/api/v1/billing/overview', headers=oh).json()
         self.assertGreater(ov['outstanding']['count'], 0); self.assertGreater(ov['at_factor']['count'], 0); self.assertEqual(ov['overdue']['count'], 1)

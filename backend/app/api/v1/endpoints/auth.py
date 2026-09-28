@@ -155,6 +155,7 @@ class UserUpdate(BaseModel):
     driver_id: Optional[int] = None
     dispatcher_id: Optional[int] = None
     password: Optional[str] = None
+    email: Optional[str] = None
 
 
 @router.get("/users")
@@ -179,6 +180,14 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), m
         if len(data.password) < 8:
             raise HTTPException(400, "Password must be at least 8 characters")
         u.hashed_password = hash_password(data.password)
+    if data.email is not None and data.email.strip().lower() != u.email:
+        email = data.email.strip().lower()
+        if "@" not in email or "." not in email.split("@")[-1]:
+            raise HTTPException(400, "That does not look like an email address")
+        with company_scope(None):
+            if db.query(User).filter(User.email == email, User.id != u.id).first():
+                raise HTTPException(400, "Someone already signs in with that email")
+        u.email = email
     db.commit(); db.refresh(u)
     return _u(u)
 

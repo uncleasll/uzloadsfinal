@@ -13,7 +13,7 @@ from app.services.auth_service import hash_password
 
 DEMO_EMAILS = {"admin": "owner@demo.karvan", "dispatcher": "dispatch@demo.karvan", "driver": "driver@demo.karvan"}
 DEMO_PASSWORD = "karvan-demo"
-SEED_VERSION = 3          # bump when the seed changes; an older demo company is wiped and rebuilt
+SEED_VERSION = 4          # bump when the seed changes; an older demo company is wiped and rebuilt
 
 
 def _wipe_company(db: Session, company_id: int) -> None:
@@ -79,6 +79,7 @@ def ensure_demo(db: Session) -> dict[str, User]:
             users[role] = u
         users["admin"].phone = "seed-building"
         db.commit()
+        users["_new"] = lambda name, role, slug, **links: _account(db, company.id, name, role, f"{slug}@demo.karvan", DEMO_PASSWORD, **links)
         try:
             _seed(db, users)
             users["admin"].phone = f"seed-v{SEED_VERSION}"
@@ -91,6 +92,7 @@ def ensure_demo(db: Session) -> dict[str, User]:
                 u.phone = f"seed-failed: {type(e).__name__}: {str(e)[:120]}"
                 db.commit()
             raise RuntimeError(f"Demo seed failed: {type(e).__name__}: {str(e)[:300]}") from e
+        users = {k: v for k, v in users.items() if isinstance(v, User)}
         for u in users.values():
             db.refresh(u)
         return users
@@ -99,30 +101,63 @@ def ensure_demo(db: Session) -> dict[str, User]:
 SAMPLE_PASSWORD = "karvan-2026"
 
 
-def fill_company(db: Session, owner: User) -> dict:
+def _account(db: Session, cid: int, name: str, role: str, email: str, password: str, **links) -> User:
+    u = db.query(User).filter(User.email == email).first()
+    if not u:
+        u = User(name=name, email=email, hashed_password=hash_password(password), role=role, is_active=True, company_id=cid, **links)
+        db.add(u); db.flush()
+    else:
+        for k, v in links.items():
+            setattr(u, k, v)
+    return u
+
+
+def _clear_company_data(db: Session, company_id: int) -> None:
+    """Everything in one company except the company row and its owner accounts. Used to replace sample data."""
+    from sqlalchemy import text
+    from app.models.models import Base
+    scoped = {t.name for t in Base.metadata.sorted_tables if "company_id" in t.c}
+    for t in reversed(Base.metadata.sorted_tables):
+        if t.name == "companies":
+            continue
+        if t.name == "users":
+            db.execute(text("DELETE FROM users WHERE company_id = :cid AND role != 'admin'"), {"cid": company_id})
+            continue
+        if "company_id" in t.c:
+            db.execute(text(f"DELETE FROM {t.name} WHERE company_id = :cid"), {"cid": company_id})
+            continue
+        for fk in t.foreign_keys:
+            parent = fk.column.table
+            if parent.name in scoped and parent.name != "users":
+                db.execute(text(f"DELETE FROM {t.name} WHERE {fk.parent.name} IN (SELECT id FROM {parent.name} WHERE company_id = :cid)"), {"cid": company_id})
+    db.commit()
+
+
+def fill_company(db: Session, owner: User, replace: bool = False) -> dict:
     """Put the same month of realistic work into the owner's own company: fleet, people, loads, statements,
-    invoices, expenses, papers and chat. Adds a dispatcher and a driver account so the three apps all have someone
-    to sign in as. Refuses when the company already has trucks, so nothing real gets mixed with sample rows."""
+    invoices, expenses, papers and chat. Every driver, both dispatchers and an accountant get an account so all
+    three apps have people to sign in as. Refuses when the company already has trucks unless replace=True, which
+    clears everything but the owner accounts first."""
     cid = owner.company_id
     with company_scope(cid):
         if db.query(Truck).count():
-            raise ValueError("This company already has trucks. Sample data only goes into an empty company.")
+            if not replace:
+                raise ValueError("This company already has trucks. Sample data only goes into an empty company.")
+            _clear_company_data(db, cid)
+            db.expire_all()
+            owner = db.get(User, owner.id)
         c = db.get(Company, cid)
         if c.week_start_day is None: c.week_start_day = 5
         if not c.factoring_company: c.factoring_company, c.factoring_fee_pct, c.factoring_advance_pct = "RTS Financial", 3, 90
         if c.payment_terms_days is None: c.payment_terms_days = 30
-        users = {"admin": owner}
-        for role, name in (("dispatcher", "Jasur Toshev"), ("driver", "Bobur Nasimov")):
-            email = f"{role}@{cid}.karvan.local"
-            u = db.query(User).filter(User.email == email).first()
-            if not u:
-                u = User(name=name, email=email, hashed_password=hash_password(SAMPLE_PASSWORD), role=role, is_active=True, company_id=cid,
-                         phone="555-0101" if role == "driver" else None)
-                db.add(u)
-            users[role] = u
+        users = {"admin": owner, "_accounts": []}
+        users["_new"] = lambda name, role, slug, **links: _account(db, cid, name, role, f"{slug}@{cid}.karvan.local", SAMPLE_PASSWORD, **links)
+        users["dispatcher"] = users["_new"]("Jasur Toshev", "dispatcher", "jasur")
+        users["driver"] = users["_new"]("Bobur Nasimov", "driver", "bobur", phone="555-0101")
         db.commit()
         _seed(db, users)
-        return {"accounts": [{"role": r, "name": users[r].name, "email": users[r].email, "password": SAMPLE_PASSWORD} for r in ("dispatcher", "driver")]}
+        people = [users["dispatcher"], users["driver"]] + users["_accounts"]
+        return {"accounts": [{"role": u.role.value if hasattr(u.role, "value") else u.role, "name": u.name, "email": u.email, "password": SAMPLE_PASSWORD} for u in people]}
 
 
 def _seed(db: Session, users: dict[str, User]) -> None:
@@ -136,6 +171,14 @@ def _seed(db: Session, users: dict[str, User]) -> None:
     drivers = [Driver(name=n, is_active=True, pay_type=pt, pay_pct=pct, per_mile_rate=pm, phone=ph, driver_type=dt) for n, pt, pct, pm, ph, dt in
                [("Bobur Nasimov", "percent", 30, 0, "555-0101", "Drv"), ("Alisher Sharipov", "per_mile", 0, 0.55, "555-0102", "Drv"), ("Erkin Mardonov", "percent", 30, 0, "555-0103", "Drv"), ("Parvizjon Mukhiddinov", "none", 0, 0, "555-0104", "OO")]]
     db.add_all(drivers); db.flush(); users["driver"].driver_id = drivers[0].id
+    # Everyone who works here can sign in: the other drivers, the second dispatcher, the accountant
+    new = users.get("_new"); made = users.setdefault("_accounts", [])
+    if new:
+        for d, slug in zip(drivers[1:], ("alisher", "erkin", "parvizjon")):
+            made.append(new(d.name, "driver", slug, driver_id=d.id, phone=d.phone))
+        made.append(new(disp2.name, "dispatcher", "islom", dispatcher_id=disp2.id))
+        made.append(new("Dilnoza Yusupova", "accountant", "dilnoza"))
+        db.flush()
     db.add(DriverDeduction(driver_id=drivers[0].id, label="Occupational health", amount=150))
     trucks = [Truck(unit_number=u, make=mk, model=md, year=y, vin=v, plate=p, plate_state="IL", fee_pct=f, ownership=o, is_active=True, driver_id=d.id if d else None) for u, mk, md, y, v, p, f, o, d in
               [("551", "Volvo", "VNL 760", 2022, "4V4NC9EH5NN123551", "P-551 IL", 12, "Owned", drivers[0]), ("328", "Freightliner", "Cascadia", 2021, "3AKJHHDR5MSM00328", "P-328 IL", 3.5, "Owner-operator", drivers[1]),
@@ -236,34 +279,87 @@ def _seed(db: Session, users: dict[str, User]) -> None:
                 TruckDocument(truck_id=trucks[2].id, doc_type="registration", exp_date=today + timedelta(days=300))])
     db.commit()
 
-    # ── chat: history in truck groups, a POD photo, a receipt, a status trail
+    # ── chat: every truck group has its people and a week of talk; PODs, receipts, inspections; load threads
     chat.sync_memberships(db)
     owner, dispatcher, driver_u = users["admin"], users["dispatcher"], users["driver"]
-    t551 = chat.ensure_truck_conversation(db, trucks[0]); t328 = chat.ensure_truck_conversation(db, trucks[1]); everyone = chat.ensure_company_channel(db)
-    live = loads_by_truck[trucks[0].id][-1]
-    last_done = [x for x in loads_by_truck[trucks[0].id] if getattr(x.status, "value", x.status) == "Delivered"][-1]
+    by_name = {u.name: u for u in users["_accounts"]}
+    acct = by_name.get("Dilnoza Yusupova")
+    disp_u = {disp.id: dispatcher, disp2.id: by_name.get(disp2.name, dispatcher)}          # who dispatches each truck
+    drv_u = {drivers[0].id: driver_u, **{d.id: by_name[d.name] for d in drivers[1:] if d.name in by_name}}
+    groups = {t.id: chat.ensure_truck_conversation(db, t) for t in trucks}
+    everyone = chat.ensure_company_channel(db)
     from app.models.models import Message
+    def at(days_ago, hour): return datetime.combine(today - timedelta(days=days_ago), datetime.min.time()) + timedelta(hours=hour)
     def msg(conv, sender, body, days_ago, hour, kind="text"):
         if sender is None:
             m = Message(conversation_id=conv.id, sender_id=None, kind=kind, body=body); db.add(m); db.flush()
         else:
             m = chat.post_message(db, conv, sender, body, kind=kind)
-        m.created_at = datetime.combine(today - timedelta(days=days_ago), datetime.min.time()) + timedelta(hours=hour); db.commit(); return m
+        m.created_at = at(days_ago, hour); db.commit(); return m
+    def photo(conv, sender, text, category, truck, days_ago, hour, load=None, lat=None, lng=None, color=(226, 232, 240), caption=None):
+        m = msg(conv, sender, caption or f"{category.upper()} photo", days_ago, hour, kind="photo")
+        a = chat.store_attachment(db, user=sender, data=_photo(text, color), filename=f"{category}.jpg", content_type="image/jpeg", category=category,
+                                  truck_id=truck.id, load_id=load.id if load else None, taken_at=at(days_ago, hour), lat=lat, lng=lng, message=m)
+        if load and category == "pod":
+            chat.attach_to_load(db, a, load, "Other", "[karvan-document:POD]")
+        return m
+
+    # Company channel: the office talks to everyone
     msg(everyone, owner, "Reminder: statements go out Friday. Get your PODs in by Thursday night.", 6, 9)
-    msg(everyone, dispatcher, "Blue Grace pays 45 days, we factor those. RXO and Trinity direct.", 6, 9.5)
-    msg(t551, dispatcher, f"Bobur, {last_done.po_number} delivered? Need the POD for the invoice.", 3, 8)
-    m = msg(t551, driver_u, "Yes, signed at receiver. Photo below.", 3, 8.3)
-    pod = chat.store_attachment(db, user=driver_u, data=_photo(f"PROOF OF DELIVERY  {last_done.po_number}  received in good order"), filename="pod.jpg", content_type="image/jpeg",
-                                category="pod", truck_id=trucks[0].id, load_id=last_done.id, taken_at=datetime.combine(today - timedelta(days=3), datetime.min.time()) + timedelta(hours=8), lat=40.7357, lng=-74.1724, message=m)
-    chat.attach_to_load(db, pod, last_done, "Other", "[karvan-document:POD]")
-    msg(t551, dispatcher, "Got it, invoicing today. Next one is loaded for you, check the app.", 3, 8.6)
-    msg(t551, None, f"{drivers[0].name}: load #{live.po_number} dispatched", 1, 7, kind="system")
-    msg(t551, driver_u, "Fuel stop at Pilot Effingham, receipt attached.", 1, 11)
-    m = msg(t551, driver_u, "Receipt · Fuel · $466.80", 1, 11.1, kind="photo")
-    chat.store_attachment(db, user=driver_u, data=_photo("PILOT #300  EFFINGHAM, IL   DIESEL 120.0 GAL   $466.80", (250, 250, 245)), filename="receipt.jpg", content_type="image/jpeg", category="receipt", truck_id=trucks[0].id, lat=39.1201, lng=-88.5434, message=m)
-    msg(t328, dispatcher, "Alisher, brakes done? Shop said ready by noon.", 2, 10)
-    msg(t328, owner, "Invoice from the shop is $1,240, I put it on 328's week.", 2, 12)
-    m = msg(t328, dispatcher, "Pre-trip photos please before you roll.", 0, 6)
-    for side in ("FRONT", "REAR", "LEFT", "RIGHT"):
-        chat.store_attachment(db, user=driver_u, data=_photo(f"TRUCK 328  {side}", (203, 213, 225)), filename=f"{side.lower()}.jpg", content_type="image/jpeg", category="inspection", truck_id=trucks[1].id, lat=41.9, lng=-87.9, message=m)
+    msg(everyone, dispatcher, "Blue Grace pays 45 days, we factor those. RXO and Trinity are direct, 30 days.", 6, 9.5)
+    if acct: msg(everyone, acct, "Fuel receipts: photo in your truck group the same day, please. IFTA is due next month.", 5, 10)
+    msg(everyone, owner, "Winter tires for 551 and 780 booked for next week at Chicago Freightliner.", 2, 16)
+    msg(everyone, dispatcher, "Weekend: Islom covers Saturday, I'm on Sunday. Call, don't text, if a truck is down.", 1, 17)
+
+    # Each truck group: last week's load closed with a POD, this week's load in progress, fuel receipts
+    positions = {trucks[0].id: (39.1201, -88.5434), trucks[1].id: (40.4977, -74.4885), trucks[2].id: (40.7357, -74.1724), trucks[3].id: (41.8781, -87.6298)}
+    for i, t in enumerate(trucks[:4]):
+        g = groups[t.id]; d = drivers[i]; du = drv_u.get(d.id); pu = disp_u[disp.id if i % 2 == 0 else disp2.id]
+        mine = loads_by_truck[t.id]; live = mine[-1]
+        done = [x for x in mine if getattr(x.status, "value", x.status) == "Delivered" and x is not live]
+        last_done = done[-1]
+        lat, lng = positions[t.id]
+        msg(g, pu, f"{d.name.split()[0]}, {last_done.po_number} delivered? I need the POD for the invoice.", 6 - i, 8)
+        if du:
+            msg(g, du, "Yes, signed at the receiver. Photo below.", 6 - i, 8.3)
+            photo(g, du, f"PROOF OF DELIVERY  {last_done.po_number}  received in good order", "pod", t, 6 - i, 8.4, load=last_done, lat=lat, lng=lng, caption=f"POD · {last_done.po_number}")
+            msg(g, pu, "Got it, invoicing today. Next one is in the app.", 6 - i, 8.7)
+        msg(g, None, f"{d.name}: load #{live.po_number} dispatched", 2, 7, kind="system")
+        if du:
+            fuel = [("PILOT #300  EFFINGHAM, IL   DIESEL 120.0 GAL   $466.80", "Fuel · $466.80", 1, 11), ("LOVES #412  TOLEDO, OH   DIESEL 95.0 GAL   $355.30", "Fuel · $355.30", 1, 13),
+                    ("TA #88  AMARILLO, TX   DIESEL 140.0 GAL   $478.80", "Fuel · $478.80", 2, 15), ("PILOT #217  GARY, IN   DIESEL 110.0 GAL   $421.30", "Fuel · $421.30", 1, 9)][i]
+            msg(g, du, "Fuel stop, receipt attached.", fuel[2], fuel[3])
+            photo(g, du, fuel[0], "receipt", t, fuel[2], fuel[3] + 0.1, lat=lat, lng=lng, color=(250, 250, 245), caption=f"Receipt · {fuel[1]}")
+        status = getattr(live.status, "value", live.status)
+        if status == "Dispatched":
+            msg(g, pu, f"Pickup is {live.stops[0].title}, appointment 07:00. Check in at the guard shack.", 1, 18)
+            if du: msg(g, du, "Copy. Leaving the yard at 5.", 1, 18.5)
+        elif status == "En Route":
+            if du: msg(g, du, f"Rolling to {live.stops[0].city}, ETA 2 hours.", 0, 6.5)
+            msg(g, pu, "Pre-trip photos please before you roll.", 0, 6.6)
+            if du:
+                m = msg(g, du, "Inspection · 4 photos", 0, 6.9, kind="photo")
+                for side in ("FRONT", "REAR", "LEFT", "RIGHT"):
+                    chat.store_attachment(db, user=du, data=_photo(f"TRUCK {t.unit_number}  {side}", (203, 213, 225)), filename=f"{side.lower()}.jpg", content_type="image/jpeg", category="inspection", truck_id=t.id, taken_at=at(0, 6.9), lat=lat, lng=lng, message=m)
+        elif status == "Picked-up":
+            if du:
+                msg(g, du, f"Loaded at {live.stops[0].title}, 22 pallets, sealed. Heading to {live.stops[1].city}.", 0, 10)
+                photo(g, du, f"BILL OF LADING  {live.po_number}  22 PLT  SEAL 004871", "bol", t, 0, 10.1, load=live, lat=lat, lng=lng, caption=f"BOL · {live.po_number}")
+            msg(g, pu, "Receiver closes at 16:00 tomorrow, don't be late.", 0, 10.5)
+        else:
+            if du:
+                msg(g, du, f"Delivered {live.po_number}, clean. Where next?", 0, 9)
+                photo(g, du, f"PROOF OF DELIVERY  {live.po_number}  received in good order", "pod", t, 0, 9.1, load=live, lat=lat, lng=lng, caption=f"POD · {live.po_number}")
+            msg(g, pu, "Nice. Looking at a Trinity load out of Indy for tomorrow, hold on.", 0, 9.4)
+    # The shop story on 328 and the empty truck
+    msg(groups[trucks[1].id], owner, "Shop invoice for the brakes is $1,240, it's on 328's week.", 3, 12)
+    msg(groups[trucks[4].id], owner, "322 sits until we hire. Two interviews Thursday.", 4, 15)
+
+    # Load threads for the live loads, dispatcher and driver only talk about that load
+    for i, t in enumerate(trucks[:4]):
+        live = loads_by_truck[t.id][-1]; du = drv_u.get(drivers[i].id); pu = disp_u[disp.id if i % 2 == 0 else disp2.id]
+        th = chat.ensure_load_conversation(db, live); chat.sync_memberships(db)
+        msg(th, pu, f"{live.po_number}: {live.stops[0].city} → {live.stops[1].city}, ${live.rate:,.0f}, {live.total_miles} mi. Rate con is in the app.", 2, 7.2)
+        if du: msg(th, du, "Got it.", 2, 7.5)
+        if live.broker and live.broker.phone: msg(th, pu, f"Broker contact for check calls: {live.broker.name} {live.broker.phone}", 2, 7.6)
     db.commit()

@@ -41,7 +41,7 @@ export const authApi = {
   demo: async (role: 'admin' | 'dispatcher' | 'driver'): Promise<Session> => (await client.post('/api/v1/auth/demo', null, { params: { role }, timeout: 120000 })).data,
 
   listUsers: async (): Promise<AuthUser[]> => (await client.get('/api/v1/auth/users')).data,
-  updateUser: async (id: number, p: Partial<{ name: string; phone: string; role: Role; is_active: boolean; driver_id: number | null; dispatcher_id: number | null; password: string }>): Promise<AuthUser> =>
+  updateUser: async (id: number, p: Partial<{ name: string; email: string; phone: string; role: Role; is_active: boolean; driver_id: number | null; dispatcher_id: number | null; password: string }>): Promise<AuthUser> =>
     (await client.put(`/api/v1/auth/users/${id}`, p)).data,
   deactivateUser: async (id: number) => { await client.delete(`/api/v1/auth/users/${id}`) },
 

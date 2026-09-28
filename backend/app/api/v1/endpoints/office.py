@@ -217,10 +217,11 @@ def update_my_company(data: CompanyIn, db: Session = Depends(get_db)):
 
 
 @router.post("/company/me/sample-data", status_code=201)
-def fill_with_sample_data(db: Session = Depends(get_db), user=Depends(require_admin)):
-    """A month of realistic work for an empty company, plus a dispatcher and a driver account for the other two apps."""
+def fill_with_sample_data(replace: bool = False, db: Session = Depends(get_db), user=Depends(require_admin)):
+    """A month of realistic work for an empty company, plus accounts for the other two apps.
+    replace=true clears everything but the owner accounts first."""
     from app.services.demo import fill_company
     try:
-        return fill_company(db, user)
+        return fill_company(db, user, replace=replace)
     except ValueError as e:
         raise HTTPException(400, str(e))

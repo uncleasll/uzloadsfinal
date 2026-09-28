@@ -157,12 +157,12 @@ function InviteDrawer({ drivers, dispatchers, users, onClose, onDone }: { driver
 }
 
 function EditDrawer({ user, drivers, dispatchers, onClose, onDone }: { user: AuthUser; drivers: { id: number; name: string }[]; dispatchers: { id: number; name: string }[]; onClose: () => void; onDone: () => void }) {
-  const [f, setF] = useState({ name: user.name, phone: user.phone || '', role: user.role, driver_id: user.driver_id ? String(user.driver_id) : '', dispatcher_id: user.dispatcher_id ? String(user.dispatcher_id) : '', is_active: user.is_active, password: '' })
+  const [f, setF] = useState({ name: user.name, email: user.email, phone: user.phone || '', role: user.role, driver_id: user.driver_id ? String(user.driver_id) : '', dispatcher_id: user.dispatcher_id ? String(user.dispatcher_id) : '', is_active: user.is_active, password: '' })
   const [busy, setBusy] = useState(false)
   const save = async () => {
     setBusy(true)
     try {
-      await authApi.updateUser(user.id, { name: f.name, phone: f.phone, role: f.role, is_active: f.is_active,
+      await authApi.updateUser(user.id, { name: f.name, email: f.email, phone: f.phone, role: f.role, is_active: f.is_active,
         driver_id: f.role === 'driver' && f.driver_id ? Number(f.driver_id) : null, dispatcher_id: f.role === 'dispatcher' && f.dispatcher_id ? Number(f.dispatcher_id) : null,
         ...(f.password ? { password: f.password } : {}) })
       toast.success('Saved'); onDone()
@@ -176,6 +176,7 @@ function EditDrawer({ user, drivers, dispatchers, onClose, onDone }: { user: Aut
           <Grid>
             <Field label="Name"><input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} className={control} /></Field>
             <Field label="Phone"><input value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} className={control} /></Field>
+            <Field label="Email" hint="They sign in with this." span={2}><input type="email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} className={control} /></Field>
             <Field label="Role"><select value={f.role} onChange={e => setF({ ...f, role: e.target.value as Role })} className={control}>{ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</select></Field>
             {f.role === 'driver' && <Field label="Driver record"><select value={f.driver_id} onChange={e => setF({ ...f, driver_id: e.target.value })} className={control}><option value="">Not linked</option>{drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>}
             {f.role === 'dispatcher' && <Field label="Dispatcher record"><select value={f.dispatcher_id} onChange={e => setF({ ...f, dispatcher_id: e.target.value })} className={control}><option value="">Not linked</option>{dispatchers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>}
